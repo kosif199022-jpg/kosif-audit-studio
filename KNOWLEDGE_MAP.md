@@ -1,0 +1,33 @@
+# خريطة تحويل محتوى الفيديو إلى قدرات KOSIF Audit Studio
+
+هذه الخريطة لا تتعامل مع الفيديوهات كأرشيف. كل مسار يتحول إلى طبقة في دورة العمل:
+
+`محفز المعاملة → المعيار → الحكم المحاسبي → خطر المراجعة → الإجراء → الدليل → النتيجة → التقرير`
+
+> ملاحظة نزاهة: تم فهرسة الروابط وعناوين/موضوعات ما أمكن الوصول إليه، ثم تحويل المجالات المهنية إلى بنية تطبيقية. لم يُنسخ محتوى الفيديوهات أو يُدّعَ أن البطاقات بديل عن النص الرسمي أو عن مشاهدة المحاضرة كاملة.
+
+| المصدر | المجال المستفاد | القدرة داخل التطبيق |
+|---|---|---|
+| [PL2MXY0X4flhkIyGOiJuL4DqB8CFix4vdu](https://youtube.com/playlist?list=PL2MXY0X4flhkIyGOiJuL4DqB8CFix4vdu) | IFRS / DipIFR شامل | بطاقات معيارية مترابطة، مذكرات اعتراف وقياس وعرض وإفصاح |
+| [PLw7BcZ9DXQcBnevMKTzHpxNL9Z1VLOYp_](https://youtube.com/playlist?list=PLw7BcZ9DXQcBnevMKTzHpxNL9Z1VLOYp_) | منهج دبلومة IFRS وحالات | خريطة تعلم وحالات وربط كل مسألة بإجراء مراجعة |
+| [PLLsYiYPRMH2ytG3QT876N8bpTg9IvYFW0](https://youtube.com/playlist?list=PLLsYiYPRMH2ytG3QT876N8bpTg9IvYFW0) | المعايير المصرية | طبقة مقارنة محلية وتحذير تثبيت الإصدار الرسمي الساري |
+| [PLlMxSpyAvEuUr4BSqznfCTBPDnxjgtrRB](https://youtube.com/playlist?list=PLlMxSpyAvEuUr4BSqznfCTBPDnxjgtrRB) | IFRS 2023 | مكتبة عربية وتغطية تطبيقية للمسائل الشائعة |
+| [PLFxfaNxadiElRws1xw2FUwpHN89FLr_dg](https://youtube.com/playlist?list=PLFxfaNxadiElRws1xw2FUwpHN89FLr_dg) | محاضرات تطبيقية | سيناريوهات وحفز تلقائي للمخاطر والمعايير |
+| [PL1QE57n9NoQpSh8fluLCfstOIkc7FipCJ](https://youtube.com/playlist?list=PL1QE57n9NoQpSh8fluLCfstOIkc7FipCJ) | IAS 1/2/10/16/33/34/40 وغيرها | بطاقات تفصيلية وإجراءات وأدلة لكل معيار |
+| [PLnNt-7uefZIkPB9mxqraqeFYmWgTeGpoU](https://youtube.com/playlist?list=PLnNt-7uefZIkPB9mxqraqeFYmWgTeGpoU) | حالات ومراجعة فهم | بنك أسئلة الشك المهني وخريطة سيناريوهات |
+| [PLx1yTu6mEfYWsUq1Eac2SEvc-pqrH53wJ](https://youtube.com/playlist?list=PLx1yTu6mEfYWsUq1Eac2SEvc-pqrH53wJ) | IFRS بالعربي والتوحيد | دعم IFRS 10 والتجميع والعرض بالعربية |
+| [PLORzSxoXX4ut10rICf68r-cTJCcWP4FfW](https://youtube.com/playlist?list=PLORzSxoXX4ut10rICf68r-cTJCcWP4FfW) | تقارير ومعالجات مهنية | فاحص التقرير وقائمة الإفصاحات وربط الحالات |
+| [nOPUA8smHbM](https://youtube.com/watch?v=nOPUA8smHbM) | جلسة/حل تطبيقي DipIFR | وضع الحالة ومصفوفة متطلبات الإجابة |
+| [eyXKvOrDoqw](https://youtube.com/watch?v=eyXKvOrDoqw) | CertIFR | خريطة تغطية المعرفة ومسارات الدراسة |
+| [PLrLeeuMbuaUfdhq9O-0FYsXAuWrUnVSGA](https://youtube.com/playlist?list=PLrLeeuMbuaUfdhq9O-0FYsXAuWrUnVSGA) | العرض والإفصاح والاستدامة وجودة التقارير | جاهزية IFRS 18، فاحص الإفصاح ومسار استدامة قابل للتوسعة |
+| [mHcfK0MsNBU](https://youtube.com/watch?v=mHcfK0MsNBU) | IAS 1 | ربط ميزان المراجعة بمكونات القوائم ومتطلبات العرض |
+
+## القدرات الناتجة
+
+1. **محرك ميزان مراجعة حتمي:** قراءة عربية/إنجليزية، وحدات نقدية صحيحة، كشف الفرق والتكرار والاتجاهات غير المعتادة.
+2. **ربط المعيار بالحساب:** التصنيف يحدد IFRS/IAS وISA والتأكيدات والإجراء والدليل المتوقع.
+3. **الأهمية والمعاينة:** حسابات قابلة للتفسير ومعاينة عشوائية/منهجية/MUS قابلة لإعادة التنفيذ بالبذرة.
+4. **الجولات العشر:** قبول، فهم، مادية، مخاطر، ضوابط، جوهري، تقديرات، استمرارية/لاحق، إكمال، تقرير.
+5. **رسم الأدلة:** حساب ← خطر ← ورقة عمل/طلب PBC ← نتيجة، مع قياس فجوات التغطية.
+6. **مجلس المراجعين:** مقاعد معيارية ومنهجية وتحليلية وشك مهني، بلا سلطة اعتماد أو ترحيل أو رأي.
+7. **التقارير:** مسودة تنفيذية، بوابات إكمال، طباعة/PDF، وتصدير حزمة JSON وCSV.
