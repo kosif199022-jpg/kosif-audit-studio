@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="KOSIF Audit Studio">
+  <rect width="512" height="512" fill="#2b133c"/>
+  <path d="M128 112h104v121L337 112h120L310 254l158 146H340L232 292v108H128z" fill="#f5edff"/>
+  <circle cx="389" cy="361" r="47" fill="#59c7b9"/>
+  <path d="m367 361 15 15 30-35" fill="none" stroke="#183d39" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
