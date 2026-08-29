@@ -1,5 +1,6 @@
 name: Materialize verified KOSIF source
 
+# Retry after verifying all ten bundle segments by Git blob SHA.
 on:
   push:
     paths:
