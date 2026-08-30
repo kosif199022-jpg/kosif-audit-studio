@@ -1,14 +1,29 @@
 {
   "name": "kosif-audit-studio",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "KOSIF Audit Studio — deterministic Arabic-first audit workspace",
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "check": "node --check app.js && node --check engine.js && node --check data.js"
+    "dev": "vite",
+    "build": "vite build && node scripts/prepare-sites-build.mjs",
+    "build:ai": "vite build --config vite.ai-studio.config.mjs",
+    "db:guards": "node scripts/generate-d1-guards.mjs",
+    "preview": "vite preview",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "test:sites": "node --test tests/sites-worker.test.mjs"
   },
-  "engines": {
-    "node": ">=20"
+  "dependencies": {
+    "@vitejs/plugin-react": "5.0.4",
+    "docx": "9.5.1",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^1.34.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "vite": "6.4.2",
+    "xlsx": "^0.18.5"
+  },
+  "displayName": "KOSIF | استوديو التدقيق",
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
   }
 }
