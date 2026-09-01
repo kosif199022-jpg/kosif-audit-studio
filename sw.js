@@ -1,6 +1,7 @@
-const CACHE = 'kosif-audit-studio-v1';
+const CACHE = 'kosif-audit-studio-v2';
 const CORE = [
   './', './index.html', './styles.css', './app.js', './engine.js', './data.js',
+  './moon-core.js', './moon-layer.js', './moon-layer.css',
   './manifest.webmanifest', './icon.svg', './icon-maskable.svg'
 ];
 
