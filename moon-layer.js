@@ -239,9 +239,9 @@ function bindMoonEvents() {
     window.clearTimeout(timer);
     timer = window.setTimeout(renderMoon, 80);
   };
-  document.addEventListener('click', schedule, true);
-  document.addEventListener('change', schedule, true);
-  document.addEventListener('submit', schedule, true);
+  document.addEventListener('click', schedule);
+  document.addEventListener('change', schedule);
+  document.addEventListener('submit', schedule);
 }
 
 function installMoonLayer() {
