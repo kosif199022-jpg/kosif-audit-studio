@@ -1,0 +1,48 @@
+name: Fix Moon refresh event ordering
+
+on:
+  push:
+    branches:
+      - feat/moon-command-center-phase-1
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/moon-command-center-phase-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fix delegated event ordering
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('moon-layer.js')
+          text = path.read_text()
+          for event in ('click', 'change', 'submit'):
+              old = f"document.addEventListener('{event}', schedule, true);"
+              new = f"document.addEventListener('{event}', schedule);"
+              if old not in text:
+                  raise SystemExit(f'missing event marker: {event}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Run tests and syntax checks
+        run: |
+          node --check moon-core.js
+          node --check moon-layer.js
+          npm test
+      - name: Commit fix and remove helper workflow
+        run: |
+          rm .github/workflows/moon-event-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add moon-layer.js .github/workflows/moon-event-fix.yml
+          git commit -m "fix(moon): refresh snapshot after delegated navigation"
+          git push
