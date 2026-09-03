@@ -1,12 +1,12 @@
 {
   "name": "kosif-audit-studio",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "KOSIF Audit Studio — deterministic Arabic-first audit workspace",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check app.js && node --check engine.js && node --check data.js"
+    "check": "node --check app.js && node --check engine.js && node --check data.js && node --check moon-core.js && node --check sw.js"
   },
   "engines": {
     "node": ">=20"

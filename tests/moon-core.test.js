@@ -14,10 +14,39 @@ test('snapshot never grants AI approval authority', () => {
   assert.equal(snapshot.authority.humanApprovalRequired, true);
 });
 
-test('snapshot marks archive as future capability', () => {
+test('snapshot blocks archive until human approval and an intact event chain exist', () => {
   const snapshot = buildMoonSnapshot({ version: 1 });
   const archive = snapshot.gates.find((item) => item.id === 'archive');
-  assert.equal(archive.status, 'future');
+  assert.equal(archive.status, 'blocked');
+  assert.match(archive.detail, /اعتماد بشري/);
+});
+
+test('snapshot includes journal and evidence-register gates', () => {
+  const snapshot = buildMoonSnapshot({
+    version: 1,
+    rawRows: [{ a: 1 }],
+    journalReview: { summary: { total: 10, flagged: 2, reviewed: 1 } },
+    evidence: [{ id: 'E-1', status: 'reviewed', riskIds: ['R-1'] }]
+  });
+  assert.equal(snapshot.gates.find((item) => item.id === 'journal')?.status, 'attention');
+  assert.equal(snapshot.gates.find((item) => item.id === 'evidence-register')?.status, 'ready');
+});
+
+test('snapshot risk gate follows unresolved high-risk count', () => {
+  const blocked = buildMoonSnapshot({
+    version: 2,
+    rawRows: [{ a: 1 }],
+    riskDecisions: { R1: { status: 'addressed' } },
+    riskSummary: { total: 3, highOpen: 1 }
+  });
+  const ready = buildMoonSnapshot({
+    version: 2,
+    rawRows: [{ a: 1 }],
+    riskDecisions: { R1: { status: 'addressed' }, R2: { status: 'accepted' } },
+    riskSummary: { total: 3, highOpen: 0 }
+  });
+  assert.equal(blocked.gates.find((item) => item.id === 'risk-response')?.status, 'attention');
+  assert.equal(ready.gates.find((item) => item.id === 'risk-response')?.status, 'ready');
 });
 
 test('trace health increases when lineage metadata exists', () => {

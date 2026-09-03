@@ -1,3 +1,5 @@
+import { verifyAuditEventChain } from './engine.js';
+
 export const KOSIF_STORAGE_KEY = 'kosif-audit-studio:v1';
 
 const asArray = (value) => Array.isArray(value) ? value : [];
@@ -14,7 +16,7 @@ export function parseStoredState(raw) {
 }
 
 function gate(id, label, status, reason, actionView = null) {
-  return { id, label, status, reason, actionView };
+  return { id, label, status, reason, detail: reason, actionView };
 }
 
 export function buildMoonSnapshot(input = {}) {
@@ -24,7 +26,11 @@ export function buildMoonSnapshot(input = {}) {
   const findings = asArray(state.findings);
   const pbc = asArray(state.pbc);
   const councilRuns = asArray(state.councilRuns);
+  const evidence = asArray(state.evidence);
+  const auditEvents = asArray(state.auditEvents);
   const riskDecisions = asObject(state.riskDecisions);
+  const riskSummary = asObject(state.riskSummary);
+  const journalSummary = asObject(state.journalReview?.summary);
 
   const completedWorkpapers = workpapers.filter((item) => item?.status === 'completed').length;
   const openFindings = findings.filter((item) => ['open', 'management-response'].includes(item?.status)).length;
@@ -32,7 +38,11 @@ export function buildMoonSnapshot(input = {}) {
   const linkedWorkpapers = workpapers.filter((item) => asArray(item?.riskIds).length > 0).length;
   const linkedFindings = findings.filter((item) => item?.riskId || item?.workpaperId).length;
   const linkedPbc = pbc.filter((item) => asArray(item?.riskIds).length > 0).length;
+  const reviewedEvidence = evidence.filter((item) => item?.status === 'reviewed').length;
+  const linkedEvidence = evidence.filter((item) => asArray(item?.riskIds ?? item?.linkedRiskIds).length > 0).length;
   const riskDecisionCount = Object.keys(riskDecisions).length;
+  const riskCount = Number(riskSummary.total ?? 0);
+  const highOpenRisks = Number(riskSummary.highOpen ?? 0);
 
   const hasData = rows.length > 0;
   const hasMateriality = Boolean(state.materiality);
@@ -40,16 +50,22 @@ export function buildMoonSnapshot(input = {}) {
   const hasEvidenceWorkflow = pbc.length > 0;
   const reviewOperationallyClear = hasWorkpapers && openFindings === 0;
   const hasHumanApproval = Boolean(state.approval);
+  const hasJournalReview = Number(journalSummary.total ?? 0) > 0;
+  const journalPending = Math.max(0, Number(journalSummary.flagged ?? 0) - Number(journalSummary.reviewed ?? 0));
+  const eventChain = verifyAuditEventChain(auditEvents);
+  const archiveReady = hasHumanApproval && auditEvents.length > 0 && eventChain.valid;
 
   const gates = [
     gate('data', 'البيانات', hasData ? 'ready' : 'blocked', hasData ? `${rows.length.toLocaleString('en-US')} صف محفوظ في لقطة الارتباط.` : 'يلزم تحميل ميزان مراجعة قبل أي تحليل.', 'data'),
     gate('planning', 'التخطيط', hasMateriality ? 'ready' : hasData ? 'attention' : 'blocked', hasMateriality ? 'توجد نسخة أهمية نسبية محفوظة وتبقى خاضعة للاعتماد المهني.' : 'لا توجد نسخة أهمية نسبية محفوظة.', 'planning'),
-    gate('risk-response', 'المخاطر والاستجابة', riskDecisionCount > 0 ? 'attention' : hasData ? 'attention' : 'blocked', riskDecisionCount > 0 ? `${riskDecisionCount.toLocaleString('en-US')} قرار/استجابة بشرية محفوظة على مخاطر.` : 'لا توجد استجابات بشرية محفوظة للمخاطر حتى الآن.', 'risks'),
+    gate('risk-response', 'المخاطر والاستجابة', riskCount > 0 && highOpenRisks === 0 ? 'ready' : hasData ? 'attention' : 'blocked', riskCount > 0 ? (highOpenRisks > 0 ? `${highOpenRisks.toLocaleString('en-US')} مخاطر مرتفعة أو حرجة ما زالت بلا استجابة بشرية.` : `تمت الاستجابة للمخاطر المرتفعة؛ ${riskDecisionCount.toLocaleString('en-US')} قرارًا بشريًا محفوظًا.`) : 'لا توجد استجابات بشرية محفوظة للمخاطر حتى الآن.', 'risks'),
+    gate('journal', 'فحص قيود اليومية', hasJournalReview ? (journalPending > 0 ? 'attention' : 'ready') : hasData ? 'attention' : 'blocked', hasJournalReview ? (journalPending > 0 ? `${journalPending.toLocaleString('en-US')} قيدًا معلّمًا ينتظر المراجعة البشرية.` : 'اكتمل فحص القيود المعلّمة وتوثيق حالة المراجعة.') : 'لم يُنفذ فحص قيود اليومية بعد.', 'journal'),
     gate('fieldwork', 'التنفيذ', completedWorkpapers > 0 ? 'ready' : hasWorkpapers ? 'attention' : hasData ? 'attention' : 'blocked', completedWorkpapers > 0 ? `${completedWorkpapers.toLocaleString('en-US')} ورقة عمل مكتملة من ${workpapers.length.toLocaleString('en-US')}.` : hasWorkpapers ? 'برنامج العمل موجود لكن لا توجد ورقة مكتملة.' : 'لم يُنشأ برنامج عمل من المخاطر بعد.', 'workpapers'),
     gate('evidence', 'الأدلة وPBC', reviewedPbc > 0 ? 'ready' : hasEvidenceWorkflow ? 'attention' : hasData ? 'attention' : 'blocked', reviewedPbc > 0 ? `${reviewedPbc.toLocaleString('en-US')} طلب دليل تمت مراجعته من ${pbc.length.toLocaleString('en-US')}.` : hasEvidenceWorkflow ? 'طلبات الأدلة موجودة ولم تصل أي منها إلى حالة تمت مراجعتها.' : 'لا توجد دورة PBC محفوظة بعد.', 'pbc'),
+    gate('evidence-register', 'سجل الأدلة', reviewedEvidence > 0 ? 'ready' : evidence.length > 0 ? 'attention' : hasData ? 'attention' : 'blocked', reviewedEvidence > 0 ? `${reviewedEvidence.toLocaleString('en-US')} دليلًا تمت مراجعته من ${evidence.length.toLocaleString('en-US')}.` : evidence.length > 0 ? 'وصلت أدلة لكنها لم تعتمد مراجعتها بعد.' : 'لا توجد أدلة مستلمة ومسجلة حتى الآن.', 'evidence'),
     gate('review', 'المراجعة', reviewOperationallyClear ? 'ready' : hasWorkpapers ? 'attention' : 'blocked', reviewOperationallyClear ? 'لا توجد نتائج مفتوحة في الحالة المحفوظة؛ هذا مؤشر تشغيلي وليس اعتماد جودة.' : openFindings > 0 ? `${openFindings.toLocaleString('en-US')} نتيجة ما زالت مفتوحة أو بانتظار رد الإدارة.` : 'يلزم تنفيذ أوراق عمل قبل اعتبار المراجعة جاهزة تشغيليًا.', 'risks'),
     gate('reporting', 'التقرير', hasHumanApproval ? 'ready' : 'attention', hasHumanApproval ? 'توجد مراجعة بشرية مسجلة لبوابات الملف.' : 'لا يوجد تسجيل مراجعة بشرية نهائية في الحالة الحالية.', 'reports'),
-    gate('archive', 'الأرشيف', 'future', 'قفل الأرشيف غير منفذ في الواجهة الحالية؛ يجب إضافته كقدرة محكومة منفصلة وفق مواصفة Moon.', null)
+    gate('archive', 'الأرشيف', archiveReady ? 'ready' : hasHumanApproval ? 'attention' : 'blocked', archiveReady ? `سلسلة الأحداث سليمة وتضم ${auditEvents.length.toLocaleString('en-US')} حدثًا؛ يمكن إنشاء لقطة أرشيف.` : hasHumanApproval ? 'الاعتماد البشري مسجل، لكن سجل الأحداث مفقود أو غير سليم.' : 'يلزم اعتماد بشري نهائي وسجل أحداث سليم قبل إنشاء لقطة الأرشيف.', 'reports')
   ];
 
   const traceChecks = [
@@ -57,6 +73,7 @@ export function buildMoonSnapshot(input = {}) {
     workpapers.length ? linkedWorkpapers / workpapers.length : 0,
     findings.length ? linkedFindings / findings.length : 0,
     pbc.length ? linkedPbc / pbc.length : 0,
+    evidence.length ? linkedEvidence / evidence.length : 0,
     councilRuns.length ? 1 : 0,
     hasHumanApproval ? 1 : 0
   ];
@@ -74,9 +91,15 @@ export function buildMoonSnapshot(input = {}) {
       openFindings,
       pbc: pbc.length,
       reviewedPbc,
+      evidence: evidence.length,
+      reviewedEvidence,
+      journalEntries: Number(journalSummary.total ?? 0),
+      journalFlagged: Number(journalSummary.flagged ?? 0),
       councilRuns: councilRuns.length,
       riskDecisionCount,
-      traceHealth
+      traceHealth,
+      auditEvents: auditEvents.length,
+      eventChainValid: eventChain.valid
     },
     gates,
     authority: {
@@ -89,7 +112,8 @@ export function buildMoonSnapshot(input = {}) {
       sourceName: state.sourceName ?? null,
       storageSchemaVersion: state.version ?? null,
       hasMaterialitySnapshot: hasMateriality,
-      hasHumanApproval
+      hasHumanApproval,
+      eventChainValid: eventChain.valid
     }
   };
 }

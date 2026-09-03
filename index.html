@@ -51,14 +51,16 @@
       </div>
 
       <nav class="nav-list" id="mainNav">
-        <button class="nav-item active" data-view="dashboard"><svg><use href="#i-grid"/></svg><span>لوحة الارتباط</span></button>
+        <button class="nav-item active" data-view="dashboard"><svg><use href="#i-grid"/></svg><span>مركز القيادة</span></button>
         <button class="nav-item" data-view="data"><svg><use href="#i-upload"/></svg><span>البيانات والميزان</span></button>
         <button class="nav-item" data-view="planning"><svg><use href="#i-target"/></svg><span>التخطيط والأهمية</span></button>
-        <button class="nav-item" data-view="rounds"><svg><use href="#i-route"/></svg><span>الجولات العشر</span></button>
         <button class="nav-item" data-view="risks"><svg><use href="#i-alert"/></svg><span>المخاطر والنتائج</span><span class="nav-badge" id="riskBadge">0</span></button>
-        <button class="nav-item" data-view="standards"><svg><use href="#i-book"/></svg><span>المعايير</span></button>
+        <button class="nav-item" data-view="journal"><svg><use href="#i-route"/></svg><span>فحص قيود اليومية</span><span class="nav-badge" id="journalBadge">0</span></button>
         <button class="nav-item" data-view="workpapers"><svg><use href="#i-file"/></svg><span>أوراق العمل</span></button>
         <button class="nav-item" data-view="pbc"><svg><use href="#i-inbox"/></svg><span>طلبات المستندات</span></button>
+        <button class="nav-item" data-view="evidence"><svg><use href="#i-link"/></svg><span>سجل الأدلة</span><span class="nav-badge" id="evidenceBadge">0</span></button>
+        <button class="nav-item" data-view="standards"><svg><use href="#i-book"/></svg><span>المعايير والمصادر</span></button>
+        <button class="nav-item" data-view="rounds"><svg><use href="#i-route"/></svg><span>الجولات العشر</span></button>
         <button class="nav-item" data-view="council"><svg><use href="#i-users"/></svg><span>مجلس المراجعين</span></button>
         <button class="nav-item" data-view="reports"><svg><use href="#i-report"/></svg><span>التقارير والتصدير</span></button>
         <button class="nav-item" data-view="knowledge"><svg><use href="#i-play"/></svg><span>مسارات المعرفة</span></button>
@@ -92,15 +94,16 @@
 
       <main id="mainContent" class="main-content" tabindex="-1">
         <section class="view active" id="view-dashboard" data-view-panel="dashboard" aria-labelledby="dashboardTitle">
-          <div class="hero-card">
+          <div class="hero-card command-hero">
             <div class="hero-copy">
-              <span class="hero-kicker">مراجعة قائمة على المخاطر والأدلة</span>
-              <h1 id="dashboardTitle">حوّل ميزان المراجعة إلى ملف ارتباط قابل للتتبع</h1>
-              <p>تحليل حتمي للأرصدة، ربط IFRS وISA، جولات مراجعة منظمة، وإجماع استشاري لا يتجاوز قرار المراجع البشري.</p>
+              <div class="command-heading-row"><span class="hero-kicker">Moon × KOSIF — مساحة تشغيل محكومة</span><span class="command-stage" id="dashboardStageChip">تهيئة الارتباط</span></div>
+              <h1 id="dashboardTitle">مركز قيادة ملف المراجعة</h1>
+              <p id="dashboardNextAction">ابدأ بتحميل ميزان المراجعة. سيحدد المركز بعد ذلك العائق المهني والخطوة التالية دون تجاوز قرار المراجع.</p>
               <div class="hero-actions">
-                <button class="button primary" data-go="data"><svg><use href="#i-upload"/></svg>ابدأ بالميزان</button>
+                <button class="button primary" id="nextActionButton" data-go="data"><svg><use href="#i-route"/></svg><span id="nextActionLabel">تحميل الميزان</span></button>
                 <button class="button secondary" id="heroDemoButton"><svg><use href="#i-grid"/></svg>تحميل 5000 حساب تجريبي</button>
               </div>
+              <div class="command-authority"><span><svg><use href="#i-check"/></svg>تحليل حتمي</span><span><svg><use href="#i-link"/></svg>مصدر قبل الاستنتاج</span><span><svg><use href="#i-shield"/></svg>الاعتماد للبشر</span></div>
             </div>
             <div class="hero-visual" aria-label="مؤشر جاهزية الارتباط">
               <div class="readiness-ring" id="readinessRing" style="--progress: 0deg">
@@ -108,7 +111,8 @@
               </div>
               <div class="hero-mini-metrics">
                 <div><span>الرصيد</span><strong id="heroBalanceState">بانتظار البيانات</strong></div>
-                <div><span>تغطية المخاطر</span><strong id="heroCoverage">0%</strong></div>
+                <div><span>الأدلة الفعلية</span><strong id="heroCoverage">0%</strong></div>
+                <div><span>قيود معلّمة</span><strong id="heroJournalState">0</strong></div>
               </div>
             </div>
           </div>
@@ -117,26 +121,25 @@
             <article class="metric-card"><span class="metric-label">الحسابات</span><strong id="metricAccounts">0</strong><small>سجل في ميزان المراجعة</small></article>
             <article class="metric-card"><span class="metric-label">المخاطر المفتوحة</span><strong id="metricRisks">0</strong><small id="metricHighRisks">0 مرتفعة أو حرجة</small></article>
             <article class="metric-card"><span class="metric-label">أوراق العمل</span><strong id="metricWorkpapers">0</strong><small id="metricCompletedWp">0 مكتملة</small></article>
-            <article class="metric-card"><span class="metric-label">فجوات الأدلة</span><strong id="metricEvidenceGaps">0</strong><small>مخاطر بلا طلب دليل</small></article>
+            <article class="metric-card"><span class="metric-label">فجوات الأدلة</span><strong id="metricEvidenceGaps">0</strong><small id="metricEvidenceHealth">مخاطر بلا دليل مستلم</small></article>
           </div>
 
           <div class="dashboard-grid">
-            <article class="panel span-2">
-              <div class="panel-header"><div><span class="eyebrow">سير العمل</span><h2>الجولات العشر</h2></div><button class="text-button" data-go="rounds">عرض التفاصيل</button></div>
-              <div class="round-strip" id="dashboardRounds"></div>
+            <article class="panel span-2 command-gates-panel">
+              <div class="panel-header"><div><span class="eyebrow">Governed Workflow</span><h2>بوابات دورة المراجعة</h2></div><span class="status-chip neutral" id="dashboardGateSummary">0 / 0</span></div>
+              <div class="dashboard-gate-rail" id="dashboardGateRail"></div>
             </article>
             <article class="panel">
               <div class="panel-header"><div><span class="eyebrow">الأولوية</span><h2>أعلى المخاطر</h2></div><button class="text-button" data-go="risks">فتح السجل</button></div>
               <div class="compact-list" id="dashboardRiskList"><div class="empty-state compact">حمّل الميزان لتظهر الإشارات.</div></div>
             </article>
             <article class="panel">
-              <div class="panel-header"><div><span class="eyebrow">الحوكمة</span><h2>بوابات لا تُتجاوز</h2></div></div>
-              <ul class="gate-list">
-                <li><svg><use href="#i-shield"/></svg><span>لا قيد أو رأي آلي</span></li>
-                <li><svg><use href="#i-shield"/></svg><span>كل خطر مرتبط بإجراء ودليل</span></li>
-                <li><svg><use href="#i-shield"/></svg><span>الأموال بوحدات صحيحة لا بفواصل عائمة</span></li>
-                <li><svg><use href="#i-shield"/></svg><span>اعتماد بشري موثق عند الإكمال</span></li>
-              </ul>
+              <div class="panel-header"><div><span class="eyebrow">العوائق الحالية</span><h2>ما يمنع الإكمال؟</h2></div></div>
+              <div class="blocker-list" id="dashboardBlockers"><div class="empty-state compact">سيظهر العائق التالي هنا.</div></div>
+            </article>
+            <article class="panel span-2">
+              <div class="panel-header"><div><span class="eyebrow">الجولات العشر</span><h2>تقدم ملف الارتباط</h2></div><button class="text-button" data-go="rounds">عرض التفاصيل</button></div>
+              <div class="round-strip" id="dashboardRounds"></div>
             </article>
           </div>
         </section>
@@ -214,6 +217,7 @@
               </div>
               <p class="rationale" id="materialityRationale">لم يُجر الحساب بعد.</p>
               <div class="human-gate"><svg><use href="#i-shield"/></svg><span>الحساب أداة تخطيط؛ اعتماد الأساس والنسبة مسؤولية المراجع المسؤول.</span></div>
+              <div class="revision-history"><div class="panel-header"><div><span class="eyebrow">Version History</span><h2>إصدارات الأهمية</h2></div><span class="status-chip neutral" id="materialityRevisionCount">0 إصدار</span></div><div class="compact-list" id="materialityRevisionHistory"><div class="empty-state compact">لا توجد إصدارات مسجلة.</div></div></div>
             </article>
           </div>
 
@@ -255,12 +259,48 @@
           </article>
         </section>
 
+        <section class="view" id="view-journal" data-view-panel="journal" aria-labelledby="journalTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 240 / ISA 315</span><h1 id="journalTitle">فحص قيود اليومية</h1><p>اختبارات حتمية للقيود اليدوية، قيود الإقفال، العطلات، المبالغ المستديرة والمستخدمين قليلي الظهور، مع سبب ظاهر لكل إشارة.</p></div>
+            <div class="heading-actions"><button class="button secondary" id="downloadJournalTemplateButton"><svg><use href="#i-download"/></svg>قالب CSV</button><button class="button primary" id="loadJournalDemoButton"><svg><use href="#i-grid"/></svg>بيانات تجريبية</button></div>
+          </div>
+          <div class="two-column journal-intake">
+            <article class="panel">
+              <div class="panel-header"><div><span class="eyebrow">المدخلات</span><h2>حمّل أو الصق سجل القيود</h2></div><span class="status-chip neutral" id="journalSourceChip">لا يوجد مصدر</span></div>
+              <div class="journal-controls">
+                <label><span>نهاية الفترة</span><input id="journalPeriodEnd" type="date" value="2026-12-31"></label>
+                <label><span>نافذة الإقفال بالأيام</span><input id="journalWindowDays" type="number" min="0" max="31" value="5"></label>
+              </div>
+              <label class="file-button" for="journalFileInput"><svg><use href="#i-upload"/></svg><span>اختيار CSV أو Excel</span></label>
+              <input id="journalFileInput" type="file" accept=".csv,.xlsx,.xls" hidden>
+              <label class="textarea-label"><span>أو الصق CSV هنا</span><textarea id="journalPaste" rows="6" placeholder="رقم القيد,تاريخ القيد,المستخدم,المصدر,المبلغ,البيان"></textarea></label>
+              <button class="button primary full" id="runJournalReviewButton"><svg><use href="#i-target"/></svg>تشغيل الفحص</button>
+            </article>
+            <article class="panel journal-summary-panel">
+              <div class="panel-header"><div><span class="eyebrow">نتيجة الفحص</span><h2>طابور المراجعة</h2></div><span class="status-chip neutral" id="journalReviewStatus">لم يُنفذ</span></div>
+              <div class="journal-metric-grid">
+                <div><span>إجمالي القيود</span><strong id="journalMetricTotal">0</strong></div>
+                <div><span>معلّمة</span><strong id="journalMetricFlagged">0</strong></div>
+                <div><span>مرتفعة/حرجة</span><strong id="journalMetricHigh">0</strong></div>
+                <div><span>تنتظر المراجعة</span><strong id="journalMetricPending">0</strong></div>
+              </div>
+              <div class="human-gate"><svg><use href="#i-shield"/></svg><span>هذه إشارات لا تثبت الاحتيال. يلزم فحص المستند والتفويض والغرض التجاري قبل الاستنتاج.</span></div>
+            </article>
+          </div>
+          <article class="panel table-panel">
+            <div class="panel-header table-toolbar"><div><span class="eyebrow">Review Queue</span><h2>القيود ذات الأولوية</h2></div><select id="journalRiskFilter" aria-label="تصفية قيود اليومية"><option value="flagged">المعلّمة فقط</option><option value="all">كل القيود</option><option value="critical">الحرجة</option><option value="high">المرتفعة</option><option value="pending">بانتظار المراجعة</option></select></div>
+            <div class="table-wrap"><table><thead><tr><th>القيد والتاريخ</th><th>المستخدم</th><th>المبلغ</th><th>الدرجة</th><th>أسباب الإشارة</th><th>المراجعة</th></tr></thead><tbody id="journalTableBody"><tr><td colspan="6"><div class="empty-state">حمّل سجل القيود وشغّل الفحص.</div></td></tr></tbody></table></div>
+          </article>
+        </section>
+
         <section class="view" id="view-standards" data-view-panel="standards" aria-labelledby="standardsTitle">
-          <div class="page-heading"><div><span class="eyebrow">محرك معرفة تطبيقي</span><h1 id="standardsTitle">المعايير والمذكرات الفنية</h1><p>لا تعرض المكتبة نصوصًا فقط؛ كل معيار مرتبط بمحفزات، اعتراف، قياس، عرض، إفصاح، إجراءات وأدلة.</p></div></div>
+          <div class="page-heading"><div><span class="eyebrow">محرك معرفة بإصدارات</span><h1 id="standardsTitle">المعايير والمصادر الفنية</h1><p>بطاقات تطبيقية مرتبطة بالمصدر والإصدار والسريان والاختصاص. الملخص لا يستبدل النص الرسمي المعتمد.</p></div></div>
           <div class="framework-grid" id="frameworkGrid"></div>
+          <article class="panel source-registry-panel"><div class="panel-header"><div><span class="eyebrow">Source Registry</span><h2>سجل الإصدارات والمراجع</h2></div><span class="status-chip success">مرخّص ببيانات وصفية</span></div><div class="source-registry" id="standardSourceGrid"></div></article>
+          <article class="panel standards-watch-panel"><div class="panel-header"><div><span class="eyebrow">SOCPA 2025</span><h2>رادار السريان والتحديثات</h2></div><span class="status-chip warning">تحقق قبل الاعتماد</span></div><div class="standards-watch-list" id="standardsWatchList"></div></article>
           <div class="filter-bar standards-filter">
             <label class="inline-search wide"><svg><use href="#i-search"/></svg><input id="standardSearch" type="search" placeholder="مثال: IFRS 15، الإيراد، المصادقات…"></label>
-            <select id="frameworkFilter" aria-label="تصفية الإطار"><option value="all">كل الأطر</option><option value="IFRS">IFRS / IAS</option><option value="ISA">ISA</option><option value="ISQM">ISQM</option></select>
+            <select id="frameworkFilter" aria-label="تصفية الإطار"><option value="all">كل الأطر</option><option value="IFRS">IFRS / IAS</option><option value="IFRS SME">IFRS للمنشآت الصغيرة والمتوسطة</option><option value="ISA">ISA</option><option value="ISQM">ISQM</option></select>
           </div>
           <div class="standards-grid" id="standardsGrid"></div>
         </section>
@@ -272,7 +312,7 @@
           </div>
           <div class="coverage-strip">
             <div><span>المخاطر المغطاة بإجراء</span><strong id="procedureCoverage">0%</strong></div>
-            <div><span>المخاطر ذات طلب دليل</span><strong id="evidenceCoverage">0%</strong></div>
+            <div><span>المخاطر ذات دليل مستلم</span><strong id="evidenceCoverage">0%</strong></div>
             <div><span>النتائج المرتبطة بورقة</span><strong id="findingCoverage">0%</strong></div>
           </div>
           <div class="workpaper-board" id="workpaperBoard"><div class="empty-state">لا توجد أوراق عمل. أنشئها من المخاطر أو أضف نتيجة مهنية.</div></div>
@@ -285,6 +325,23 @@
           </div>
           <div class="pbc-summary" id="pbcSummary"></div>
           <div class="pbc-board" id="pbcBoard"><div class="empty-state">لم تُنشأ طلبات مستندات بعد.</div></div>
+        </section>
+
+        <section class="view" id="view-evidence" data-view-panel="evidence" aria-labelledby="evidenceTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 500 / Provenance</span><h1 id="evidenceTitle">سجل الأدلة ومستكشف التتبّع</h1><p>سجل للأدلة المستلمة يوضح المصدر والبصمة وحالة المراجعة والارتباط بالخطر وورقة العمل.</p></div>
+            <div class="heading-actions"><button class="button primary" id="addEvidenceButton"><svg><use href="#i-plus"/></svg>تسجيل دليل</button></div>
+          </div>
+          <div class="coverage-strip evidence-summary">
+            <div><span>الأدلة المسجلة</span><strong id="evidenceMetricTotal">0</strong></div>
+            <div><span>تمت مراجعتها</span><strong id="evidenceMetricReviewed">0</strong></div>
+            <div><span>متوسط الجودة</span><strong id="evidenceMetricQuality">0%</strong></div>
+            <div><span>غير مرتبطة</span><strong id="evidenceMetricOrphan">0</strong></div>
+          </div>
+          <div class="evidence-layout">
+            <article class="panel evidence-explorer"><div class="panel-header"><div><span class="eyebrow">Evidence Explorer</span><h2>مسارات الإثبات</h2></div><span class="status-chip neutral" id="evidencePathStatus">0 مسار</span></div><div class="evidence-path-list" id="evidencePathList"><div class="empty-state">تظهر المسارات بعد توليد المخاطر وتسجيل الأدلة.</div></div></article>
+            <article class="panel table-panel evidence-table-panel"><div class="panel-header"><div><span class="eyebrow">Evidence Register</span><h2>الأدلة المسجلة</h2></div></div><div class="table-wrap"><table><thead><tr><th>الدليل</th><th>المصدر</th><th>الروابط</th><th>الجودة</th><th>الحالة</th><th></th></tr></thead><tbody id="evidenceTableBody"><tr><td colspan="6"><div class="empty-state compact">لا توجد أدلة مسجلة.</div></td></tr></tbody></table></div></article>
+          </div>
         </section>
 
         <section class="view" id="view-council" data-view-panel="council" aria-labelledby="councilTitle">
@@ -301,9 +358,10 @@
         <section class="view" id="view-reports" data-view-panel="reports" aria-labelledby="reportsTitle">
           <div class="page-heading">
             <div><span class="eyebrow">إكمال وتسليم</span><h1 id="reportsTitle">التقارير والتصدير</h1><p>ملخص تنفيذي ورسم أدلة وحزمة ارتباط قابلة للنقل دون مفاتيح أو أسرار.</p></div>
-            <div class="heading-actions"><button class="button secondary" id="exportJsonButton"><svg><use href="#i-download"/></svg>حزمة JSON</button><button class="button primary" id="printReportButton"><svg><use href="#i-print"/></svg>طباعة / PDF</button></div>
+            <div class="heading-actions"><button class="button ghost" id="archiveSnapshotButton" disabled><svg><use href="#i-shield"/></svg>لقطة أرشيف</button><button class="button secondary" id="exportJsonButton"><svg><use href="#i-download"/></svg>حزمة JSON</button><button class="button primary" id="printReportButton"><svg><use href="#i-print"/></svg>طباعة / PDF</button></div>
           </div>
           <div class="report-gates" id="reportGates"></div>
+          <article class="panel audit-trail-panel"><div class="panel-header"><div><span class="eyebrow">Append-only Audit Trail</span><h2>سجل الأحداث وسلامة السلسلة</h2></div><span class="status-chip neutral" id="auditTrailStatus">غير مفحوص</span></div><div class="audit-event-list" id="auditEventList"></div></article>
           <article class="report-document" id="reportDocument">
             <header class="report-cover">
               <div class="report-brand">KOSIF <span>Audit Studio</span></div>
@@ -314,6 +372,7 @@
               <section><h3>الملخص التنفيذي</h3><div class="report-kpis" id="reportKpis"></div><p id="reportExecutiveText">لم تُحلل بيانات بعد.</p></section>
               <section><h3>المخاطر الرئيسية</h3><div id="reportRisks"><p class="muted">لا توجد بيانات.</p></div></section>
               <section><h3>النتائج والتحريفات</h3><div id="reportFindings"><p class="muted">لا توجد نتائج.</p></div></section>
+              <section><h3>سلامة التتبّع</h3><div class="report-provenance" id="reportProvenance"></div></section>
               <section><h3>حدود واستخدام التقرير</h3><p>هذا المستند مسودة دعم قرار ناتجة من بيانات الارتباط المسجلة. لا يمثل رأي مراجعة ولا يغني عن النصوص الرسمية أو الحكم المهني أو مراجعة الجودة والاعتماد البشري.</p></section>
             </div>
           </article>
@@ -369,7 +428,23 @@
     </form>
   </dialog>
 
+  <dialog class="modal" id="evidenceModal">
+    <form method="dialog" id="evidenceForm">
+      <div class="modal-header"><div><span class="eyebrow">ISA 500</span><h2>تسجيل دليل مراجعة</h2></div><button class="icon-button" value="cancel" aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></div>
+      <div class="modal-body form-grid">
+        <label class="full-width"><span>عنوان الدليل</span><input id="evidenceTitleInput" required maxlength="180" placeholder="مثال: مصادقة البنك المستلمة مباشرة"></label>
+        <label><span>نوع المصدر</span><select id="evidenceSourceTypeInput"><option value="external">خارجي مستقل</option><option value="internal">نظام داخلي</option><option value="management">الإدارة</option></select></label>
+        <label><span>تاريخ المستند</span><input id="evidenceDateInput" type="date" required></label>
+        <label><span>الحالة</span><select id="evidenceStatusInput"><option value="received">مستلم</option><option value="reviewed">تمت مراجعته</option><option value="rejected">غير كافٍ</option></select></label>
+        <label><span>الخطر المرتبط</span><select id="evidenceRiskInput"><option value="">بدون ربط</option></select></label>
+        <label><span>ورقة العمل</span><select id="evidenceWorkpaperInput"><option value="">بدون ربط</option></select></label>
+        <label class="full-width file-input-label"><span>ملف الدليل (تُحفظ بياناته وبصمته فقط)</span><input id="evidenceFileInput" type="file"></label>
+        <label class="check-label full-width"><input id="evidenceDirectInput" type="checkbox"><span>تم الحصول على الدليل مباشرة من المصدر</span></label>
+      </div>
+      <div class="modal-footer"><button class="button ghost" value="cancel">إلغاء</button><button class="button primary" id="saveEvidenceButton" value="default">حفظ الدليل</button></div>
+    </form>
+  </dialog>
+
   <script type="module" src="./app.js"></script>
-  <script type="module" src="./moon-layer.js"></script>
 </body>
 </html>

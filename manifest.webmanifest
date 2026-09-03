@@ -1,7 +1,7 @@
 {
   "name": "KOSIF Audit Studio",
   "short_name": "KOSIF Audit",
-  "description": "مساحة عربية لتحليل ميزان المراجعة وتقييم المخاطر وربط المعايير وإدارة أدلة المراجعة.",
+  "description": "نظام تشغيل عربي لملف المراجعة: مركز قيادة، ميزان مراجعة، مخاطر، قيود يومية، أدلة، معايير وتقارير محكومة.",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./",
@@ -16,6 +16,7 @@
   "shortcuts": [
     { "name": "ميزان المراجعة", "url": "./?view=data", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "المخاطر", "url": "./?view=risks", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "مجلس المراجعين", "url": "./?view=council", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+    { "name": "فحص قيود اليومية", "url": "./?view=journal", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "سجل الأدلة", "url": "./?view=evidence", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
   ]
 }

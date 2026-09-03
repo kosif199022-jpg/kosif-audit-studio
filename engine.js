@@ -118,6 +118,72 @@ export function fnv1a(value) {
   return hash >>> 0;
 }
 
+function stableSerialize(value) {
+  if (typeof value === 'bigint') return JSON.stringify(value.toString());
+  if (Array.isArray(value)) return `[${value.map((item) => stableSerialize(item)).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function auditEventHash(event) {
+  return fnv1a(stableSerialize({
+    sequence: event.sequence,
+    type: event.type,
+    actor: event.actor,
+    timestamp: event.timestamp,
+    payload: event.payload,
+    previousHash: event.previousHash
+  })).toString(16).padStart(8, '0');
+}
+
+export function appendAuditEvent(inputLog = [], inputEvent = {}) {
+  const log = Array.isArray(inputLog) ? inputLog : [];
+  const previous = log.at(-1) ?? null;
+  const event = {
+    sequence: log.length + 1,
+    type: String(inputEvent.type || 'AUDIT_EVENT'),
+    actor: String(inputEvent.actor || 'مستخدم غير محدد'),
+    timestamp: String(inputEvent.timestamp || new Date().toISOString()),
+    payload: inputEvent.payload && typeof inputEvent.payload === 'object' ? structuredClone(inputEvent.payload) : {},
+    previousHash: previous?.hash ?? 'GENESIS'
+  };
+  event.hash = auditEventHash(event);
+  return [...log.map((item) => structuredClone(item)), event];
+}
+
+export function verifyAuditEventChain(inputLog = []) {
+  const log = Array.isArray(inputLog) ? inputLog : [];
+  for (let index = 0; index < log.length; index += 1) {
+    const event = log[index];
+    const expectedPrevious = index === 0 ? 'GENESIS' : log[index - 1]?.hash;
+    if (event?.sequence !== index + 1 || event?.previousHash !== expectedPrevious || event?.hash !== auditEventHash(event)) {
+      return { valid: false, checked: index, brokenAt: index + 1 };
+    }
+  }
+  return { valid: true, checked: log.length, brokenAt: null };
+}
+
+export function createMaterialityRevision(inputRevisions = [], materiality = {}, metadata = {}) {
+  const revisions = Array.isArray(inputRevisions) ? inputRevisions : [];
+  const toMinorText = (value) => (typeof value === 'bigint' ? value : BigInt(value || 0)).toString();
+  const revision = {
+    id: `MAT-${String(revisions.length + 1).padStart(3, '0')}`,
+    version: revisions.length + 1,
+    createdAt: String(metadata.timestamp || new Date().toISOString()),
+    actor: String(metadata.actor || 'مراجع غير محدد'),
+    rationale: String(metadata.rationale || materiality.rationale || 'تحديث الأهمية النسبية'),
+    benchmark: materiality.benchmark ?? null,
+    rate: materiality.rate ?? null,
+    risk: materiality.risk ?? null,
+    overallMinor: toMinorText(materiality.overall),
+    performanceMinor: toMinorText(materiality.performance),
+    trivialMinor: toMinorText(materiality.trivial)
+  };
+  return [...revisions.map((item) => structuredClone(item)), revision];
+}
+
 export function seededRandom(seed = 380019) {
   let state = Number(seed) >>> 0;
   return () => {
@@ -541,6 +607,160 @@ export function detectRisks(inputRows = [], materialityMinor = 0n) {
   return [...unique.values()].sort((a, b) => b.score - a.score || Number(b.amount - a.amount));
 }
 
+const JOURNAL_FLAG_DEFINITIONS = Object.freeze({
+  MANUAL_ENTRY: { label: 'قيد يدوي', score: 25, standard: 'ISA 240' },
+  WEEKEND_POSTING: { label: 'ترحيل في عطلة نهاية الأسبوع', score: 18, standard: 'ISA 240' },
+  PERIOD_END: { label: 'قيد قرب إقفال الفترة', score: 20, standard: 'ISA 240' },
+  ROUND_AMOUNT: { label: 'مبلغ كبير ومستدير', score: 15, standard: 'ISA 240' },
+  SENSITIVE_TEXT: { label: 'وصف يتطلب فحصًا مهنيًا', score: 14, standard: 'ISA 240' },
+  RARE_USER: { label: 'مستخدم قليل الظهور', score: 12, standard: 'ISA 315' }
+});
+
+const JOURNAL_ALIASES = Object.freeze({
+  id: ['id', 'entryid', 'journalid', 'رقمالقيد', 'معرفالقيد', 'القيد'],
+  date: ['date', 'postingdate', 'entrydate', 'تاريخالقيد', 'تاريخالترحيل', 'التاريخ'],
+  user: ['user', 'createdby', 'preparer', 'username', 'المستخدم', 'منشئالقيد', 'المعد'],
+  source: ['source', 'entrysource', 'journaltype', 'المصدر', 'نوعالقيد'],
+  amount: ['amount', 'value', 'المبلغ', 'القيمه'],
+  debit: ['debit', 'debits', 'مدين', 'رصيدمدين'],
+  credit: ['credit', 'credits', 'دائن', 'رصيددائن'],
+  description: ['description', 'memo', 'narration', 'البيان', 'الوصف', 'الشرح']
+});
+
+function journalValue(item, key) {
+  const aliases = JOURNAL_ALIASES[key] ?? [];
+  for (const [name, value] of Object.entries(item ?? {})) {
+    if (aliases.includes(canonicalHeader(name))) return value;
+  }
+  return undefined;
+}
+
+function journalAmountMinor(item) {
+  if (item?.amountMinor !== undefined) return BigInt(item.amountMinor || 0);
+  const directAmount = journalValue(item, 'amount');
+  if (directAmount !== undefined && directAmount !== '') return parseMoneyMinor(directAmount);
+  const debit = absoluteMinor(parseMoneyMinor(journalValue(item, 'debit') ?? 0));
+  const credit = absoluteMinor(parseMoneyMinor(journalValue(item, 'credit') ?? 0));
+  return debit >= credit ? debit : credit;
+}
+
+function parseIsoDate(value) {
+  const text = String(value ?? '').slice(0, 10);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(text) ? new Date(`${text}T00:00:00.000Z`) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function journalSeverity(score) {
+  if (score >= 80) return 'critical';
+  if (score >= 55) return 'high';
+  if (score >= 30) return 'medium';
+  return score > 0 ? 'low' : 'clear';
+}
+
+export function analyzeJournalEntries(inputEntries = [], {
+  periodEnd = null,
+  periodEndWindowDays = 5,
+  rareUserMaxEntries = 1
+} = {}) {
+  const entries = Array.isArray(inputEntries) ? inputEntries : [];
+  const userCounts = new Map();
+  for (const item of entries) {
+    const user = normalizeText(journalValue(item, 'user') ?? 'غير محدد');
+    userCounts.set(user, (userCounts.get(user) ?? 0) + 1);
+  }
+
+  const closingDate = parseIsoDate(periodEnd);
+  const sensitiveTerms = ['تسويه', 'نهايه الفتره', 'تجاوز', 'يدوي', 'طرف ذو علاقه', 'override', 'adjustment', 'related party'];
+  const reviewedEntries = entries.map((item, index) => {
+    const id = String(journalValue(item, 'id') ?? `JE-${String(index + 1).padStart(5, '0')}`);
+    const dateText = String(journalValue(item, 'date') ?? '').slice(0, 10);
+    const date = parseIsoDate(dateText);
+    const rawSource = journalValue(item, 'source') ?? '';
+    const source = normalizeText(rawSource);
+    const user = String(journalValue(item, 'user') ?? 'غير محدد').trim() || 'غير محدد';
+    const normalizedUser = normalizeText(user);
+    const description = String(journalValue(item, 'description') ?? '').trim();
+    const amountMinor = journalAmountMinor(item);
+    const flagRules = [];
+
+    if (/manual|يدوي/.test(source) || item.automatic === false) flagRules.push('MANUAL_ENTRY');
+    if (date && [5, 6].includes(date.getUTCDay())) flagRules.push('WEEKEND_POSTING');
+    if (date && closingDate) {
+      const days = Math.round((closingDate.getTime() - date.getTime()) / 86400000);
+      if (days >= 0 && days <= Math.max(0, Number(periodEndWindowDays) || 0)) flagRules.push('PERIOD_END');
+    }
+    const absoluteAmount = absoluteMinor(amountMinor);
+    if (absoluteAmount >= 1000000n && absoluteAmount % 100000n === 0n) flagRules.push('ROUND_AMOUNT');
+    const normalizedDescription = normalizeText(description);
+    if (sensitiveTerms.some((term) => normalizedDescription.includes(normalizeText(term)))) flagRules.push('SENSITIVE_TEXT');
+    if ((userCounts.get(normalizedUser) ?? 0) <= Math.max(0, Number(rareUserMaxEntries) || 0)) flagRules.push('RARE_USER');
+
+    const flags = flagRules.map((rule) => ({ rule, ...JOURNAL_FLAG_DEFINITIONS[rule] }));
+    const score = Math.min(100, flags.reduce((sum, flag) => sum + flag.score, 0));
+    return {
+      id,
+      date: dateText || null,
+      user,
+      source: String(rawSource),
+      description,
+      amountMinor,
+      score,
+      severity: journalSeverity(score),
+      flags,
+      reviewStatus: String(item.reviewStatus || 'unreviewed')
+    };
+  }).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id, 'ar'));
+
+  const flagged = reviewedEntries.filter((item) => item.flags.length > 0);
+  const reviewed = reviewedEntries.filter((item) => item.reviewStatus === 'reviewed').length;
+  return {
+    entries: reviewedEntries,
+    summary: {
+      total: reviewedEntries.length,
+      flagged: flagged.length,
+      highRisk: flagged.filter((item) => ['critical', 'high'].includes(item.severity)).length,
+      reviewed,
+      pendingReview: Math.max(0, flagged.length - reviewed)
+    },
+    parameters: {
+      periodEnd: closingDate ? String(periodEnd).slice(0, 10) : null,
+      periodEndWindowDays: Math.max(0, Number(periodEndWindowDays) || 0),
+      rareUserMaxEntries: Math.max(0, Number(rareUserMaxEntries) || 0)
+    },
+    humanReviewRequired: flagged.length > reviewed
+  };
+}
+
+export function scoreEvidenceQuality(input = {}) {
+  const sourceType = normalizeText(input.sourceType ?? '');
+  const linkedRiskIds = Array.isArray(input.linkedRiskIds)
+    ? input.linkedRiskIds
+    : Array.isArray(input.riskIds) ? input.riskIds : [];
+  const gaps = [];
+  let score = 0;
+
+  if (['external', 'خارجي', 'مصدر خارجي'].includes(sourceType)) score += 25;
+  else if (['internal', 'داخلي', 'نظام داخلي'].includes(sourceType)) score += 15;
+  else if (['management', 'اداره', 'الاداره'].includes(sourceType)) score += 8;
+  else gaps.push('مصدر الدليل غير محدد.');
+
+  if (input.obtainedDirectly) score += 20;
+  else gaps.push('لم يُسجل الحصول المباشر على الدليل.');
+  if (input.fileHash) score += 15;
+  else gaps.push('لا توجد بصمة تحقق للمستند.');
+  if (linkedRiskIds.length > 0) score += 15;
+  else gaps.push('الدليل غير مرتبط بخطر مراجعة.');
+  if (input.status === 'reviewed') score += 15;
+  else if (input.status === 'received') score += 6;
+  else gaps.push('حالة مراجعة الدليل غير مكتملة.');
+  if (input.documentDate) score += 10;
+  else gaps.push('تاريخ المستند غير مسجل.');
+
+  const boundedScore = Math.max(0, Math.min(100, score));
+  const grade = boundedScore >= 80 ? 'strong' : boundedScore >= 55 ? 'adequate' : boundedScore >= 30 ? 'limited' : 'weak';
+  return { score: boundedScore, grade, gaps };
+}
+
 export function selectAuditSample(inputRows = [], {
   method = 'risk',
   size = 25,
@@ -713,7 +933,7 @@ export function rowsToCsv(inputRows = []) {
   return `\uFEFF${header.map(csvEscape).join(',')}\n${lines.join('\n')}`;
 }
 
-export function buildEvidenceGraph({ rows = [], risks = [], workpapers = [], findings = [], pbc = [] } = {}) {
+export function buildEvidenceGraph({ rows = [], risks = [], workpapers = [], findings = [], pbc = [], evidence = [] } = {}) {
   const nodes = [];
   const edges = [];
   const seen = new Set();
@@ -739,6 +959,15 @@ export function buildEvidenceGraph({ rows = [], risks = [], workpapers = [], fin
     addNode(request.id, 'pbc', request.title, { status: request.status });
     for (const riskId of request.riskIds ?? []) addEdge(riskId, request.id, 'requests_evidence');
   }
+  for (const item of evidence) {
+    addNode(item.id, 'evidence', item.title ?? item.fileName ?? 'دليل مراجعة', {
+      status: item.status,
+      score: Number(item.score ?? 0),
+      sourceType: item.sourceType ?? null
+    });
+    for (const riskId of item.riskIds ?? item.linkedRiskIds ?? []) addEdge(riskId, item.id, 'supported_by');
+    for (const workpaperId of item.workpaperIds ?? []) addEdge(workpaperId, item.id, 'contains_evidence');
+  }
   for (const finding of findings) {
     addNode(finding.id, 'finding', finding.title, { severity: finding.severity, status: finding.status });
     if (finding.riskId) addEdge(finding.riskId, finding.id, 'results_in');
@@ -748,6 +977,8 @@ export function buildEvidenceGraph({ rows = [], risks = [], workpapers = [], fin
   const riskIds = new Set(risks.map((risk) => risk.id));
   const addressedRiskIds = new Set(edges.filter((edge) => edge.relation === 'addressed_by').map((edge) => edge.from));
   const evidenceRiskIds = new Set(edges.filter((edge) => edge.relation === 'requests_evidence').map((edge) => edge.from));
+  const supportedRiskIds = new Set(edges.filter((edge) => edge.relation === 'supported_by').map((edge) => edge.from));
+  const linkedEvidenceIds = new Set(edges.filter((edge) => ['supported_by', 'contains_evidence'].includes(edge.relation)).map((edge) => edge.to));
   return {
     nodes,
     edges,
@@ -755,7 +986,12 @@ export function buildEvidenceGraph({ rows = [], risks = [], workpapers = [], fin
       risks: riskIds.size,
       risksWithoutProcedure: [...riskIds].filter((id) => !addressedRiskIds.has(id)).length,
       risksWithoutEvidenceRequest: [...riskIds].filter((id) => !evidenceRiskIds.has(id)).length,
-      findingsWithoutWorkpaper: findings.filter((finding) => !finding.workpaperId).length
+      risksWithoutEvidence: [...riskIds].filter((id) => !supportedRiskIds.has(id)).length,
+      findingsWithoutWorkpaper: findings.filter((finding) => !finding.workpaperId).length,
+      orphanEvidence: evidence.filter((item) => !linkedEvidenceIds.has(item.id)).length,
+      averageEvidenceScore: evidence.length
+        ? Math.round(evidence.reduce((sum, item) => sum + Number(item.score ?? 0), 0) / evidence.length)
+        : 0
     }
   };
 }
