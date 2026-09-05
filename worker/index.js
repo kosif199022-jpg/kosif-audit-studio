@@ -7,17 +7,55 @@ const providerDefinitions = [
 
 const GENESIS_HASH = "0".repeat(64);
 const CANONICAL_VERSION = "KOSIF-C14N-v1";
+const WORKSPACE_MAX_BYTES = 131_072;
+const WORKSPACE_ALLOWED_KEYS = Object.freeze([
+  "version",
+  "demoDatasetVersion",
+  "entity",
+  "acceptance",
+  "report",
+  "standardMappings",
+  "materialityPolicy",
+  "analyticsReview",
+  "council",
+  "periodLocks",
+  "auditTrail",
+  "rounds",
+  "evidence",
+  "findings",
+  "adjustments",
+  "externalAiRuns",
+  "sourceDataset",
+]);
+const WORKSPACE_FORBIDDEN_KEYS = new Set([
+  "accounts",
+  "trialBalance",
+  "trialBalanceLines",
+  "journalLines",
+  "sourceFiles",
+  "stagedAccounts",
+  "stagedRows",
+  "staging",
+  "attachments",
+  "fileBytes",
+  "evidenceBytes",
+  "apiKey",
+  "apiKeys",
+  "secret",
+  "secrets",
+  "password",
+]);
 // Sites dispatch strips client-supplied identity values and forwards this
 // platform-authenticated header to the Worker. It is authentication only;
 // authorization is resolved from tenant_members below.
 const AUTH_HEADER = "oai-authenticated-user-email";
 
 export const ROLE_PERMISSIONS = Object.freeze({
-  owner: Object.freeze(["council:read", "engagement:create", "engagement:read", "engagement:archive", "integrity:read"]),
-  partner: Object.freeze(["council:read", "engagement:create", "engagement:read", "engagement:archive", "integrity:read"]),
-  manager: Object.freeze(["council:read", "engagement:create", "engagement:read", "integrity:read"]),
-  senior: Object.freeze(["council:read", "engagement:read", "integrity:read"]),
-  viewer: Object.freeze(["council:read", "engagement:read", "integrity:read"]),
+  owner: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "engagement:archive", "workspace:read", "workspace:write", "integrity:read"]),
+  partner: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "engagement:archive", "workspace:read", "workspace:write", "integrity:read"]),
+  manager: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "workspace:read", "workspace:write", "integrity:read"]),
+  senior: Object.freeze(["council:read", "session:read", "engagement:list", "engagement:read", "workspace:read", "workspace:write", "integrity:read"]),
+  viewer: Object.freeze(["council:read", "session:read", "engagement:list", "engagement:read", "workspace:read", "integrity:read"]),
 });
 
 export function authorizeRole(role, permission) {
@@ -30,6 +68,10 @@ export const API_ROUTE_MANIFEST = Object.freeze([
   { method: "GET", path: "/api/engagements/:id", permission: "engagement:read" },
   { method: "POST", path: "/api/engagements/:id/archive", permission: "engagement:archive" },
   { method: "GET", path: "/api/engagements/:id/integrity", permission: "integrity:read" },
+  { method: "GET", path: "/api/session", permission: "session:read" },
+  { method: "GET", path: "/api/engagements", permission: "engagement:list" },
+  { method: "GET", path: "/api/engagements/:id/workspace", permission: "workspace:read" },
+  { method: "PUT", path: "/api/engagements/:id/workspace", permission: "workspace:write" },
 ]);
 
 const API_ROUTES = [
@@ -38,6 +80,10 @@ const API_ROUTES = [
   { ...API_ROUTE_MANIFEST[2], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})$/ },
   { ...API_ROUTE_MANIFEST[3], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/archive$/ },
   { ...API_ROUTE_MANIFEST[4], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/integrity$/ },
+  { ...API_ROUTE_MANIFEST[5], pattern: /^\/api\/session$/ },
+  { ...API_ROUTE_MANIFEST[6], pattern: /^\/api\/engagements$/ },
+  { ...API_ROUTE_MANIFEST[7], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/workspace$/ },
+  { ...API_ROUTE_MANIFEST[8], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/workspace$/ },
 ];
 
 function jsonResponse(body, status = 200, extraHeaders = {}) {
@@ -76,6 +122,39 @@ function canonicalize(value) {
 
 function canonicalJSON(value) {
   return JSON.stringify(canonicalize(value));
+}
+
+function findForbiddenWorkspaceKey(value, path = []) {
+  if (!value || typeof value !== "object") return null;
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) {
+      const found = findForbiddenWorkspaceKey(value[index], [...path, String(index)]);
+      if (found) return found;
+    }
+    return null;
+  }
+  for (const [key, nested] of Object.entries(value)) {
+    if (WORKSPACE_FORBIDDEN_KEYS.has(key)) return [...path, key].join(".");
+    const found = findForbiddenWorkspaceKey(nested, [...path, key]);
+    if (found) return found;
+  }
+  return null;
+}
+
+export function normalizeWorkspaceState(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { error: "invalid_workspace_state" };
+  }
+  const forbidden = findForbiddenWorkspaceKey(value);
+  if (forbidden) return { error: "forbidden_workspace_key", key: forbidden };
+  const retained = {};
+  for (const key of WORKSPACE_ALLOWED_KEYS) {
+    if (value[key] !== undefined) retained[key] = value[key];
+  }
+  const stateJson = canonicalJSON(retained);
+  const byteLength = new TextEncoder().encode(stateJson).byteLength;
+  if (byteLength > WORKSPACE_MAX_BYTES) return { error: "workspace_too_large", byteLength };
+  return { state: JSON.parse(stateJson), stateJson, byteLength };
 }
 
 async function sha256(value) {
@@ -223,6 +302,39 @@ async function createEngagement(request, env, auth) {
   return jsonResponse({ engagement: await engagementForTenant(db, engagementId, auth.tenantId), idempotent: false }, 201);
 }
 
+async function getSession(env, auth) {
+  const db = requireDatabase(env);
+  const at = new Date().toISOString();
+  await ensureTenant(db, auth.tenantId, auth.subject, at);
+  const role = await memberRole(db, auth.tenantId, auth.subject);
+  if (!authorizeRole(role, auth.permission)) return jsonResponse({ error: "permission_denied" }, 403);
+  return jsonResponse({
+    session: {
+      subject: auth.subject,
+      tenant_id: auth.tenantId,
+      role,
+      capabilities: [...(ROLE_PERMISSIONS[role] || [])],
+    },
+  });
+}
+
+async function listEngagements(env, auth) {
+  const db = requireDatabase(env);
+  await ensureTenant(db, auth.tenantId, auth.subject, new Date().toISOString());
+  const role = await memberRole(db, auth.tenantId, auth.subject);
+  if (!authorizeRole(role, auth.permission)) return jsonResponse({ error: "permission_denied" }, 403);
+  const result = await db.prepare(`
+    SELECT id, tenant_id, client_name_ar, fiscal_year, period_start, period_end,
+           currency, framework, status, ruleset_version, created_by, created_at,
+           archived_at, prior_engagement_id
+    FROM engagements
+    WHERE tenant_id = ?1
+    ORDER BY created_at DESC, id DESC
+    LIMIT 100
+  `).bind(auth.tenantId).all();
+  return jsonResponse({ engagements: result.results || [] });
+}
+
 async function getEngagement(env, auth, engagementId) {
   const engagement = await engagementForTenant(requireDatabase(env), engagementId, auth.tenantId);
   return engagement ? jsonResponse({ engagement }) : jsonResponse({ error: "not_found" }, 404);
@@ -267,6 +379,104 @@ async function integrityStatus(env, auth, engagementId) {
   return jsonResponse({ valid: true, broken_seq: null, entries: result.results?.length || 0, head_hash: prevHash });
 }
 
+async function latestWorkspaceRevision(db, engagementId, tenantId) {
+  return db.prepare(`
+    SELECT revision, state_json, state_hash, saved_by, saved_at
+    FROM engagement_workspace_revisions
+    WHERE engagement_id = ?1 AND tenant_id = ?2
+    ORDER BY revision DESC
+    LIMIT 1
+  `).bind(engagementId, tenantId).first();
+}
+
+function workspaceResponse(row) {
+  if (!row) return { revision: 0, state: null, state_hash: null, saved_by: null, saved_at: null };
+  return {
+    revision: Number(row.revision),
+    state: JSON.parse(row.state_json),
+    state_hash: row.state_hash,
+    saved_by: row.saved_by,
+    saved_at: row.saved_at,
+  };
+}
+
+async function getWorkspace(env, auth, engagementId) {
+  const db = requireDatabase(env);
+  if (!await engagementForTenant(db, engagementId, auth.tenantId)) return jsonResponse({ error: "not_found" }, 404);
+  return jsonResponse({ workspace: workspaceResponse(await latestWorkspaceRevision(db, engagementId, auth.tenantId)) });
+}
+
+async function saveWorkspace(request, env, auth, engagementId) {
+  const contentLength = Number(request.headers.get("content-length") || "0");
+  if (contentLength > 196_608) return jsonResponse({ error: "payload_too_large" }, 413);
+  let input;
+  try { input = await request.json(); } catch { return jsonResponse({ error: "invalid_json" }, 400); }
+  if (!Number.isInteger(input?.base_revision) || input.base_revision < 0) {
+    return jsonResponse({ error: "invalid_base_revision" }, 422);
+  }
+  const normalized = normalizeWorkspaceState(input.state);
+  if (normalized.error === "workspace_too_large") return jsonResponse({ error: normalized.error, byte_length: normalized.byteLength }, 413);
+  if (normalized.error) return jsonResponse({ error: normalized.error, key: normalized.key || null }, 422);
+
+  const db = requireDatabase(env);
+  const engagement = await engagementForTenant(db, engagementId, auth.tenantId);
+  if (!engagement) return jsonResponse({ error: "not_found" }, 404);
+  if (engagement.archived_at) return jsonResponse({ error: "engagement_archived" }, 409);
+
+  const current = await latestWorkspaceRevision(db, engagementId, auth.tenantId);
+  const currentRevision = Number(current?.revision || 0);
+  if (currentRevision !== input.base_revision) {
+    return jsonResponse({ error: "workspace_revision_conflict", current_revision: currentRevision }, 409);
+  }
+
+  const revision = currentRevision + 1;
+  const savedAt = new Date().toISOString();
+  const stateHash = await sha256(normalized.stateJson);
+  const head = await db.prepare("SELECT entry_hash FROM audit_log WHERE engagement_id = ?1 ORDER BY seq DESC LIMIT 1").bind(engagementId).first();
+  const log = await appendLogValues({
+    engagementId,
+    actor: auth.subject,
+    action: "workspace.saved",
+    payload: { revision, state_hash: stateHash },
+    at: savedAt,
+    prevHash: head?.entry_hash || GENESIS_HASH,
+  });
+
+  try {
+    await db.batch([
+      db.prepare(`
+        INSERT INTO engagement_workspace_revisions (
+          engagement_id, tenant_id, revision, state_json, state_hash, saved_by, saved_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+      `).bind(engagementId, auth.tenantId, revision, normalized.stateJson, stateHash, auth.subject, savedAt),
+      db.prepare(`
+        INSERT INTO audit_log (engagement_id, actor, action, payload_json, at, canonical_version, prev_hash, entry_hash)
+        VALUES (?1, ?2, 'workspace.saved', ?3, ?4, ?5, ?6, ?7)
+      `).bind(engagementId, auth.subject, log.payloadJson, savedAt, CANONICAL_VERSION, log.prevHash, log.entryHash),
+    ]);
+  } catch (error) {
+    const refreshed = await latestWorkspaceRevision(db, engagementId, auth.tenantId);
+    const refreshedRevision = Number(refreshed?.revision || 0);
+    if (refreshedRevision !== input.base_revision) {
+      return jsonResponse({ error: "workspace_revision_conflict", current_revision: refreshedRevision }, 409);
+    }
+    if (String(error?.message || "").includes("archived_engagement_is_read_only")) {
+      return jsonResponse({ error: "engagement_archived" }, 409);
+    }
+    throw error;
+  }
+
+  return jsonResponse({
+    workspace: {
+      revision,
+      state: normalized.state,
+      state_hash: stateHash,
+      saved_by: auth.subject,
+      saved_at: savedAt,
+    },
+  }, 201);
+}
+
 async function handleApi(request, env, url) {
   const route = API_ROUTES.find((item) => item.method === request.method && item.pattern.test(url.pathname));
   if (!route) return jsonResponse({ error: "route_not_authorized" }, 403);
@@ -279,13 +489,17 @@ async function handleApi(request, env, url) {
       if (!authorizeRole("viewer", route.permission)) return jsonResponse({ error: "permission_denied" }, 403);
       return jsonResponse(providerRegistry(env));
     }
-    if (route.path === "/api/engagements") return createEngagement(request, env, auth);
+    if (route.path === "/api/session") return getSession(env, auth);
+    if (route.path === "/api/engagements" && route.method === "GET") return listEngagements(env, auth);
+    if (route.path === "/api/engagements" && route.method === "POST") return createEngagement(request, env, auth);
     const role = await memberRole(requireDatabase(env), auth.tenantId, auth.subject);
     if (!authorizeRole(role, route.permission)) return jsonResponse({ error: "permission_denied" }, 403);
     auth.role = role;
     if (route.path === "/api/engagements/:id") return getEngagement(env, auth, match[1]);
     if (route.path.endsWith("/archive")) return archiveEngagement(request, env, auth, match[1]);
     if (route.path.endsWith("/integrity")) return integrityStatus(env, auth, match[1]);
+    if (route.path.endsWith("/workspace") && route.method === "GET") return getWorkspace(env, auth, match[1]);
+    if (route.path.endsWith("/workspace") && route.method === "PUT") return saveWorkspace(request, env, auth, match[1]);
   } catch (error) {
     if (error?.message === "database_unavailable") return jsonResponse({ error: "database_unavailable" }, 503);
     return jsonResponse({ error: "request_failed" }, 500);
