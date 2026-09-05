@@ -394,8 +394,8 @@ export async function buildTemporarySessionSnapshot({
       humanApprovedAt: engagement?.humanApprovedAt || null,
       state: reportState,
       artifacts: [
-        { id: "demo-pdf", format: "pdf", scope: "fixed-demo", currentSession: source === "demo", available: true, path: "/downloads/kosif-audit-report-5000.pdf" },
-        { id: "demo-xlsx", format: "xlsx", scope: "fixed-demo", currentSession: source === "demo", available: true, path: "/downloads/kosif-audit-workpapers-5000.xlsx" },
+        { id: "demo-pdf", format: "pdf", scope: "fixed-demo", currentSession: source === "demo" && accounts.length === 5000, available: true, path: "/downloads/kosif-audit-report-5000.pdf" },
+        { id: "demo-xlsx", format: "xlsx", scope: "fixed-demo", currentSession: source === "demo" && accounts.length === 5000, available: true, path: "/downloads/kosif-audit-workpapers-5000.xlsx" },
         { id: "session-print-pdf", format: "pdf", scope: "live-print-report", currentSession: true, requiresReportReady: false, available: true, draftWatermark: !reportState.reportReady },
         { id: "session-xlsx", format: "xlsx", scope: "live-workpapers", currentSession: true, requiresReportReady: false, available: true },
         { id: "session-json", format: "json", scope: "live-snapshot", requiresReportReady: false, available: true },

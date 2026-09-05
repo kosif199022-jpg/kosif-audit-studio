@@ -198,10 +198,11 @@ export function createImportedAccount(row, index = 0) {
   };
 }
 
-export function generateTrialBalance() {
+export function generateTrialBalance(count = 5_000) {
+  if (!Number.isInteger(count) || count < 20 || count > 50_000 || count % 2) throw new RangeError("Account count must be even, from 20 to 50000");
   const accounts = [];
 
-  for (let pair = 0; pair < 2_500; pair += 1) {
+  for (let pair = 0; pair < count / 2; pair += 1) {
     const amount = Number((1_250 + ((pair * 7_919) % 890_000) + (pair % 9) * 117.35).toFixed(2));
     const debitFamily = debitFamilies[pair % debitFamilies.length];
     const creditFamily = creditFamilies[pair % creditFamilies.length];
@@ -396,9 +397,9 @@ export function createCompleteDemoEngagement(accounts = generateTrialBalance()) 
   return {
     ...baseEngagement,
     version: 7,
-    demoDatasetVersion: "KOSIF-DEMO-5000-v7",
+    demoDatasetVersion: `KOSIF-DEMO-${accounts.length}-v7`,
     demo: {
-      id: "KOSIF-DEMO-5000-v7",
+      id: `KOSIF-DEMO-${accounts.length}-v7`,
       label: "ملف ارتباط تجريبي شامل · 20 جولة",
       accountCount: accounts.length,
       areaCount: Object.keys(areaProfiles).length,
@@ -420,7 +421,7 @@ export function createCompleteDemoEngagement(accounts = generateTrialBalance()) 
       review: {
         confirmedAt: "2026-08-25T10:00:00.000Z",
         reviewer: "مدير المراجعة",
-        rationale: "اعتماد الخريطة بعد مراجعة 26 استثناءً وتوثيق أساس كل قرار.",
+        rationale: `اعتماد الخريطة بعد مراجعة ${Object.keys(standardMappings.overrides).length} استثناءً وتوثيق أساس كل قرار.`,
       },
     },
     mappingConfirmed: true,
@@ -460,10 +461,10 @@ export function createCompleteDemoEngagement(accounts = generateTrialBalance()) 
       { id: "LOG-007", action: "إقفال الجولة النهائية", actor: "شريك الارتباط", at: "2026-08-27T21:00:00.000Z", detail: "R-020 · اكتملت جولة تكوين الرأي والتقرير بعد ربط F-020 وPBC-020." },
       { id: "LOG-006", action: "إغلاق جميع النتائج", actor: "مدير المراجعة", at: "2026-08-27T20:40:00.000Z", detail: "أُغلقت النتائج العشرون بعد تنفيذ الإجراءات الإضافية وربط الأدلة." },
       { id: "LOG-005", action: "اعتماد حزم الأدلة", actor: "رئيس فريق الاختبارات", at: "2026-08-27T20:15:00.000Z", detail: "اكتملت طلبات PBC-001 إلى PBC-020 وربطت بالجولات والتأكيدات والنتائج." },
-      { id: "LOG-004", action: "اعتماد خريطة المعايير", actor: "مدير المراجعة", at: mappingReviewedAt, detail: "اكتمل ربط 5,000 حساب، بما فيها 26 استثناءً راجعها الإنسان." },
+      { id: "LOG-004", action: "اعتماد خريطة المعايير", actor: "مدير المراجعة", at: mappingReviewedAt, detail: `اكتمل ربط ${accounts.length.toLocaleString("en-US")} حساب، بما فيها ${Object.keys(standardMappings.overrides).length} استثناءً راجعها الإنسان.` },
       { id: "LOG-003", action: "اعتماد الأهمية النسبية", actor: "شريك الارتباط", at: "2026-08-22T11:00:00.000Z", detail: "اعتمدت سياسة الأهمية النسبية وأهمية التنفيذ لسيناريو العرض." },
       { id: "LOG-002", action: "قبول الارتباط", actor: "شريك الارتباط", at: "2026-08-22T10:30:00.000Z", detail: "اكتملت فحوص الاستقلال والتعارض والنزاهة والشروط." },
-      { id: "LOG-001", action: "إنشاء بيانات العرض", actor: "محرك KOSIF", at: "2026-08-22T10:00:00.000Z", detail: "أُنشئ مجتمع اصطناعي متوازن من 5,000 حساب مع وسم المصدر والإصدار." },
+      { id: "LOG-001", action: "إنشاء بيانات العرض", actor: "محرك KOSIF", at: "2026-08-22T10:00:00.000Z", detail: `أُنشئ مجتمع اصطناعي متوازن من ${accounts.length.toLocaleString("en-US")} حساب مع وسم المصدر والإصدار.` },
     ],
     council: {
       engineVersion: "KOSIF-COUNCIL-v4",
@@ -490,7 +491,7 @@ export function createCompleteDemoEngagement(accounts = generateTrialBalance()) 
           consensus: { status: "action_required", high: 2, medium: 1, low: 1, recommendation: "استكمال المصادقات والتسويات قبل الإقفال." },
           advisorResults: [
             { id: "data-integrity", severity: "low", verdict: "السكان متوازنة", refs: ["TB"] },
-            { id: "technical", severity: "medium", verdict: "26 قرار ربط يحتاج مراجعة", refs: ["MAP"] },
+            { id: "technical", severity: "medium", verdict: `${Object.keys(standardMappings.overrides).length} قرار ربط يحتاج مراجعة`, refs: ["MAP"] },
             { id: "risk-evidence", severity: "high", verdict: "فجوات أدلة مرتفعة", refs: ["PBC-019", "PBC-020"] },
             { id: "completion", severity: "high", verdict: "جولتان وتسوية معلقة", refs: ["R-019", "R-020", "AJE-003"] },
           ],
@@ -630,6 +631,8 @@ export const initialEngagement = createCompleteDemoEngagement();
 
 export const navItems = [
   { id: "overview", label: "نظرة عامة" },
+  { id: "demo500", label: "تجربة 500 حساب" },
+  { id: "ai-connections", label: "اتصالات AI والمراجعين" },
   { id: "intelligence", label: "الإيجنت وخطة العمل" },
   { id: "data-intake", label: "استيراد وتحضير البيانات" },
   { id: "trial-balance", label: "ميزان المراجعة" },

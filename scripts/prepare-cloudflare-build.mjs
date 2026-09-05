@@ -9,12 +9,14 @@ const source = readFileSync(path.join(root, 'worker/index.js'), 'utf8');
 if ((source.match(/export default \{/g) || []).length !== 1) throw new Error('Unexpected Worker entrypoint');
 // Sites-authenticated headers have no trust on a direct Cloudflare hostname.
 // Keep the underlying Worker and all gates intact, denying anonymous API access.
+const gateway = readFileSync(path.join(root, 'worker/ai-gateway.js'), 'utf8').replace(/export /g, '');
 const wrapper = `\nexport default { async fetch(request, env, ctx) {
+ if (new URL(request.url).pathname.startsWith('/api/ai/')) return handleAi(request, env);
  const headers = new Headers(request.headers);
  headers.delete('oai-authenticated-user-email');
  return sitesWorker.fetch(new Request(request, { headers }), env, ctx);
 } };\n`;
-writeFileSync(path.join(output, '_worker.js'), source.replace('export default {', 'const sitesWorker = {') + wrapper);
+writeFileSync(path.join(output, '_worker.js'), source.replace('export default {', 'const sitesWorker = {') + '\n' + gateway + wrapper);
 writeFileSync(path.join(output, '_routes.json'), JSON.stringify({version:1,include:['/*'],exclude:[]}));
 const assets = ['/', '/index.html', '/manifest.webmanifest', ...['assets','fonts'].flatMap(dir => readdirSync(path.join(output,dir)).map(file => `/${dir}/${file}`))];
 const revision = createHash('sha256').update(assets.join('|') + readFileSync(path.join(output,'index.html'),'utf8')).digest('hex').slice(0,16);

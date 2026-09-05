@@ -13,3 +13,6 @@
 .ki-studio small{color:var(--muted);line-height:1.8}.ki-studio .ki-links{margin-block:12px}.ki-studio a{color:var(--teal);text-decoration:underline}
 .ki-studio button{min-height:44px}.ki-studio :focus-visible{outline:2px solid var(--teal);outline-offset:3px}
 @media(max-width:760px){.ki-studio .ki-grid{grid-template-columns:1fr}.ki-studio .ki-card,.ki-studio .ki-chat{padding:15px}.ki-studio .ki-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}.ki-studio .ki-tabs button{white-space:nowrap;flex:none}.ki-studio .ki-intro{padding:18px}.ki-studio .ki-fields{grid-template-columns:1fr}}
+
+.demo500-print-only{display:none}
+@media print{.demo500-screen> :not(.demo500-print-only){display:none!important}.demo500-screen>.demo500-print-only{display:block!important}.demo500-print-only pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11pt Alexandria,Tahoma,sans-serif;line-height:1.8;color:#000;background:#fff}}
