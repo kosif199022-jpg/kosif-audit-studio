@@ -15,3 +15,6 @@ The user selected https://kosif-audit-studio.taunt-apron-speak.chatgpt.site/ as 
 
 ## Training and AI preferences — 2026-09-05
 Preserve the selected baseline and themes while learning from the two referenced KOSIF Workers. Keep the 500-account, 20-round training dataset separate from the current engagement and clearly label synthetic evidence/approvals. Provide user-configurable API connections for assistants and reviewers; keys must remain server-side, isolated per session and excluded from exports. AI output remains advisory.
+
+## Spatial interface — 2026-09-05
+The user requested 3D interfaces inspired by https://youtube.com/watch?v=nOkLJ_vexsc (Spline/Antigravity workflow). Keep existing themes, workflows and legible tables. Use an original local 3D scene by default, with an optional user-supplied Spline public embed. Preserve flat mode, reduced-motion support, responsive sizing and clean printed reports. Do not substitute an arbitrary third-party scene for the unavailable video's specific model.

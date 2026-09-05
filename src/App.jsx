@@ -1,3 +1,4 @@
+import { SpatialWorkspace, useSpatialPreferences } from "./spatial/SpatialWorkspace.jsx";
 import { Suspense, lazy, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -1827,6 +1828,7 @@ function Toast({ message }) {
 }
 
 export function App() {
+  const [spatial, setSpatial] = useSpatialPreferences();
   const [accounts, setAccounts] = useState(() => generateTrialBalance());
   const [dataProfile, setDataProfile] = useState(DEMO_DATA_PROFILE);
   const [engagement, setEngagement] = useState(loadEngagement);
@@ -2135,12 +2137,13 @@ export function App() {
   else content = <Overview metrics={metrics} engagement={engagement} stages={stages} dataProfile={dataProfile} reportState={reportState} onView={changeView} />;
 
   return (
-    <div className={`app-shell ${appearance.presentationMode ? "presentation-mode" : ""}`} data-active-view={activeView} dir="rtl">
+    <div data-spatial-motion={spatial.motion ? "on" : "off"} className={`app-shell ${spatial.enabled ? "spatial-enabled" : ""} ${appearance.presentationMode ? "presentation-mode" : ""}`} data-active-view={activeView} dir="rtl">
       <a className="skip-link" href="#main-content">تخطي إلى المحتوى</a>
       <Header engagement={engagement} onView={changeView} onReloadDemo={reloadDemo} onOpenGuide={() => setPathGuideOpen(true)} theme={appearance.theme} onCycleTheme={cycleTheme} presentationMode={appearance.presentationMode} onTogglePresentation={togglePresentationMode} commandPalette={<CommandPalette accounts={accounts} rounds={engagement.rounds} evidence={engagement.evidence} mappingState={engagement.standardMappings} onView={changeView} onOpenStandard={openStandard} onOpenRound={openRound} />} />
       <div className="workspace-layout">
         <Sidebar activeView={activeView} onView={changeView} completion={completion} />
         <main id="main-content" className="main-content" ref={mainRef} tabIndex="-1" data-kosif-ready="true">
+          <SpatialWorkspace settings={spatial} setSettings={setSpatial} metrics={metrics} engagement={engagement} reportState={reportState} onView={changeView} activeView={activeView} />
           {content}
         </main>
       </div>
