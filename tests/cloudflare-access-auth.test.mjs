@@ -95,7 +95,8 @@ test("Cloudflare Access fails closed for bad signature, issuer, audience, time, 
 
   const valid = await fixture.token();
   const [headerPart, payloadPart, signaturePart] = valid.split(".");
-  const corruptedSignature = `${headerPart}.${payloadPart}.${signaturePart.slice(0, -1)}${signaturePart.endsWith("A") ? "B" : "A"}`;
+  const corruptedFirstCharacter = signaturePart.startsWith("A") ? "B" : "A";
+  const corruptedSignature = `${headerPart}.${payloadPart}.${corruptedFirstCharacter}${signaturePart.slice(1)}`;
   const cases = [
     corruptedSignature,
     await fixture.token({ payload: { iss: "https://evil.cloudflareaccess.com" } }),
