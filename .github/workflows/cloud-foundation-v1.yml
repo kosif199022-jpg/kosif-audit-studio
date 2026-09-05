@@ -1,0 +1,29 @@
+name: Cloud Foundation v1 CI
+
+on:
+  push:
+    branches:
+      - codex/cloud-foundation-v1
+  pull_request:
+    branches:
+      - codex/preserve-theme-cloudflare
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and test
+        run: npm test
