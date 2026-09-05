@@ -1,0 +1,11 @@
+{
+ "name":"KOSIF | مساحة المراجعة الذكية",
+ "short_name":"KOSIF",
+ "lang":"ar",
+ "dir":"rtl",
+ "start_url":"/",
+ "scope":"/",
+ "display":"standalone",
+ "theme_color":"#7254d8",
+ "background_color":"#f5f2ff"
+}

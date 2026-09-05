@@ -1,3 +1,6 @@
+import { contextStamp } from "../intelligence/agent.js";
+import { createAgentContext } from "../intelligence/context.js";
+import { buildReportState } from "../reporting.js";
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -99,6 +102,7 @@ export function AuditCouncil({ accounts, engagement, setEngagement, metrics, for
       });
       const round = {
         schemaVersion: 2,
+        agentSourceStamp: contextStamp(createAgentContext(accounts, current, metrics, buildReportState(current, metrics))),
         id: roundId,
         generatedAt: now,
         engineVersion: snapshot.engineVersion,

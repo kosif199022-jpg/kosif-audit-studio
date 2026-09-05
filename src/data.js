@@ -630,6 +630,7 @@ export const initialEngagement = createCompleteDemoEngagement();
 
 export const navItems = [
   { id: "overview", label: "نظرة عامة" },
+  { id: "intelligence", label: "الإيجنت وخطة العمل" },
   { id: "data-intake", label: "استيراد وتحضير البيانات" },
   { id: "trial-balance", label: "ميزان المراجعة" },
   { id: "traceability", label: "رسم الإسناد" },

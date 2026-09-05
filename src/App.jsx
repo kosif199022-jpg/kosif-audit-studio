@@ -79,10 +79,13 @@ import {
 import { createSessionWorkbookBytes, downloadWorkbookBytes } from "./session-workbook.js";
 import { MAX_SESSION_SNAPSHOT_BYTES, parseSessionSnapshotText } from "./session-import.js";
 
+const IntelligenceStudio = lazy(() => import("./components/IntelligenceStudio.jsx").then(m => ({ default: m.IntelligenceStudio })));
+
 const TraceabilityWorkspace = lazy(() => import("./components/TraceabilityWorkspace.jsx"));
 
 const viewIcons = {
   overview: LayoutDashboard,
+  intelligence: Sparkles,
   "data-intake": FileUp,
   "trial-balance": Scale,
   traceability: Network,
@@ -2121,6 +2124,7 @@ export function App() {
   else if (activeView === "reviewer-workspace") content = <ReviewerWorkspace accounts={accounts} engagement={engagement} setEngagement={setEngagement} onToast={setToast} onOpenRound={openRound} onOpenStandard={openStandard} />;
   else if (activeView === "results") content = <ResultsCenter accounts={accounts} engagement={engagement} metrics={metrics} dataProfile={dataProfile} stages={stages} onView={changeView} onOpenStandard={openStandard} onOpenRound={openRound} onToast={setToast} formatNumber={formatNumber} formatCurrency={formatCurrency} />;
   else if (activeView === "reports") content = <Reports engagement={engagement} setEngagement={setEngagement} metrics={metrics} dataProfile={dataProfile} accounts={accounts} stages={stages} onView={changeView} onToast={setToast} onOpenStandard={openStandard} />;
+  else if (activeView === "intelligence") content = <Suspense fallback={<section className="panel" aria-busy="true">جارٍ تجهيز الإيجنت…</section>}><IntelligenceStudio accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} reportState={reportState} onView={changeView} onToast={setToast} /></Suspense>;
   else if (activeView === "settings") content = <SettingsView engagement={engagement} setEngagement={setEngagement} onToast={setToast} onSaved={() => changeView("overview")} summaryText={`${engagement.entity.name}. ${metrics.accountCount} حسابًا. ${engagement.rounds.length} جولة. ${engagement.findings.length} نتيجة. اكتمال البوابات ${completion} بالمئة.`} />;
   else content = <Overview metrics={metrics} engagement={engagement} stages={stages} dataProfile={dataProfile} reportState={reportState} onView={changeView} />;
 

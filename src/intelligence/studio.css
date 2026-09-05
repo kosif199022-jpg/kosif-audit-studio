@@ -1,0 +1,15 @@
+.ki-studio{display:grid;gap:18px;min-width:0;color:var(--ink)}
+.ki-studio .ki-intro{display:flex;gap:14px;padding:22px;align-items:flex-start}
+.ki-studio h2,.ki-studio h3{margin:0 0 10px}.ki-studio p{line-height:1.9;overflow-wrap:anywhere}
+.ki-studio .ki-tabs,.ki-studio .ki-links{display:flex;gap:8px;flex-wrap:wrap}
+.ki-studio .ki-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+.ki-studio .ki-card{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:20px;margin-block:12px;min-width:0}
+.ki-studio .ki-chat{padding:20px}.ki-studio .ki-messages{max-height:60vh;overflow:auto;margin-block:18px}
+.ki-studio .ki-preserve{white-space:pre-wrap}.ki-studio .ki-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.ki-studio label{display:grid;gap:7px;margin-block:10px;font-size:13px}
+.ki-studio input,.ki-studio textarea,.ki-studio select{font:inherit;color:var(--ink);background:var(--surface-muted);border:1px solid var(--line-strong);border-radius:10px;padding:11px;min-width:0;width:100%;box-sizing:border-box}
+.ki-studio textarea{min-height:85px;resize:vertical}.ki-studio .ki-memo{min-height:420px}
+.ki-studio .ki-check{display:flex;align-items:center}.ki-studio .ki-check input{width:auto}
+.ki-studio small{color:var(--muted);line-height:1.8}.ki-studio .ki-links{margin-block:12px}.ki-studio a{color:var(--teal);text-decoration:underline}
+.ki-studio button{min-height:44px}.ki-studio :focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+@media(max-width:760px){.ki-studio .ki-grid{grid-template-columns:1fr}.ki-studio .ki-card,.ki-studio .ki-chat{padding:15px}.ki-studio .ki-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}.ki-studio .ki-tabs button{white-space:nowrap;flex:none}.ki-studio .ki-intro{padding:18px}.ki-studio .ki-fields{grid-template-columns:1fr}}
