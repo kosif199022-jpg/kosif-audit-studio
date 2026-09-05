@@ -149,6 +149,43 @@ test("D1 canonical integer checks preserve arbitrary precision and reject ambigu
   db.close();
 });
 
+test("cloud workspace revisions are tenant-isolated, append-only, and archive-guarded", async () => {
+  const db = await migratedDatabase();
+  seedEngagements(db);
+
+  const table = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'engagement_workspace_revisions'").get();
+  assert.equal(table?.name, "engagement_workspace_revisions");
+
+  db.exec(`
+    INSERT INTO engagement_workspace_revisions (
+      engagement_id, tenant_id, revision, state_json, state_hash, saved_by, saved_at
+    ) VALUES ('eng_1', 'ten_1', 1, '{"version":7}', '${"a".repeat(64)}', 'one@test', '2025-02-01T00:00:00.000Z')
+  `);
+
+  assert.throws(() => db.exec(`
+    INSERT INTO engagement_workspace_revisions (
+      engagement_id, tenant_id, revision, state_json, state_hash, saved_by, saved_at
+    ) VALUES ('eng_1', 'ten_2', 2, '{"version":7}', '${"b".repeat(64)}', 'two@test', '2025-02-02T00:00:00.000Z')
+  `), /FOREIGN KEY constraint failed/);
+
+  assert.throws(
+    () => db.exec("UPDATE engagement_workspace_revisions SET state_hash = 'changed' WHERE engagement_id = 'eng_1' AND revision = 1"),
+    /engagement_workspace_revisions_is_append_only/,
+  );
+  assert.throws(
+    () => db.exec("DELETE FROM engagement_workspace_revisions WHERE engagement_id = 'eng_1' AND revision = 1"),
+    /engagement_workspace_revisions_is_append_only/,
+  );
+
+  db.exec("UPDATE engagements SET status = 'archived', archived_at = '2026-01-01T00:00:00.000Z' WHERE id = 'eng_1'");
+  assert.throws(() => db.exec(`
+    INSERT INTO engagement_workspace_revisions (
+      engagement_id, tenant_id, revision, state_json, state_hash, saved_by, saved_at
+    ) VALUES ('eng_1', 'ten_1', 2, '{"version":7}', '${"c".repeat(64)}', 'one@test', '2026-01-02T00:00:00.000Z')
+  `), /archived_engagement_is_read_only/);
+  db.close();
+});
+
 test("archive guard matrix covers every engagement-owned table and preserves audit append", async () => {
   const db = await migratedDatabase();
   seedEngagements(db);
@@ -158,7 +195,7 @@ test("archive guard matrix covers every engagement-owned table and preserves aud
     "source_files", "rejected_rows", "accounts", "trial_balance_lines", "journal_entries", "journal_lines",
     "mapping_sets", "mapping_rules", "calculation_runs", "derivations", "provenance_nodes", "derivation_inputs",
     "figures", "facts", "je_test_runs", "findings", "finding_dispositions", "materiality_versions",
-    "misstatements", "opinion_assessments", "ai_proposals", "ai_claims", "ai_reviews",
+    "misstatements", "opinion_assessments", "ai_proposals", "ai_claims", "ai_reviews", "engagement_workspace_revisions",
   ];
   const appendOnly = [...owned, "audit_log", "fs_lines"];
   const triggerNames = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger'").all().map(({ name }) => name));
