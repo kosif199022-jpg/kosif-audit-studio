@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { access, readdir } from "node:fs/promises";
 import test from "node:test";
-import worker, { API_ROUTE_MANIFEST, ROLE_PERMISSIONS, authorizeRole } from "../worker/index.js";
+import * as workerModule from "../worker/index.js";
 
+const { default: worker, API_ROUTE_MANIFEST, ROLE_PERMISSIONS, authorizeRole } = workerModule;
 const AUTH_HEADERS = { "oai-authenticated-user-email": "auditor@example.test" };
 
 test("serves existing static assets without a fallback", async () => {
@@ -99,14 +100,55 @@ test("rejects provider-registry writes and unknown APIs without asset fallback",
   assert.equal(calls, 0);
 });
 
+test("cloud foundation routes and workspace state contract are explicit", () => {
+  for (const expected of [
+    ["GET", "/api/session"],
+    ["GET", "/api/engagements"],
+    ["GET", "/api/engagements/:id/workspace"],
+    ["PUT", "/api/engagements/:id/workspace"],
+  ]) {
+    assert.equal(
+      API_ROUTE_MANIFEST.some((route) => route.method === expected[0] && route.path === expected[1]),
+      true,
+      `${expected[0]} ${expected[1]}`,
+    );
+  }
+
+  assert.equal(typeof workerModule.normalizeWorkspaceState, "function");
+  if (typeof workerModule.normalizeWorkspaceState !== "function") return;
+
+  const normalized = workerModule.normalizeWorkspaceState({
+    version: 7,
+    entity: { name: "عميل" },
+    acceptance: { status: "approved" },
+    harmlessUnknown: "drop-me",
+  });
+  assert.equal(normalized.error, undefined);
+  assert.deepEqual(normalized.state, {
+    acceptance: { status: "approved" },
+    entity: { name: "عميل" },
+    version: 7,
+  });
+  assert.ok(normalized.byteLength > 0);
+  assert.equal(workerModule.normalizeWorkspaceState([]).error, "invalid_workspace_state");
+  assert.deepEqual(workerModule.normalizeWorkspaceState({ accounts: [] }), {
+    error: "forbidden_workspace_key",
+    key: "accounts",
+  });
+  assert.equal(
+    workerModule.normalizeWorkspaceState({ entity: { note: "x".repeat(140_000) } }).error,
+    "workspace_too_large",
+  );
+});
+
 test("R2 every declared API route rejects anonymous requests", async () => {
-  assert.ok(API_ROUTE_MANIFEST.length >= 5);
+  assert.ok(API_ROUTE_MANIFEST.length >= 9);
   for (const route of API_ROUTE_MANIFEST) {
     const path = route.path.replace(":id", "eng_0123456789abcdef0123456789");
     const response = await worker.fetch(new Request(`https://example.test${path}`, {
       method: route.method,
-      headers: route.method === "POST" ? { "content-type": "application/json" } : undefined,
-      body: route.method === "POST" ? "{}" : undefined,
+      headers: ["POST", "PUT"].includes(route.method) ? { "content-type": "application/json" } : undefined,
+      body: ["POST", "PUT"].includes(route.method) ? "{}" : undefined,
     }), { ASSETS: { fetch: async () => new Response("must-not-run", { status: 500 }) } });
     assert.equal(response.status, 401, `${route.method} ${route.path}`);
   }
@@ -129,6 +171,11 @@ test("route permissions are enforced by an explicit role matrix", () => {
   assert.equal(authorizeRole("senior", "engagement:read"), true);
   assert.equal(authorizeRole("viewer", "integrity:read"), true);
   assert.equal(authorizeRole("viewer", "engagement:create"), false);
+  assert.equal(authorizeRole("viewer", "workspace:read"), true);
+  assert.equal(authorizeRole("viewer", "workspace:write"), false);
+  assert.equal(authorizeRole("senior", "workspace:write"), true);
+  assert.equal(authorizeRole("manager", "engagement:list"), true);
+  assert.equal(authorizeRole("owner", "session:read"), true);
   assert.equal(authorizeRole("unknown", "engagement:read"), false);
   assert.equal(authorizeRole("owner", "unknown:permission"), false);
 });
@@ -139,5 +186,9 @@ test("emits the files required by Sites packaging", async () => {
   await access(new URL("../dist/.openai/hosting.json", import.meta.url));
   const migrations = (await readdir(new URL("../dist/.openai/drizzle/", import.meta.url)))
     .filter((name) => name.endsWith(".sql"));
-  assert.deepEqual(migrations.sort(), ["0000_execution_contract_v1_1.sql", "0001_execution_guards.sql"]);
+  assert.deepEqual(migrations.sort(), [
+    "0000_execution_contract_v1_1.sql",
+    "0001_execution_guards.sql",
+    "0002_cloud_foundation_v1.sql",
+  ]);
 });
