@@ -20,3 +20,9 @@ The static application stores work locally using `localStorage`. It does not inc
 ## Reporting a security issue
 
 Open a private security advisory in the repository rather than a public issue when the report includes sensitive details.
+
+## المحادثة الصوتية المباشرة (3.2)
+- لا مفاتيح في المتصفح. الوضع المحلي لا يتصل بأي خادم؛ وضع البوابة يرسل النص وسياقًا مختصرًا فقط إلى عنوان https يحدده المستخدم، ويُتوقع أن يملك الخادم مفاتيح المزوّد.
+- التعرف على الكلام عبر Web Speech API للمتصفح؛ مسار الصوت خاضع لسياسة مزوّد المتصفح لا التطبيق.
+- الردود المحلية حتمية ومشتقة من حالة الملف فقط؛ لا يولّد المساعد أرقامًا.
+- بدء الجلسة وإنهاؤها يُسجلان في سلسلة الأحداث.

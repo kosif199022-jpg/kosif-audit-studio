@@ -753,12 +753,21 @@ export function scoreEvidenceQuality(input = {}) {
   if (input.status === 'reviewed') score += 15;
   else if (input.status === 'received') score += 6;
   else gaps.push('حالة مراجعة الدليل غير مكتملة.');
-  if (input.documentDate) score += 10;
-  else gaps.push('تاريخ المستند غير مسجل.');
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(input.documentDate ?? '') ? new Date(`${input.documentDate}T00:00:00Z`) : null;
+  const asOf = input.asOf ?? new Date().toISOString().slice(0, 10);
+  const dateValid = Boolean(date && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === input.documentDate && input.documentDate <= asOf);
+  if (dateValid) score += 10;
+  else gaps.push('تاريخ المستند مفقود أو غير صالح أو لاحق لتاريخ المراجعة.');
 
   const boundedScore = Math.max(0, Math.min(100, score));
   const grade = boundedScore >= 80 ? 'strong' : boundedScore >= 55 ? 'adequate' : boundedScore >= 30 ? 'limited' : 'weak';
-  return { score: boundedScore, grade, gaps };
+  return { score: boundedScore, grade, gaps, dateValid };
+}
+
+// An operational quality screen; professional sufficiency remains a human judgment.
+export function isReviewedEvidence(input = {}) {
+  const quality = scoreEvidenceQuality(input);
+  return input.status === 'reviewed' && /^[a-f\d]{64}$/i.test(input.fileHash ?? '') && quality.dateValid && quality.score >= 55;
 }
 
 export function selectAuditSample(inputRows = [], {
@@ -978,6 +987,7 @@ export function buildEvidenceGraph({ rows = [], risks = [], workpapers = [], fin
   const addressedRiskIds = new Set(edges.filter((edge) => edge.relation === 'addressed_by').map((edge) => edge.from));
   const evidenceRiskIds = new Set(edges.filter((edge) => edge.relation === 'requests_evidence').map((edge) => edge.from));
   const supportedRiskIds = new Set(edges.filter((edge) => edge.relation === 'supported_by').map((edge) => edge.from));
+  const reviewedRiskIds = new Set(evidence.filter(isReviewedEvidence).flatMap(item => item.riskIds ?? item.linkedRiskIds ?? []));
   const linkedEvidenceIds = new Set(edges.filter((edge) => ['supported_by', 'contains_evidence'].includes(edge.relation)).map((edge) => edge.to));
   return {
     nodes,
@@ -987,6 +997,7 @@ export function buildEvidenceGraph({ rows = [], risks = [], workpapers = [], fin
       risksWithoutProcedure: [...riskIds].filter((id) => !addressedRiskIds.has(id)).length,
       risksWithoutEvidenceRequest: [...riskIds].filter((id) => !evidenceRiskIds.has(id)).length,
       risksWithoutEvidence: [...riskIds].filter((id) => !supportedRiskIds.has(id)).length,
+      risksWithoutReviewedEvidence: [...riskIds].filter((id) => !reviewedRiskIds.has(id)).length,
       findingsWithoutWorkpaper: findings.filter((finding) => !finding.workpaperId).length,
       orphanEvidence: evidence.filter((item) => !linkedEvidenceIds.has(item.id)).length,
       averageEvidenceScore: evidence.length

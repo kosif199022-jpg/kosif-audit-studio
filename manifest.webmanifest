@@ -1,5 +1,5 @@
 {
-  "name": "KOSIF Audit Studio",
+  "name": "KOSIF 4 — Audit Intelligence Studio",
   "short_name": "KOSIF Audit",
   "description": "نظام تشغيل عربي لملف المراجعة: مركز قيادة، ميزان مراجعة، مخاطر، قيود يومية، أدلة، معايير وتقارير محكومة.",
   "lang": "ar",
@@ -7,13 +7,15 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f3f8",
-  "theme_color": "#4c1d95",
+  "background_color": "#f4f3f7",
+  "theme_color": "#211830",
   "icons": [
     { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "./icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ],
   "shortcuts": [
+    { "name": "استوديو الإيجنت", "url": "./?view=agent", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "خطة العمل", "url": "./?view=workflow", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "ميزان المراجعة", "url": "./?view=data", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "المخاطر", "url": "./?view=risks", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "فحص قيود اليومية", "url": "./?view=journal", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
