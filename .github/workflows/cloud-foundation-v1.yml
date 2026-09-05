@@ -25,5 +25,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Build and test
-        run: npm test
+      - name: Build, test, and prepare Cloudflare Pages bundle
+        run: npm run build:cloudflare
