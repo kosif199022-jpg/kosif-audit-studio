@@ -1,3 +1,7 @@
+import { createEvidenceApi, evidenceObjectKey, normalizeEvidenceUploadInput } from "./evidence.js";
+
+export { evidenceObjectKey, normalizeEvidenceUploadInput };
+
 const providerDefinitions = [
   { id: "kosif-local", name: "KOSIF المحلي", execution: "browser", providerType: "deterministic", model: "KOSIF-COUNCIL-v4" },
   { id: "gemini", name: "Gemini", execution: "server", providerType: "llm", keyName: "GEMINI_API_KEY", modelName: "GEMINI_MODEL" },
@@ -57,11 +61,11 @@ const AUTH_HEADER = "oai-authenticated-user-email";
 const ACCESS_ASSERTION_HEADER = "cf-access-jwt-assertion";
 
 export const ROLE_PERMISSIONS = Object.freeze({
-  owner: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "engagement:archive", "workspace:read", "workspace:write", "integrity:read"]),
-  partner: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "engagement:archive", "workspace:read", "workspace:write", "integrity:read"]),
-  manager: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "workspace:read", "workspace:write", "integrity:read"]),
-  senior: Object.freeze(["council:read", "session:read", "engagement:list", "engagement:read", "workspace:read", "workspace:write", "integrity:read"]),
-  viewer: Object.freeze(["council:read", "session:read", "engagement:list", "engagement:read", "workspace:read", "integrity:read"]),
+  owner: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "engagement:archive", "workspace:read", "workspace:write", "evidence:list", "evidence:read", "evidence:write", "integrity:read"]),
+  partner: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "engagement:archive", "workspace:read", "workspace:write", "evidence:list", "evidence:read", "evidence:write", "integrity:read"]),
+  manager: Object.freeze(["council:read", "session:read", "engagement:create", "engagement:list", "engagement:read", "workspace:read", "workspace:write", "evidence:list", "evidence:read", "evidence:write", "integrity:read"]),
+  senior: Object.freeze(["council:read", "session:read", "engagement:list", "engagement:read", "workspace:read", "workspace:write", "evidence:list", "evidence:read", "evidence:write", "integrity:read"]),
+  viewer: Object.freeze(["council:read", "session:read", "engagement:list", "engagement:read", "workspace:read", "evidence:list", "evidence:read", "integrity:read"]),
 });
 
 export function authorizeRole(role, permission) {
@@ -78,6 +82,10 @@ export const API_ROUTE_MANIFEST = Object.freeze([
   { method: "GET", path: "/api/engagements", permission: "engagement:list" },
   { method: "GET", path: "/api/engagements/:id/workspace", permission: "workspace:read" },
   { method: "PUT", path: "/api/engagements/:id/workspace", permission: "workspace:write" },
+  { method: "POST", path: "/api/engagements/:id/evidence", permission: "evidence:write" },
+  { method: "GET", path: "/api/engagements/:id/evidence", permission: "evidence:list" },
+  { method: "GET", path: "/api/engagements/:id/evidence/:evidenceId", permission: "evidence:read" },
+  { method: "GET", path: "/api/engagements/:id/evidence/:evidenceId/content", permission: "evidence:read" },
 ]);
 
 const API_ROUTES = [
@@ -90,6 +98,10 @@ const API_ROUTES = [
   { ...API_ROUTE_MANIFEST[6], pattern: /^\/api\/engagements$/ },
   { ...API_ROUTE_MANIFEST[7], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/workspace$/ },
   { ...API_ROUTE_MANIFEST[8], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/workspace$/ },
+  { ...API_ROUTE_MANIFEST[9], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/evidence$/ },
+  { ...API_ROUTE_MANIFEST[10], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/evidence$/ },
+  { ...API_ROUTE_MANIFEST[11], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/evidence\/(ev_[a-f0-9]{26})$/ },
+  { ...API_ROUTE_MANIFEST[12], pattern: /^\/api\/engagements\/(eng_[a-f0-9]{26})\/evidence\/(ev_[a-f0-9]{26})\/content$/ },
 ];
 
 function jsonResponse(body, status = 200, extraHeaders = {}) {
@@ -354,6 +366,14 @@ async function appendLogValues({ engagementId, actor, action, payload, at, prevH
   return { payloadJson: canonicalJSON(payload), prevHash, entryHash };
 }
 
+const evidenceApi = createEvidenceApi({
+  jsonResponse,
+  stableId,
+  appendLogValues,
+  canonicalVersion: CANONICAL_VERSION,
+  genesisHash: GENESIS_HASH,
+});
+
 async function engagementForTenant(db, engagementId, tenantId) {
   return db.prepare(`
     SELECT id, tenant_id, client_name_ar, fiscal_year, period_start, period_end,
@@ -580,11 +600,22 @@ async function saveWorkspace(request, env, auth, engagementId) {
   }, 201);
 }
 
+function evidenceRouteNeedsBucket(route) {
+  return (route.path === "/api/engagements/:id/evidence" && route.method === "POST")
+    || route.path === "/api/engagements/:id/evidence/:evidenceId/content";
+}
+
 async function handleApi(request, env, url) {
   const route = API_ROUTES.find((item) => item.method === request.method && item.pattern.test(url.pathname));
   if (!route) return jsonResponse({ error: "route_not_authorized" }, 403);
   const subject = await authenticatedSubject(request, env);
   if (!subject) return jsonResponse({ error: "authentication_required" }, 401);
+  if (evidenceRouteNeedsBucket(route)) {
+    const bucket = env?.EVIDENCE_BUCKET;
+    if (!bucket?.put || !bucket?.get || !bucket?.delete) {
+      return jsonResponse({ error: "evidence_bucket_unavailable" }, 503);
+    }
+  }
   const auth = { subject, tenantId: await tenantIdFor(subject), permission: route.permission };
   const match = url.pathname.match(route.pattern);
   try {
@@ -595,7 +626,8 @@ async function handleApi(request, env, url) {
     if (route.path === "/api/session") return getSession(env, auth);
     if (route.path === "/api/engagements" && route.method === "GET") return listEngagements(env, auth);
     if (route.path === "/api/engagements" && route.method === "POST") return createEngagement(request, env, auth);
-    const role = await memberRole(requireDatabase(env), auth.tenantId, auth.subject);
+    const db = requireDatabase(env);
+    const role = await memberRole(db, auth.tenantId, auth.subject);
     if (!authorizeRole(role, route.permission)) return jsonResponse({ error: "permission_denied" }, 403);
     auth.role = role;
     if (route.path === "/api/engagements/:id") return getEngagement(env, auth, match[1]);
@@ -603,8 +635,21 @@ async function handleApi(request, env, url) {
     if (route.path.endsWith("/integrity")) return integrityStatus(env, auth, match[1]);
     if (route.path.endsWith("/workspace") && route.method === "GET") return getWorkspace(env, auth, match[1]);
     if (route.path.endsWith("/workspace") && route.method === "PUT") return saveWorkspace(request, env, auth, match[1]);
+    if (route.path === "/api/engagements/:id/evidence" && route.method === "POST") {
+      return evidenceApi.uploadEvidence(request, env, auth, match[1], db);
+    }
+    if (route.path === "/api/engagements/:id/evidence" && route.method === "GET") {
+      return evidenceApi.listEvidence(env, auth, match[1], db);
+    }
+    if (route.path === "/api/engagements/:id/evidence/:evidenceId") {
+      return evidenceApi.getEvidence(env, auth, match[1], match[2], db);
+    }
+    if (route.path === "/api/engagements/:id/evidence/:evidenceId/content") {
+      return evidenceApi.downloadEvidence(env, auth, match[1], match[2], db);
+    }
   } catch (error) {
     if (error?.message === "database_unavailable") return jsonResponse({ error: "database_unavailable" }, 503);
+    if (error?.message === "evidence_bucket_unavailable") return jsonResponse({ error: "evidence_bucket_unavailable" }, 503);
     return jsonResponse({ error: "request_failed" }, 500);
   }
   return jsonResponse({ error: "route_not_authorized" }, 403);
