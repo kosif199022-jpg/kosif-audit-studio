@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, copyFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'dist/client');
 if (!existsSync(path.join(output, 'index.html'))) throw new Error('Build the client before preparing Cloudflare.');
 const source = readFileSync(path.join(root, 'worker/index.js'), 'utf8');
+const evidenceWorker = path.join(root, 'worker/evidence.js');
+if (!existsSync(evidenceWorker)) throw new Error('Missing evidence Worker module.');
 if ((source.match(/export default \{/g) || []).length !== 1) throw new Error('Unexpected Worker entrypoint');
 // Sites-authenticated headers have no trust on a direct Cloudflare hostname.
 // Keep the underlying Worker and all gates intact, denying anonymous API access.
@@ -17,6 +19,7 @@ const wrapper = `\nexport default { async fetch(request, env, ctx) {
  return sitesWorker.fetch(new Request(request, { headers }), env, ctx);
 } };\n`;
 writeFileSync(path.join(output, '_worker.js'), source.replace('export default {', 'const sitesWorker = {') + '\n' + gateway + wrapper);
+copyFileSync(evidenceWorker, path.join(output, 'evidence.js'));
 writeFileSync(path.join(output, '_routes.json'), JSON.stringify({version:1,include:['/*'],exclude:[]}));
 const assets = ['/', '/index.html', '/manifest.webmanifest', ...['assets','fonts'].flatMap(dir => readdirSync(path.join(output,dir)).map(file => `/${dir}/${file}`))];
 const revision = createHash('sha256').update(assets.join('|') + readFileSync(path.join(output,'index.html'),'utf8')).digest('hex').slice(0,16);
@@ -34,4 +37,4 @@ self.addEventListener('fetch', event => {
  }).catch(() => caches.match(request).then(cached => cached || Response.error())));
 });
 `);
-console.log('Prepared Cloudflare Pages with the existing Worker and protected API boundary.');
+console.log('Prepared Cloudflare Pages with the existing Worker, evidence module, and protected API boundary.');
