@@ -5,6 +5,7 @@ on:
     branches:
       - codex/cloud-foundation-v1
       - codex/cloudflare-access-auth-v1
+      - codex/react-cloud-autosave-v1
   pull_request:
     branches:
       - codex/preserve-theme-cloudflare
