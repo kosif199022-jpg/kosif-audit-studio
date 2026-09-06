@@ -7,16 +7,18 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(root, "dist");
 const index = path.join(dist, "client", "index.html");
 const worker = path.join(root, "worker", "index.js");
+const evidenceWorker = path.join(root, "worker", "evidence.js");
 const hosting = path.join(root, ".openai", "hosting.json");
 const migrations = path.join(root, "drizzle");
 
-for (const file of [index, worker, hosting]) {
+for (const file of [index, worker, evidenceWorker, hosting]) {
   if (!existsSync(file)) throw new Error("Missing Sites build input: " + file);
 }
 
 mkdirSync(path.join(dist, "server"), { recursive: true });
 mkdirSync(path.join(dist, ".openai"), { recursive: true });
 copyFileSync(worker, path.join(dist, "server", "index.js"));
+copyFileSync(evidenceWorker, path.join(dist, "server", "evidence.js"));
 copyFileSync(hosting, path.join(dist, ".openai", "hosting.json"));
 if (existsSync(migrations)) {
   const migrationOutput = path.join(dist, ".openai", "drizzle");
@@ -24,4 +26,4 @@ if (existsSync(migrations)) {
   cpSync(migrations, migrationOutput, { recursive: true });
 }
 
-console.log("Prepared Sites build: worker, hosting manifest, and D1 migrations");
+console.log("Prepared Sites build: worker modules, hosting manifest, and D1 migrations");
