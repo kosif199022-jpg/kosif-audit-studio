@@ -16,7 +16,9 @@ const WORKSPACE_ALLOWED_KEYS = Object.freeze([
   "acceptance",
   "report",
   "standardMappings",
+  "mappingConfirmed",
   "materialityPolicy",
+  "opinionAssessment",
   "analyticsReview",
   "council",
   "periodLocks",
@@ -27,6 +29,8 @@ const WORKSPACE_ALLOWED_KEYS = Object.freeze([
   "adjustments",
   "externalAiRuns",
   "sourceDataset",
+  "humanApproval",
+  "humanApprovedAt",
 ]);
 const WORKSPACE_FORBIDDEN_KEYS = new Set([
   "accounts",
