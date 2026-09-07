@@ -11,6 +11,7 @@
 .ki-studio textarea{min-height:85px;resize:vertical}.ki-studio .ki-memo{min-height:420px}
 .ki-studio .ki-check{display:flex;align-items:center}.ki-studio .ki-check input{width:auto}
 .ki-studio small{color:var(--muted);line-height:1.8}.ki-studio .ki-links{margin-block:12px}.ki-studio a{color:var(--teal);text-decoration:underline}
+.ki-studio .ki-local-review{border-color:rgba(80,177,165,.35);background:linear-gradient(145deg,rgba(80,177,165,.08),rgba(111,91,202,.06))}.ki-studio .ki-local-review>div{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.ki-studio .ki-local-review>div p{margin:4px 0}.ki-studio .ki-local-review strong{display:block}
 .ki-studio button{min-height:44px}.ki-studio :focus-visible{outline:2px solid var(--teal);outline-offset:3px}
 @media(max-width:760px){.ki-studio .ki-grid{grid-template-columns:1fr}.ki-studio .ki-card,.ki-studio .ki-chat{padding:15px}.ki-studio .ki-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}.ki-studio .ki-tabs button{white-space:nowrap;flex:none}.ki-studio .ki-intro{padding:18px}.ki-studio .ki-fields{grid-template-columns:1fr}}
 

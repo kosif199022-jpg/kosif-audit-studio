@@ -633,6 +633,7 @@ export const navItems = [
   { id: "overview", label: "نظرة عامة" },
   { id: "demo500", label: "تجربة 500 حساب" },
   { id: "ai-connections", label: "اتصالات AI والمراجعين" },
+  { id: "benchmark-lab", label: "مختبر التقارير العالمية" },
   { id: "intelligence", label: "الإيجنت وخطة العمل" },
   { id: "data-intake", label: "استيراد وتحضير البيانات" },
   { id: "trial-balance", label: "ميزان المراجعة" },
