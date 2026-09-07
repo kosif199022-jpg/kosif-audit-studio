@@ -12,6 +12,7 @@ test("ships a complete, reproducible 5,000-account demonstration engagement", ()
 
   assert.equal(accounts.length, 5_000);
   assert.equal(engagement.demo.accountCount, 5_000);
+  assert.equal(engagement.entity.name, "شركة محمود الدسوقي العالمية");
   assert.equal(engagement.demo.areaCount, 20);
   assert.equal(engagement.demo.synthetic, true);
   assert.equal(engagement.version, 7);

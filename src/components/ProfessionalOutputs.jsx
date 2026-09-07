@@ -20,6 +20,10 @@ import {
   buildStandardsCoverage,
   getAccountStandardIds,
 } from "../standards.js";
+import {
+  AUDIT_REPORT_SOURCES,
+  buildAuditorReportBlueprint,
+} from "../audit-report-library.js";
 import "../professional-outputs.css";
 
 const priorityLabels = { high: "عالية", medium: "متوسطة", low: "منخفضة" };
@@ -259,6 +263,7 @@ export function buildWordCompatibleDocument({
   managementRows = [],
   complianceRows = [],
   unresolvedIssues = [],
+  auditorReport = null,
   currency = (value) => String(value ?? 0),
 }) {
   const entity = engagement.entity || {};
@@ -280,6 +285,9 @@ export function buildWordCompatibleDocument({
   const unresolvedList = unresolvedIssues.length
     ? unresolvedIssues.map((item) => `<li><strong>${escapeHtml(item.reference)}</strong> — ${escapeHtml(item.title)}: ${escapeHtml(item.detail)}</li>`).join("")
     : "<li>لا توجد مسائل غير محسومة وفق حالة الجلسة الحالية.</li>";
+  const reportModel = auditorReport
+    ? `<h2>نموذج تقرير المراجع المستقل</h2><p>${escapeHtml(auditorReport.model)} · ${escapeHtml(auditorReport.opinion)}</p><table><thead><tr><th>القسم</th><th>الحالة</th><th>التفصيل</th></tr></thead><tbody>${auditorReport.sections.map((item) => row([item.label, item.status, item.detail])).join("")}</tbody></table><h3>مسائل المراجعة الرئيسية / الحرجة</h3><ul>${auditorReport.keyAuditMatters.map((item) => `<li><strong>${escapeHtml(item.title)}</strong> — ${escapeHtml(item.whySignificant)} · الاستجابة: ${escapeHtml(item.auditorResponse)} · ${escapeHtml(item.references.join(" · "))}</li>`).join("")}</ul>`
+    : "";
 
   return `<!doctype html>
 <html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>مسودة مخرجات مهنية مساعدة</title>
@@ -292,6 +300,7 @@ export function buildWordCompatibleDocument({
 <table><thead><tr><th>الأولوية</th><th>الحالة</th><th>الموضوع</th><th>التوصية</th><th>المرجع</th></tr></thead><tbody>${managementTable}</tbody></table>
 <h2>مصفوفة الالتزام</h2>
 <table><thead><tr><th>المعيار</th><th>الوصف</th><th>الحسابات</th><th>التعرض</th><th>الحالة</th></tr></thead><tbody>${complianceTable}</tbody></table>
+${reportModel}
 <h2>المسائل غير المحسومة</h2><ul>${unresolvedList}</ul>
 <p class="warning">تعكس هذه الحزمة بيانات الجلسة لحظة التنزيل وقد تتغير عند تحديث الميزان أو الأدلة أو قرارات المراجع.</p>
 </body></html>`;
@@ -309,6 +318,7 @@ export function ProfessionalOutputs({
   accounts = [],
   engagement = {},
   metrics = {},
+  reportState = {},
   formatCurrency,
   onOpenStandard,
   onToast,
@@ -326,6 +336,10 @@ export function ProfessionalOutputs({
   const unresolvedIssues = useMemo(
     () => buildUnresolvedIssues(accounts, engagement, metrics),
     [accounts, engagement, metrics],
+  );
+  const auditorReport = useMemo(
+    () => buildAuditorReportBlueprint({ engagement, metrics, reportState }),
+    [engagement, metrics, reportState],
   );
   const currency = (value) => (
     typeof formatCurrency === "function"
@@ -390,7 +404,7 @@ export function ProfessionalOutputs({
     if (docxBusy) return;
     setDocxBusy(true);
     try {
-      const blob = await createProfessionalDocxBlob({ engagement, metrics, managementRows, complianceRows, unresolvedIssues, currency });
+      const blob = await createProfessionalDocxBlob({ engagement, metrics, managementRows, complianceRows, unresolvedIssues, auditorReport, currency });
       const href = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       const date = new Date().toISOString().slice(0, 10);
@@ -417,6 +431,7 @@ export function ProfessionalOutputs({
       managementRows,
       complianceRows,
       unresolvedIssues,
+      auditorReport,
       currency,
     });
     const frame = document.createElement("iframe");
@@ -465,6 +480,53 @@ export function ProfessionalOutputs({
         <AlertTriangle size={20} aria-hidden="true" />
         <p><strong>ليست تقرير تدقيق موقعًا.</strong> هذه الحزمة أداة مساعدة للمراجع، وتعكس حالة الجلسة الحالية فقط. إصدار أي رأي يتطلب استكمال البوابات والحكم والاعتماد البشري.</p>
       </aside>
+
+      <section className="panel po-section audit-report-model" aria-labelledby="audit-report-model-title">
+        <header className="po-section-head">
+          <div>
+            <span className="eyebrow">ISA 700 · ISA 701 · PCAOB AS 3101</span>
+            <h2 id="audit-report-model-title">نموذج تقرير المراجع المستقل</h2>
+            <p>هيكل مستخلص من تقارير شركات عالمية وإرشادات هيئات المعايير؛ يُبنى من جلسة {auditorReport.entity} الحالية ولا يصدر رأيًا آليًا.</p>
+          </div>
+          <span className={`po-count audit-model-status is-${auditorReport.status}`}>{auditorReport.status === "ready-for-human-signoff" ? "جاهز للمراجعة البشرية" : "مسودة محكومة"}</span>
+        </header>
+        <div className="audit-report-sections">
+          {auditorReport.sections.map((item) => (
+            <article key={item.id} className="audit-report-section-card">
+              <div><strong>{item.label}</strong><span>{item.status}</span></div>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+        <div className="audit-kam-block">
+          <div className="po-section-head compact">
+            <div><span className="eyebrow">KAM / CAM</span><h3>مسائل المراجعة الرئيسية المرشحة</h3></div>
+            <span className="po-count">{auditorReport.keyAuditMatters.length}</span>
+          </div>
+          <div className="audit-kam-list">
+            {auditorReport.keyAuditMatters.map((item) => (
+              <article key={item.id}>
+                <div className="audit-kam-title"><bdi dir="ltr">{item.id}</bdi><strong>{item.title}</strong></div>
+                <p><b>الحساب أو الإفصاح:</b> {item.accountOrDisclosure}</p>
+                <p><b>سبب الأهمية:</b> {item.whySignificant}</p>
+                <p><b>استجابة المراجع:</b> {item.auditorResponse}</p>
+                <div className="po-reference-list">{item.references.map((reference) => <bdi key={reference} dir="ltr">{reference}</bdi>)}</div>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="audit-source-grid" aria-label="مصادر التقارير العالمية">
+          {AUDIT_REPORT_SOURCES.map((source) => (
+            <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="audit-source-card">
+              <span>{source.kind === "company-filing" ? "تقرير شركة" : "إرشاد مهني"}</span>
+              <strong>{source.title}</strong>
+              <small>{source.auditor} · {source.output}</small>
+              <em>فتح المصدر الرسمي ↗</em>
+            </a>
+          ))}
+        </div>
+        <p className="audit-report-trace-note">التتبع الحالي: {auditorReport.trace.accountCount.toLocaleString("ar-SA")} حساب · {auditorReport.trace.evidenceCount.toLocaleString("ar-SA")} سجل دليل · {auditorReport.trace.findingCount.toLocaleString("ar-SA")} نتيجة · الأهمية {currency(auditorReport.trace.materiality)}.</p>
+      </section>
 
       <section className="po-summary-grid" aria-label="ملخص المخرجات المهنية">
         <article><ClipboardList size={19} aria-hidden="true" /><span>نقاط خطاب الإدارة</span><strong>{managementRows.length}</strong></article>

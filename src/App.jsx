@@ -71,6 +71,7 @@ import { ProfessionalOutputs } from "./components/ProfessionalOutputs.jsx";
 import { AppliedAccountingLab } from "./components/AppliedAccountingLab.jsx";
 import { absBig, buildMateriality, formatMinorUnits, parseMinorUnits } from "./audit-core.js";
 import { buildAdjustmentBridge, buildReportState, opinionLabels } from "./reporting.js";
+import { buildAuditorReportBlueprint } from "./audit-report-library.js";
 import {
   buildAccountsCsv,
   buildTemporarySessionSnapshot,
@@ -1358,10 +1359,15 @@ function Reports({ engagement, setEngagement, metrics, dataProfile, accounts, st
     gates,
     readyForHumanApproval,
     reportReady,
+    periodLocked,
     reportOpinion,
     selectedOpinion,
     opinionAssessment,
   } = buildReportState(engagement, metrics);
+  const auditorReport = useMemo(
+    () => buildAuditorReportBlueprint({ engagement, metrics, reportState: { reportReady, periodLocked } }),
+    [engagement, metrics, periodLocked, reportReady],
+  );
   const retainedEvidenceSignature = engagement.evidence
     .filter((item) => item.attachmentStorage === "indexeddb-local")
     .map((item) => `${item.id}:${item.storageKey}:${item.hash}:${item.fileSize}`)
@@ -1512,6 +1518,7 @@ function Reports({ engagement, setEngagement, metrics, dataProfile, accounts, st
         materialityPolicy: engagement.materialityPolicy,
         mappingRate: metrics.mappingRate,
       },
+      auditorReport,
       adjustedAnalytics,
       adjustmentBridge: { ...adjustmentBridge, adjustedAccounts: undefined },
       evidence: engagement.evidence,
@@ -1718,6 +1725,7 @@ function Reports({ engagement, setEngagement, metrics, dataProfile, accounts, st
         accounts={accounts}
         engagement={engagement}
         metrics={metrics}
+        reportState={{ reportReady, periodLocked }}
         formatCurrency={formatCurrency}
         onOpenStandard={onOpenStandard}
         onToast={onToast}

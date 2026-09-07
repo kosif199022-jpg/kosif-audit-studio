@@ -8,3 +8,18 @@
 @media(max-width:480px){.spatial-toolbar{padding:12px}.spatial-toolbar>div{flex-wrap:wrap}.spatial-copy{padding:20px}.spatial-visual{min-height:280px}.spatial-orbit{scale:.85;transform-origin:0 0}.spatial-metrics{gap:16px}.spatial-settings{padding:14px}}
 @media(prefers-reduced-motion:reduce){.spatial-cube{animation:none}.spatial-orbit,.spatial-enabled .stage-card{transition:none!important}}
 @media print{.spatial-workspace{display:none!important}.spatial-enabled .main-content .panel,.spatial-enabled .main-content .stage-card,.spatial-enabled .main-content .ki-card{box-shadow:none!important;transform:none!important}}
+
+/* Cinematic layer: depth cues remain decorative and never animate financial values. */
+.spatial-workspace{position:relative;background:radial-gradient(circle at 84% 20%,color-mix(in srgb,var(--teal) 11%,transparent),transparent 34%),var(--surface);isolation:isolate}
+.spatial-workspace::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;background:linear-gradient(120deg,transparent 12%,color-mix(in srgb,var(--gold) 7%,transparent) 50%,transparent 82%);opacity:.65;transform:translateX(-35%);animation:spatial-sheen 12s ease-in-out infinite alternate}
+.spatial-visual::before,.spatial-visual::after{content:"";position:absolute;border-radius:50%;pointer-events:none;filter:blur(1px)}
+.spatial-visual::before{width:160px;height:160px;top:10%;right:12%;background:radial-gradient(circle,color-mix(in srgb,var(--teal) 20%,transparent),transparent 68%);animation:spatial-float 7s ease-in-out infinite alternate}
+.spatial-visual::after{width:110px;height:110px;bottom:8%;left:14%;background:radial-gradient(circle,color-mix(in srgb,var(--gold) 16%,transparent),transparent 68%);animation:spatial-float 9s ease-in-out -2s infinite alternate-reverse}
+.spatial-orbit{filter:drop-shadow(0 26px 28px color-mix(in srgb,var(--teal) 16%,transparent))}
+.spatial-face{background:linear-gradient(140deg,color-mix(in srgb,var(--surface) 90%,transparent),var(--teal-soft));backdrop-filter:blur(7px)}
+.spatial-ring{animation:spatial-ring-pulse 6s ease-in-out infinite alternate}.ring-two{animation-delay:-2s}
+.spatial-satellite{background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(8px);animation:spatial-float 5s ease-in-out infinite alternate}.satellite-b{animation-delay:-1.5s}.satellite-c{animation-delay:-3s}
+@keyframes spatial-float{0%{transform:translate3d(0,4px,0) scale(.96);opacity:.72}100%{transform:translate3d(0,-8px,0) scale(1.04);opacity:1}}
+@keyframes spatial-ring-pulse{0%{opacity:.42;box-shadow:0 0 12px color-mix(in srgb,var(--gold) 15%,transparent)}100%{opacity:.9;box-shadow:0 0 27px color-mix(in srgb,var(--gold) 30%,transparent)}}
+@keyframes spatial-sheen{0%{transform:translateX(-38%)}100%{transform:translateX(38%)}}
+@media(prefers-reduced-motion:reduce){.spatial-workspace::before,.spatial-visual::before,.spatial-visual::after,.spatial-cube,.spatial-ring,.spatial-satellite{animation:none}}

@@ -10,6 +10,12 @@ test("R5 creates a real OOXML DOCX package with RTL report content", async () =>
     managementRows: [{ priority: "high", status: "open", title: "نقطة رقابة", recommendation: "تنفيذ الإجراء", references: ["F-1"] }],
     complianceRows: [{ standardId: "IFRS 15", title: "الإيراد", accountCount: 1, exposure: 500, reviewRequiredAccountCount: 0 }],
     unresolvedIssues: [{ reference: "F-1", title: "استثناء", detail: "يتطلب متابعة بشرية" }],
+    auditorReport: {
+      model: "ISA 700 · ISA 701",
+      opinion: "رأي مشتق — مسودة محكومة",
+      sections: [{ label: "الرأي", status: "مسودة", detail: "اربط الرأي بالدليل." }],
+      keyAuditMatters: [{ id: "KAM-01", title: "الإيراد", whySignificant: "حكم مهني", auditorResponse: "اختبار القطع", references: ["ISA 240"] }],
+    },
     currency: (value) => `${value} SAR`,
     generatedAt: new Date("2026-08-30T12:00:00.000Z"),
   });

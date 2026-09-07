@@ -241,10 +241,10 @@ export const categoryOptions = [
 const baseEngagement = {
   version: 3,
   entity: {
-    name: "شركة محمود القصيف القابضة",
+    name: "شركة محمود الدسوقي العالمية",
     period: "السنة المنتهية في 31 ديسمبر 2025م",
     currency: "ريال سعودي",
-    activity: "التقنية والخدمات المهنية",
+    activity: "التجارة والتوزيع والخدمات المهنية",
     framework: "المعايير الدولية كما اعتمدتها الهيئة",
     entityType: "شركة غير مدرجة",
   },

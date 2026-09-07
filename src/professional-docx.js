@@ -71,6 +71,7 @@ export async function createProfessionalDocxBlob({
   managementRows = [],
   complianceRows = [],
   unresolvedIssues = [],
+  auditorReport = null,
   currency = (value) => text(value),
   generatedAt = new Date(),
 } = {}) {
@@ -93,6 +94,16 @@ export async function createProfessionalDocxBlob({
         ["المعيار", "الوصف", "الحسابات", "التعرض", "الحالة"],
         complianceRows.map((item) => [item.standardId, item.title, item.accountCount, currency(item.exposure), item.reviewRequiredAccountCount ? `يحتاج مراجعة (${item.reviewRequiredAccountCount})` : "مغطى"]),
       ),
+      ...(auditorReport ? [
+        heading("نموذج تقرير المراجع المستقل"),
+        paragraph(`${auditorReport.model} · ${auditorReport.opinion}`),
+        table(
+          ["القسم", "الحالة", "التفصيل"],
+          auditorReport.sections.map((item) => [item.label, item.status, item.detail]),
+        ),
+        heading("مسائل المراجعة الرئيسية / الحرجة"),
+        ...auditorReport.keyAuditMatters.map((item) => paragraph(`${item.id} — ${item.title} · الحساب أو الإفصاح: ${item.accountOrDisclosure || "غير محدد"}. سبب الأهمية: ${item.whySignificant} الاستجابة: ${item.auditorResponse} المراجع: ${(item.references || []).join(" · ")}`)),
+      ] : []),
       heading("المسائل غير المحسومة"),
       ...(unresolvedIssues.length
         ? unresolvedIssues.map((item) => paragraph(`${item.reference} — ${item.title}: ${item.detail}`))
