@@ -199,11 +199,15 @@ function loadEngagement() {
       return fallback;
     }
     if (stored?.version === 7 && stored?.demoDatasetVersion === fallback.demoDatasetVersion) {
+      const storedEntity = { ...fallback.entity, ...stored.entity };
+      if (/محمود القصيف/.test(String(storedEntity.name || ""))) {
+        storedEntity.name = fallback.entity.name;
+      }
       return {
         ...fallback,
         ...stored,
         version: 7,
-        entity: { ...fallback.entity, ...stored.entity },
+        entity: storedEntity,
         acceptance: { ...fallback.acceptance, ...stored.acceptance },
         report: { ...fallback.report, ...stored.report },
         standardMappings: {
