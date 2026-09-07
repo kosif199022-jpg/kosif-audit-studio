@@ -224,4 +224,32 @@ export async function createAppliedAccountingDocxBlob({
   });
 }
 
+export async function createCompanyReportDocxBlob({ analysis } = {}) {
+  const report = analysis?.report || {};
+  const checks = analysis?.checks || [];
+  const findings = analysis?.findings || [];
+  const standards = analysis?.standards || [];
+  const totals = analysis?.totals || {};
+  return createRtlDocxBlob({
+    title: `تقرير إعادة أداء — ${report.entity || "شركة"}`,
+    description: "تقرير تحليلي مشتق من قوائم منشورة مع إعادة حساب ومصادر ومعايير",
+    buildChildren: ({ paragraph, table, heading, bulletList, HeadingLevel }) => [
+      paragraph("تقرير تحليلي قابل لإعادة الأداء — ليس رأيًا مهنيًا موقعًا", { bold: true, color: "8C4D18" }),
+      paragraph("تقرير تشغيل القوائم المنشورة", { bold: true, heading: HeadingLevel.TITLE, color: "573B9D", size: 36 }),
+      paragraph(`${report.entity || "—"} · ${report.period || "—"} · ${report.currency || "USD"} millions`),
+      table(["المؤشر", "النتيجة"], [["اختبارات الحساب", `${totals.passed || 0}/${totals.checks || 0}`], ["الاستثناءات", totals.exceptions || 0], ["نسبة المطابقة", `${totals.passRate || 0}%`], ["محرك التشغيل", analysis?.engine || "KOSIF"]]),
+      heading("مصفوفة إعادة الحساب والمصدر"),
+      table(["الاختبار", "محسوب", "منشور", "الفرق", "الحالة", "المعيار", "صفحة"], checks.map(item => [item.label, item.computed, item.reported, item.delta, item.pass ? "مطابق" : "استثناء", item.standardId, `${item.source?.physicalPage || "—"} / ${item.source?.printedPage || "—"}`])),
+      heading("التغيرات المقارنة"),
+      table(["البند", "الحالي", "السابق", "التغير %"], (analysis?.changeRows || []).slice(0, 20).map(item => [item.label, item.current, item.prior, item.changePct])),
+      heading("الملاحظات والإجراءات"),
+      ...(findings.length ? findings.map(item => paragraph(`${item.severity} · ${item.title} — ${item.rationale} السبب: ${item.reason} الإجراء: ${item.nextStep}`)) : [paragraph("لا توجد فروقات في الاختبارات المتاحة.")]),
+      heading("الربط المعياري"),
+      ...bulletList(standards.map(item => `${item.standardId}: ${item.rationale}`)),
+      heading("مصادر الحدود المهنية"),
+      paragraph("الأرقام أعيد أداؤها من القوائم المنشورة في الحزمة المرفقة لغرض التحليل والتعلّم. لا تمثل هذه الوثيقة تقرير تدقيق مستقلًا ولا إثباتًا لكفاية الأدلة أو رأيًا موقعًا. يلزم ربط دفتر الأستاذ والأدلة وتأكيد المراجع البشري قبل أي استخدام مهني."),
+    ],
+  });
+}
+
 export { DOCX_MIME };

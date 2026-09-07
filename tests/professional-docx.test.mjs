@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import JSZip from "jszip";
-import { createProfessionalDocxBlob, DOCX_MIME } from "../src/professional-docx.js";
+import { createProfessionalDocxBlob, createCompanyReportDocxBlob, DOCX_MIME } from "../src/professional-docx.js";
+import { runCompanyAnalysis } from "../src/report-benchmark.js";
 
 test("R5 creates a real OOXML DOCX package with RTL report content", async () => {
   const blob = await createProfessionalDocxBlob({
@@ -29,4 +30,15 @@ test("R5 creates a real OOXML DOCX package with RTL report content", async () =>
   assert.match(documentXml, /w:bidi/);
   assert.match(documentXml, /w:bidiVisual/);
   assert.match(documentXml, /نقطة رقابة/);
+});
+
+test("company report export is an RTL OOXML report with recalculation sources", async () => {
+  const blob = await createCompanyReportDocxBlob({ analysis: runCompanyAnalysis("jpmorgan-2023") });
+  assert.equal(blob.type, DOCX_MIME);
+  const zip = await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));
+  const documentXml = await zip.file("word/document.xml").async("string");
+  assert.match(documentXml, /JPMorgan Chase/);
+  assert.match(documentXml, /الأصول/);
+  assert.match(documentXml, /IAS 1/);
+  assert.match(documentXml, /w:bidi/);
 });
