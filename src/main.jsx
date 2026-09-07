@@ -5,6 +5,7 @@ import { App } from "./App.jsx";
 import { CloudPersistenceBoundary } from "./CloudPersistenceBoundary.jsx";
 import "./styles.css";
 import "./design-v66.css";
+import "./space-cinematic.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>

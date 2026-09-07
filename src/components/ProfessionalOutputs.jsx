@@ -377,9 +377,11 @@ export function ProfessionalOutputs({
     }
     const focusRows = managementRows.slice(0, 12);
     const text = [
-      "مسودة المخرجات المهنية المساعدة.",
+      "التقرير الصوتي لمسودة المخرجات المهنية المساعدة.",
+      `${auditorReport.entity}. النموذج في حالة ${auditorReport.status === "ready-for-human-signoff" ? "جاهز للمراجعة البشرية" : "مسودة محكومة"}.`,
       `${unresolvedIssues.length} مسألة غير محسومة و${highPriorityCount} نقطة عالية الأولوية.`,
-      ...focusRows.map((item) => `${item.title}. ${item.recommendation}`),
+      ...auditorReport.sections.map((section) => `${section.label}: ${section.detail}`),
+      ...focusRows.slice(0, 8).map((item) => `${item.title}. ${item.recommendation}`),
     ].join(" ");
     const localVoices = window.speechSynthesis.getVoices().filter((voice) => voice.localService === true);
     const localVoice = localVoices.find((voice) => /^ar([-_]|$)/i.test(voice.lang)) || localVoices[0];
@@ -462,7 +464,7 @@ export function ProfessionalOutputs({
             </button>
             <button type="button" className="button button-outline" onClick={readLocally} aria-pressed={speaking}>
               {speaking ? <VolumeX size={17} aria-hidden="true" /> : <Volume2 size={17} aria-hidden="true" />}
-              {speaking ? "إيقاف القراءة" : "قراءة محلية"}
+              {speaking ? "إيقاف التقرير الصوتي" : "تقرير صوتي محلي"}
             </button>
             <button type="button" className="button button-outline" onClick={printDraft}>
               <Printer size={17} aria-hidden="true" /> طباعة المسودة

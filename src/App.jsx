@@ -66,6 +66,7 @@ import { ResultsCenter } from "./components/ResultsCenter.jsx";
 import { AuditInsightCards } from "./components/AuditInsightCards.jsx";
 import { CommandPalette } from "./components/CommandPalette.jsx";
 import { WorkspaceAccessibility } from "./components/WorkspaceAccessibility.jsx";
+import { VoiceConsole } from "./components/VoiceConsole.jsx";
 import { ReviewerWorkspace } from "./components/ReviewerWorkspace.jsx";
 import { ProfessionalOutputs } from "./components/ProfessionalOutputs.jsx";
 import { AppliedAccountingLab } from "./components/AppliedAccountingLab.jsx";
@@ -182,9 +183,10 @@ function loadAppearance() {
     return {
       theme: themeOrder.includes(stored?.theme) ? stored.theme : "violet-light",
       presentationMode: Boolean(stored?.presentationMode),
+      spaceMode: stored?.spaceMode !== false,
     };
   } catch {
-    return { theme: "violet-light", presentationMode: false };
+    return { theme: "violet-light", presentationMode: false, spaceMode: true };
   }
 }
 
@@ -346,7 +348,7 @@ function PathGuide({ open, onClose, onView }) {
   );
 }
 
-function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleTheme, presentationMode, onTogglePresentation, commandPalette }) {
+function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleTheme, presentationMode, onTogglePresentation, spaceMode, onToggleSpace, summaryText, reportText, onToast, commandPalette }) {
   const periodYear = engagement.entity.period?.match(/\d{4}/)?.[0] || "2025";
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const actionsRef = useRef(null);
@@ -397,6 +399,7 @@ function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleT
 
       <div className="header-actions" ref={actionsRef}>
         {commandPalette}
+        <VoiceConsole onView={onView} onToggleSpace={onToggleSpace} summaryText={summaryText} reportText={reportText} onToast={onToast} />
         <button
           className={`icon-button header-more-button ${mobileActionsOpen ? "is-active" : ""}`}
           type="button"
@@ -422,6 +425,16 @@ function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleT
           >
             <Sparkles size={18} aria-hidden="true" />
             <span>{themeLabels[theme]}</span>
+          </button>
+          <button
+            className={`button button-quiet space-mode-button ${spaceMode ? "is-active" : ""}`}
+            type="button"
+            aria-pressed={spaceMode}
+            title={spaceMode ? "إيقاف المشهد الفضائي" : "تفعيل المشهد الفضائي"}
+            onClick={() => runAction(onToggleSpace)}
+          >
+            <Sparkles size={18} aria-hidden="true" />
+            <span>{spaceMode ? "المشهد الفضائي" : "الوضع الهادئ"}</span>
           </button>
           <button
             className={`button button-quiet presentation-button ${presentationMode ? "is-active" : ""}`}
@@ -1876,6 +1889,7 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = appearance.theme;
+    document.documentElement.dataset.space = appearance.spaceMode ? "on" : "off";
     try {
       localStorage.setItem(APPEARANCE_KEY, JSON.stringify(appearance));
     } catch {
@@ -2050,6 +2064,14 @@ export function App() {
     });
   }
 
+  function toggleSpaceMode() {
+    setAppearance((current) => {
+      const spaceMode = !current.spaceMode;
+      setToast(spaceMode ? "تم تشغيل المشهد الفضائي السينمائي." : "تم إيقاف المشهد الفضائي والعودة للوضع الهادئ.");
+      return { ...current, spaceMode };
+    });
+  }
+
   async function commitAccounts(nextAccounts, profile) {
     const changedAt = new Date().toISOString();
     const commitment = buildDatasetCommitment(nextAccounts, {
@@ -2144,10 +2166,13 @@ export function App() {
   else if (activeView === "settings") content = <SettingsView engagement={engagement} setEngagement={setEngagement} onToast={setToast} onSaved={() => changeView("overview")} summaryText={`${engagement.entity.name}. ${metrics.accountCount} حسابًا. ${engagement.rounds.length} جولة. ${engagement.findings.length} نتيجة. اكتمال البوابات ${completion} بالمئة.`} />;
   else content = <Overview metrics={metrics} engagement={engagement} stages={stages} dataProfile={dataProfile} reportState={reportState} onView={changeView} />;
 
+  const voiceSummary = `${engagement.entity.name}. ${metrics.accountCount} حسابًا. الميزان ${metrics.isBalanced ? "متوازن" : "غير متوازن"}. ${reportState.passedGates} من ${reportState.gates.length} بوابة مكتملة. ${reportState.openFindings} نتيجة مفتوحة.`;
+  const voiceReport = `${voiceSummary} نموذج التقرير في حالة ${reportState.reportReady ? "جاهز للمراجعة البشرية" : "مسودة محكومة"}. أقسامه تشمل الرأي، أساس الرأي، الرقابة الداخلية، الاستمرارية، المعلومات الأخرى، الحوكمة، ومدة التعيين.`;
+
   return (
-    <div data-spatial-motion={spatial.motion ? "on" : "off"} className={`app-shell ${spatial.enabled ? "spatial-enabled" : ""} ${appearance.presentationMode ? "presentation-mode" : ""}`} data-active-view={activeView} dir="rtl">
+    <div data-spatial-motion={spatial.motion ? "on" : "off"} className={`app-shell ${spatial.enabled ? "spatial-enabled" : ""} ${appearance.presentationMode ? "presentation-mode" : ""} ${appearance.spaceMode ? "space-mode" : ""}`} data-active-view={activeView} data-space-mode={appearance.spaceMode ? "on" : "off"} dir="rtl">
       <a className="skip-link" href="#main-content">تخطي إلى المحتوى</a>
-      <Header engagement={engagement} onView={changeView} onReloadDemo={reloadDemo} onOpenGuide={() => setPathGuideOpen(true)} theme={appearance.theme} onCycleTheme={cycleTheme} presentationMode={appearance.presentationMode} onTogglePresentation={togglePresentationMode} commandPalette={<CommandPalette accounts={accounts} rounds={engagement.rounds} evidence={engagement.evidence} mappingState={engagement.standardMappings} onView={changeView} onOpenStandard={openStandard} onOpenRound={openRound} />} />
+      <Header engagement={engagement} onView={changeView} onReloadDemo={reloadDemo} onOpenGuide={() => setPathGuideOpen(true)} theme={appearance.theme} onCycleTheme={cycleTheme} presentationMode={appearance.presentationMode} onTogglePresentation={togglePresentationMode} spaceMode={appearance.spaceMode} onToggleSpace={toggleSpaceMode} summaryText={voiceSummary} reportText={voiceReport} onToast={setToast} commandPalette={<CommandPalette accounts={accounts} rounds={engagement.rounds} evidence={engagement.evidence} mappingState={engagement.standardMappings} onView={changeView} onOpenStandard={openStandard} onOpenRound={openRound} />} />
       <div className="workspace-layout">
         <Sidebar activeView={activeView} onView={changeView} completion={completion} />
         <main id="main-content" className="main-content" ref={mainRef} tabIndex="-1" data-kosif-ready="true">

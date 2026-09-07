@@ -42,3 +42,31 @@
 .satellite-focus{top:44%;left:-82px;border-color:var(--teal);color:var(--teal);transform:translateZ(150px) rotateY(6deg)}
 @media(max-width:680px){.spatial-focus-switcher{max-width:none}.spatial-focus-readout{grid-template-columns:1fr auto}.spatial-focus-readout span{grid-column:1 / -1;grid-row:2}.satellite-focus{left:-62px}.spatial-cinematic-pulse{width:220px;height:220px}}
 @media(prefers-reduced-motion:reduce){.spatial-grid,.spatial-cinematic-pulse,.spatial-focus-switcher button{transition:none}.spatial-cinematic-pulse{transform:translate(-50%,-50%)}.spatial-workspace[data-cinematic="on"] .spatial-grid{transform:rotateX(65deg)}}
+
+/* Space-deck treatment: the scene becomes the visual anchor while numbers stay in governed panels. */
+html[data-space="on"] .spatial-workspace {
+  border-color: rgb(139 130 236 / 30%);
+  background: radial-gradient(circle at 50% 42%, rgb(110 85 255 / 15%), transparent 38%), linear-gradient(145deg, rgb(7 12 32 / 96%), rgb(10 16 43 / 96%));
+  box-shadow: 0 28px 84px rgb(0 0 0 / 34%), inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+html[data-space="on"] .spatial-toolbar { background: rgb(5 9 25 / 68%); border-color: rgb(139 130 236 / 22%); color: #e6e3ff; }
+html[data-space="on"] .spatial-toolbar button, html[data-space="on"] .spatial-caption button { color: #e7e4ff; background: rgb(20 30 70 / 75%); border-color: rgb(141 130 241 / 32%); }
+html[data-space="on"] .spatial-hero { background: radial-gradient(ellipse at 76% 48%, rgb(110 85 255 / 18%), transparent 53%), radial-gradient(ellipse at 22% 82%, rgb(77 227 255 / 12%), transparent 55%), #080d24; }
+html[data-space="on"] .spatial-copy { background: linear-gradient(90deg, rgb(7 11 29 / 76%), transparent); }
+html[data-space="on"] .spatial-eyebrow { color: #9ca1de; }
+html[data-space="on"] .spatial-copy h2 { color: #faf9ff; text-shadow: 0 0 28px rgb(110 85 255 / 24%); }
+html[data-space="on"] .spatial-copy em { color: #f0cb6f; }
+html[data-space="on"] .spatial-copy p, html[data-space="on"] .spatial-metrics { color: #b8b9dc; }
+html[data-space="on"] .spatial-metrics strong { color: #fff; text-shadow: 0 0 18px rgb(77 227 255 / 20%); }
+html[data-space="on"] .spatial-grid { background-image: linear-gradient(rgb(128 113 239 / 23%) 1px, transparent 1px), linear-gradient(90deg, rgb(128 113 239 / 23%) 1px, transparent 1px); }
+html[data-space="on"] .spatial-visual { background: radial-gradient(circle at 50% 44%, rgb(77 227 255 / 7%), transparent 44%); }
+html[data-space="on"] .spatial-visual::before { background: radial-gradient(circle, rgb(77 227 255 / 30%), transparent 68%); }
+html[data-space="on"] .spatial-visual::after { background: radial-gradient(circle, rgb(215 171 61 / 25%), transparent 68%); }
+html[data-space="on"] .spatial-face { color: #72efff; background: linear-gradient(140deg, rgb(14 24 59 / 86%), rgb(42 32 95 / 76%)); border-color: rgb(215 171 61 / 70%); box-shadow: inset 0 0 30px rgb(77 227 255 / 13%), 0 0 34px rgb(110 85 255 / 16%); }
+html[data-space="on"] .spatial-face span { color: #e6e3ff; }
+html[data-space="on"] .spatial-satellite { color: #f3f0ff; background: rgb(13 21 53 / 84%); border-color: rgb(132 119 239 / 44%); }
+html[data-space="on"] .spatial-caption { color: #a5a7cb; }
+html[data-space="on"] .spatial-focus-switcher button, html[data-space="on"] .spatial-focus-readout { background: rgb(10 17 43 / 73%); border-color: rgb(139 130 236 / 27%); }
+html[data-space="on"] .spatial-focus-switcher button.is-active { background: rgb(77 227 255 / 13%); border-color: #4de3ff; box-shadow: 0 10px 32px rgb(77 227 255 / 12%); }
+html[data-space="on"] .spatial-focus-readout strong { color: #fff; }
+html[data-space="on"] .spatial-focus-readout span { color: #b8b9dc; }

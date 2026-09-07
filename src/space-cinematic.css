@@ -1,0 +1,97 @@
+/* KOSIF Space Deck — a cinematic layer over the governed audit workspace. */
+html[data-space="on"] {
+  --paper: #070b1d;
+  --paper-deep: #050816;
+  --surface: #0c1430;
+  --surface-muted: #101a3b;
+  --ink: #f8f7ff;
+  --ink-2: #dedaff;
+  --muted: #9da0c3;
+  --line: rgb(146 137 233 / 21%);
+  --line-strong: rgb(164 155 255 / 38%);
+  --gold: #d7ab3d;
+  --gold-deep: #f0ca6b;
+  --gold-soft: rgb(215 171 61 / 17%);
+  --teal: #4de3ff;
+  --teal-soft: rgb(77 227 255 / 14%);
+  --blue: #6e55ff;
+  --blue-soft: rgb(110 85 255 / 16%);
+  --green-soft: rgb(44 205 155 / 16%);
+  --red-soft: rgb(255 96 124 / 16%);
+  --orange: #efb84a;
+  --surface-inverse: #05091c;
+  --surface-inverse-2: #101a3c;
+  --text-inverse: #faf8ff;
+  --text-inverse-muted: #c0c2e2;
+  --focus-ring: rgb(77 227 255 / 32%);
+  --accent-work: #8c7bff;
+  --accent-assurance: #4de3ff;
+  --accent-evidence: #58dec0;
+  --accent-council: #bc8cff;
+  --accent-exception: #ff806e;
+  --shadow-sm: 0 16px 42px rgb(1 4 18 / 28%);
+  --shadow-md: 0 32px 90px rgb(1 4 18 / 42%);
+}
+
+html[data-space="on"] body {
+  background:
+    radial-gradient(circle at 78% -10%, rgb(110 85 255 / 22%), transparent 28rem),
+    radial-gradient(circle at 10% 76%, rgb(77 227 255 / 10%), transparent 25rem),
+    linear-gradient(180deg, #060a1b, #080c22 55%, #050816);
+  color: var(--ink);
+}
+
+html[data-space="on"] body::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  opacity: .5;
+  background-image: radial-gradient(circle, rgb(255 255 255 / 62%) 0 1px, transparent 1.5px), radial-gradient(circle, rgb(110 85 255 / 55%) 0 1px, transparent 1.5px);
+  background-position: 16px 22px, 78px 116px;
+  background-size: 137px 149px, 193px 181px;
+  mask-image: linear-gradient(180deg, #000, transparent 88%);
+}
+
+html[data-space="on"] .app-shell { position: relative; isolation: isolate; background: linear-gradient(180deg, rgb(7 11 29 / 58%), rgb(7 11 29 / 82%)); }
+html[data-space="on"] .app-shell::after { content: ""; position: fixed; z-index: -1; inset: 8% 30% auto; height: 34rem; pointer-events: none; opacity: .55; background: radial-gradient(circle, rgb(110 85 255 / 24%), transparent 68%); filter: blur(18px); }
+html[data-space="on"] .app-header { background: rgb(6 10 28 / 80%); border-color: rgb(137 125 243 / 22%); box-shadow: 0 10px 44px rgb(0 0 0 / 24%); }
+html[data-space="on"] .brand-mark { color: #100b2a; background: linear-gradient(145deg, #ffe189, var(--gold)); box-shadow: 0 0 28px rgb(215 171 61 / 32%); }
+html[data-space="on"] .brand-copy b { color: #fff; }
+html[data-space="on"] .brand-copy small, html[data-space="on"] .context-pill { color: var(--text-inverse-muted); }
+html[data-space="on"] .context-pill { background: rgb(15 23 56 / 72%); border-color: rgb(138 128 239 / 24%); }
+html[data-space="on"] .button-quiet { color: #dcd9fb; }
+html[data-space="on"] .button-quiet:hover:not(:disabled), html[data-space="on"] .space-mode-button.is-active { color: #fff; background: rgb(110 85 255 / 23%); border-color: rgb(142 126 255 / 43%); }
+html[data-space="on"] .workspace-layout { position: relative; }
+html[data-space="on"] .side-rail { background: linear-gradient(180deg, rgb(13 20 51 / 94%), rgb(7 11 30 / 94%)); border-color: rgb(138 128 239 / 27%); box-shadow: 0 24px 70px rgb(0 0 0 / 28%); }
+html[data-space="on"] .rail-nav button { color: #b8b7dc; }
+html[data-space="on"] .rail-nav button:hover { color: #fff; background: rgb(110 85 255 / 14%); border-color: rgb(138 128 239 / 24%); }
+html[data-space="on"] .rail-nav button.active { background: linear-gradient(135deg, rgb(110 85 255 / 84%), rgb(45 56 150 / 90%)); border-color: rgb(215 171 61 / 58%); box-shadow: inset -3px 0 var(--gold), 0 13px 28px rgb(62 48 173 / 24%); }
+html[data-space="on"] .rail-governance { color: #c8f3e8; background: rgb(46 203 162 / 11%); border-color: rgb(88 222 192 / 26%); }
+html[data-space="on"] .panel, html[data-space="on"] .round-card, html[data-space="on"] .report-hero { background: linear-gradient(145deg, rgb(15 24 57 / 86%), rgb(8 14 35 / 91%)); border-color: rgb(139 130 236 / 20%); box-shadow: var(--shadow-sm); backdrop-filter: blur(14px) saturate(120%); }
+html[data-space="on"] .panel::before, html[data-space="on"] .round-card::before, html[data-space="on"] .report-hero::before { opacity: .18; background: linear-gradient(90deg, transparent, rgb(110 85 255 / 50%), transparent); }
+html[data-space="on"] .section-heading p, html[data-space="on"] .table-toolbar p, html[data-space="on"] .opinion-card > p, html[data-space="on"] .empty-state p { color: var(--muted); }
+html[data-space="on"] .button-outline { color: #e9e7ff; background: rgb(19 29 67 / 72%); border-color: rgb(142 132 236 / 35%); }
+html[data-space="on"] .button-outline:hover:not(:disabled) { background: rgb(110 85 255 / 20%); border-color: rgb(77 227 255 / 62%); }
+html[data-space="on"] .button-dark { color: #fff; background: linear-gradient(135deg, #6e55ff, #3155bf); border-color: #8f7cff; box-shadow: 0 12px 30px rgb(74 59 205 / 28%); }
+html[data-space="on"] .button-gold { color: #151025; background: linear-gradient(135deg, #f0cf73, #c69626); border-color: #f1cc67; }
+html[data-space="on"] .hero { box-shadow: 0 32px 90px rgb(0 0 0 / 35%); border-color: rgb(147 133 243 / 32%); }
+html[data-space="on"] .hero::before { background: linear-gradient(180deg, transparent 54%, rgb(3 7 24 / 65%)), radial-gradient(circle at 68% 31%, rgb(110 85 255 / 31%), transparent 40%); }
+html[data-space="on"] .hero h1 span { color: #f1ca6d; }
+html[data-space="on"] .hero-guardrails span { background: rgb(255 255 255 / 7%); border-color: rgb(164 155 255 / 27%); }
+html[data-space="on"] .form-grid input, html[data-space="on"] .form-grid select, html[data-space="on"] .form-grid textarea { color: #f7f5ff; background: rgb(7 13 35 / 80%); border-color: rgb(139 130 236 / 28%); }
+html[data-space="on"] .form-grid label > span { color: #c6c3e5; }
+html[data-space="on"] .table-scroll, html[data-space="on"] .po-table-scroll { border-color: rgb(139 130 236 / 23%); }
+html[data-space="on"] thead th { color: #e8e5ff; background: rgb(24 33 72 / 90%); border-color: rgb(139 130 236 / 20%); }
+html[data-space="on"] tbody tr:nth-child(even) { background: rgb(14 23 53 / 62%); }
+html[data-space="on"] tbody tr:hover { background: rgb(110 85 255 / 13%); }
+html[data-space="on"] .toast { background: linear-gradient(135deg, #161f58, #0b6d76); border-color: rgb(77 227 255 / 38%); }
+
+.space-mode-button.is-active { color: var(--accent-assurance); }
+html[data-space="off"] body { transition: background 240ms ease; }
+
+@media (max-width: 950px) {
+  html[data-space="on"] .app-shell::after { inset: 18% 10% auto; }
+}
+

@@ -1,0 +1,25 @@
+.voice-console { position: relative; z-index: 40; }
+.voice-console-trigger { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 12px; color: var(--ink-2); background: color-mix(in srgb, var(--surface) 74%, transparent); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: .72rem; cursor: pointer; transition: 180ms ease; }
+.voice-console-trigger:hover, .voice-console-trigger:focus-visible { color: var(--ink); border-color: var(--gold); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 18%, transparent); }
+.voice-console-trigger.is-listening { color: #fff; background: linear-gradient(135deg, #6e55ff, #2b9fe8); border-color: #a99bff; box-shadow: 0 0 24px rgb(78 227 255 / 26%); }
+.voice-console-trigger i { width: 6px; height: 6px; background: var(--accent-evidence); border-radius: 50%; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-evidence) 18%, transparent); }
+.voice-console-panel { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 11px); width: min(360px, calc(100vw - 28px)); padding: 16px; color: var(--ink); background: color-mix(in srgb, var(--surface) 91%, transparent); border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--line)); border-radius: 18px; box-shadow: 0 24px 64px rgb(1 5 22 / 35%); backdrop-filter: blur(24px) saturate(145%); animation: voice-panel-in 160ms ease-out both; }
+.voice-console-panel header, .voice-console-actions, .voice-console-transcript { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.voice-console-panel header { padding-bottom: 11px; border-bottom: 1px solid var(--line); }
+.voice-console-panel header span { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
+.voice-console-panel header small, .voice-console-disclosure { color: var(--muted); font-size: .62rem; }
+.voice-console-status { min-height: 40px; margin: 12px 0; color: var(--ink-2); font-size: .76rem; line-height: 1.7; }
+.voice-console-actions { align-items: stretch; flex-wrap: wrap; }
+.voice-console-actions .button { flex: 1 1 130px; justify-content: center; }
+.voice-console-transcript { align-items: flex-start; flex-direction: column; margin-top: 13px; padding: 11px; background: color-mix(in srgb, var(--view-accent-soft) 65%, var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
+.voice-console-transcript span { color: var(--muted); font-size: .62rem; }
+.voice-console-transcript strong { font-size: .73rem; line-height: 1.6; }
+.voice-console-disclosure { display: block; margin-top: 11px; line-height: 1.7; }
+@keyframes voice-panel-in { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+html[data-space="on"] .voice-console-trigger { color: #f2efff; background: rgb(12 19 49 / 78%); border-color: rgb(128 113 239 / 38%); }
+html[data-space="on"] .voice-console-panel { color: #f7f5ff; background: rgb(7 12 32 / 92%); border-color: rgb(215 171 61 / 42%); }
+html[data-space="on"] .voice-console-panel header { border-color: rgb(157 144 255 / 22%); }
+html[data-space="on"] .voice-console-status, html[data-space="on"] .voice-console-transcript strong { color: #dedaff; }
+@media (max-width: 760px) { .voice-console-trigger span { display: none; } .voice-console-panel { inset-inline-end: -12px; } }
+@media (prefers-reduced-motion: reduce) { .voice-console-panel { animation: none; } }
+
