@@ -24,6 +24,12 @@ test('source freshness follows evidence and amounts, not plan and conversation e
  assert.notEqual(contextStamp(createAgentContext(accounts,{...edited,evidence:[]},metrics,report)),stamp);
  assert.notEqual(contextStamp(createAgentContext([{...accounts[0],debitMinor:'1'}],edited,metrics,report)),stamp);
 });
+test('agent reads the newest council round after a follow-up review',()=>{
+ const updated={...engagement,council:{...engagement.council,rounds:[{id:'CR-003',agentSourceStamp:'current'},{id:'CR-002',agentSourceStamp:'previous'}]}};
+ const current=createAgentContext(accounts,updated,metrics,report);
+ assert.equal(current.council.id,'CR-003');
+ assert.equal(current.council.sourceStamp,'current');
+});
 test('task completion requires an accountable reviewer and rationale',()=>{
  const task=buildActionPlan(context).tasks[0];
  assert.throws(()=>transitionTask(task,'done',{actor:'',note:'reviewed'}));

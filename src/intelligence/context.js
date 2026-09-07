@@ -17,7 +17,8 @@ export function createAgentContext(accounts, engagement, metrics, reportState) {
   // Trial-balance-derived demonstration entries are not imported journal evidence.
   journalReview: null,
  };
- const last = engagement.council?.rounds?.at(-1);
+ // Council rounds are prepended by the runner; the first item is the current review.
+ const last = engagement.council?.rounds?.[0];
  if (last) c.council = { ...last, sourceStamp: last.agentSourceStamp || '', verdictText: 'راجع جلسة المجلس المحفوظة وموقف المراجع البشري.', positions: [] };
  return c;
 }

@@ -70,3 +70,6 @@ html[data-space="on"] .spatial-focus-switcher button, html[data-space="on"] .spa
 html[data-space="on"] .spatial-focus-switcher button.is-active { background: rgb(77 227 255 / 13%); border-color: #4de3ff; box-shadow: 0 10px 32px rgb(77 227 255 / 12%); }
 html[data-space="on"] .spatial-focus-readout strong { color: #fff; }
 html[data-space="on"] .spatial-focus-readout span { color: #b8b9dc; }
+
+.spatial-fixed-mode{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid color-mix(in srgb,var(--gold) 38%,var(--line));border-radius:10px;color:var(--gold);font-size:11px;font-weight:800;background:color-mix(in srgb,var(--surface) 78%,transparent)}
+@media(max-width:480px){.spatial-fixed-mode{font-size:10px;padding:7px 9px}}

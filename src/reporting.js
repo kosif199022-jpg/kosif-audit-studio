@@ -364,8 +364,12 @@ export function buildReportState(engagement, metrics) {
       && hasText(round.consensus?.status)
       && hasText(round.consensus?.recommendation)
       && Array.isArray(round.advisorResults)
-      && round.advisorResults.length === 4
-      && new Set(round.advisorResults.map((result) => result?.id)).size === 4
+      // The original council snapshot had four core seats.  New runs may
+      // include the specialist seats (or a delegated single-seat run that
+      // records the full effective coverage), so validate the minimum core
+      // coverage without rejecting an expanded, auditable council.
+      && round.advisorResults.length >= 4
+      && new Set(round.advisorResults.map((result) => result?.id)).size === round.advisorResults.length
       && Number(round.population) === Number(metrics?.accountCount)
       && Number.isInteger(Number(round.sampleSize))
       && Number(round.sampleSize) > 0
@@ -377,6 +381,8 @@ export function buildReportState(engagement, metrics) {
         && Array.isArray(result.refs)
         && result.refs.length > 0
       ))
+      && (round.coverageMode == null || ["full-council", "partial-council", "delegated-coverage"].includes(round.coverageMode))
+      && (round.coverageMode !== "delegated-coverage" || round.advisorResults.some((result) => hasText(result.delegatedBy)))
     ));
   const councilDecision = engagement?.council?.humanDecision;
   const councilPrerequisiteAt = latestIsoTimestamp([

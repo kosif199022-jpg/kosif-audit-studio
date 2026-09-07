@@ -184,6 +184,10 @@ body {
   border-color: rgb(240 199 97 / 54%);
   box-shadow: inset -3px 0 var(--gold), 0 10px 24px rgb(13 5 30 / 24%);
 }
+.rail-group-label { color: rgb(211 211 239 / 56%); }
+.rail-toolbox { border-top-color: rgb(255 255 255 / 11%); }
+.rail-toolbox > summary { color: var(--text-inverse-muted); }
+.rail-toolbox > summary:hover { color: var(--text-inverse); background: rgb(255 255 255 / 7%); }
 .rail-governance {
   color: #f1cd70;
   background: rgb(255 255 255 / 7%);

@@ -1,8 +1,10 @@
+import { REPORT_TEMPLATE_FIELDS, cleanTemplateText } from "./report-template.js";
+
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const text = (value) => String(value ?? "—");
 
-async function createRtlDocxBlob({ title, description, buildChildren }) {
+async function createRtlDocxBlob({ title, description, buildChildren, theme = "violet", density = "professional" }) {
   const {
     AlignmentType,
     BorderStyle,
@@ -17,11 +19,12 @@ async function createRtlDocxBlob({ title, description, buildChildren }) {
     WidthType,
   } = await import("docx");
 
-  const paragraph = (value, { bold = false, heading, color = "28134A", size = 22 } = {}) => new Paragraph({
+  const palette = { violet: { ink: "28134A", accent: "573B9D", line: "C8B9E5" }, navy: { ink: "182C49", accent: "254B7E", line: "B6C8E4" }, forest: { ink: "17392C", accent: "286646", line: "B7D9C2" } }[theme] || { ink: "28134A", accent: "573B9D", line: "C8B9E5" };
+  const paragraph = (value, { bold = false, heading, color = palette.ink, size = density === "compact" ? 20 : 22 } = {}) => new Paragraph({
     alignment: AlignmentType.RIGHT,
     bidirectional: true,
     heading,
-    spacing: { after: 120, line: 320 },
+    spacing: { after: density === "compact" ? 80 : density === "executive" ? 180 : 120, line: density === "compact" ? 280 : 320 },
     children: [new TextRun({ text: text(value), bold, color, size, rightToLeft: true, font: "Arial" })],
   });
   const cell = (value, options = {}) => new TableCell({
@@ -32,22 +35,22 @@ async function createRtlDocxBlob({ title, description, buildChildren }) {
     visuallyRightToLeft: true,
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: {
-      top: { style: BorderStyle.SINGLE, size: 2, color: "C8B9E5" },
-      bottom: { style: BorderStyle.SINGLE, size: 2, color: "C8B9E5" },
-      left: { style: BorderStyle.SINGLE, size: 2, color: "C8B9E5" },
-      right: { style: BorderStyle.SINGLE, size: 2, color: "C8B9E5" },
+      top: { style: BorderStyle.SINGLE, size: 2, color: palette.line },
+      bottom: { style: BorderStyle.SINGLE, size: 2, color: palette.line },
+      left: { style: BorderStyle.SINGLE, size: 2, color: palette.line },
+      right: { style: BorderStyle.SINGLE, size: 2, color: palette.line },
       insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "DED5F0" },
       insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "DED5F0" },
     },
     rows: [
-      new TableRow({ tableHeader: true, children: headers.map((header) => cell(header, { bold: true, color: "573B9D" })) }),
+      new TableRow({ tableHeader: true, children: headers.map((header) => cell(header, { bold: true, color: palette.accent })) }),
       ...rows.map((row) => new TableRow({ children: row.map((value) => cell(value)) })),
     ],
   });
   const heading = (value) => paragraph(value, {
     bold: true,
     heading: HeadingLevel.HEADING_1,
-    color: "573B9D",
+    color: palette.accent,
     size: 28,
   });
   const bulletList = (items = []) => items.map((item) => paragraph(`• ${text(item)}`));
@@ -109,6 +112,27 @@ export async function createProfessionalDocxBlob({
         ? unresolvedIssues.map((item) => paragraph(`${item.reference} — ${item.title}: ${item.detail}`))
         : [paragraph("لا توجد مسائل غير محسومة وفق حالة الجلسة الحالية.")]),
       paragraph(`أُنشئت هذه النسخة محليًا في ${generatedAt.toISOString()}. تعكس حالة الجلسة لحظة التنزيل وقد تتغير عند تحديث البيانات أو الأدلة أو قرارات المراجع.`, { color: "6D6680", size: 18 }),
+    ],
+  });
+}
+
+export async function createTemplateReportDocxBlob({ template = {}, data = {}, entity = {} } = {}) {
+  const sections = (template.sections || []).filter((section) => section.enabled !== false);
+  if (!sections.length) throw new TypeError("لا توجد أقسام صالحة للتقرير.");
+  return createRtlDocxBlob({
+    title: cleanTemplateText(data.entity || entity.name || "مسودة تقرير"),
+    description: "مسودة من مخطط تقرير وبيانات أدخلها المستخدم",
+    theme: template.theme,
+    density: template.density,
+    buildChildren: ({ paragraph, heading, HeadingLevel }) => [
+      paragraph("مسودة قالب — تتطلب مراجعة واعتمادًا بشريًا", { bold: true, color: "8C4D18" }),
+      paragraph(data.entity || entity.name || "المنشأة", { bold: true, heading: HeadingLevel.TITLE, size: 36 }),
+      paragraph(data.period || entity.period || "الفترة الحالية"),
+      ...sections.flatMap((section) => [
+        heading(section.label || REPORT_TEMPLATE_FIELDS.find((field) => field.id === section.id)?.label || section.id),
+        ...String(data[section.id] || "لم تُملأ بيانات هذا القسم بعد؛ أكمل ملف XLSX ثم أعد إنشاء المسودة.").split(/\n+/).map((line) => paragraph(cleanTemplateText(line, 12000))),
+      ]),
+      paragraph("أُنشئت هذه المسودة من هيكل التقرير المحفوظ وبيانات المستخدم. لم يُنسخ التقرير الأصلي إلى ملف الارتباط ولم تُختلق أدلة أو نتائج مراجعة.", { color: "6D6680", size: 18 }),
     ],
   });
 }

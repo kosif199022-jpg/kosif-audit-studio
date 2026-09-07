@@ -45,3 +45,22 @@ test("committing a new trial balance clears every derived result and approval", 
   });
   assert.equal(report.reportReady, false);
 });
+
+test("a learned report template survives a dataset change without carrying old values", () => {
+  const previous = {
+    ...initialEngagement,
+    reportTemplate: {
+      schemaVersion: 2,
+      fields: ["entity", "period", "executiveSummary"],
+      sections: [{ id: "executiveSummary", order: 1, enabled: true }],
+      data: { entity: "شركة قديمة", period: "2024", executiveSummary: "نص قديم" },
+      dataSourceName: "old.xlsx",
+      theme: "navy",
+    },
+  };
+  const fresh = createFreshEngagement(previous, { label: "new.xlsx", rowCount: 2 }, "2026-08-28T16:00:00.000Z");
+  assert.deepEqual(fresh.reportTemplate.fields, previous.reportTemplate.fields);
+  assert.equal(fresh.reportTemplate.theme, "navy");
+  assert.deepEqual(fresh.reportTemplate.data, {});
+  assert.equal(fresh.reportTemplate.dataSourceName, null);
+});

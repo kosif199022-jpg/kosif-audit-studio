@@ -9,7 +9,7 @@ function localArabicVoice() {
   return voices.find((voice) => /^ar([-_]|$)/i.test(voice.lang)) || voices[0] || null;
 }
 
-export function VoiceConsole({ onView, onToggleSpace, summaryText = "", reportText = "", onToast }) {
+export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summaryText = "", reportText = "", onToast }) {
   const [open, setOpen] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -59,12 +59,20 @@ export function VoiceConsole({ onView, onToggleSpace, summaryText = "", reportTe
     setTranscript(rawText);
     setStatus(command.reply);
     if (command.type === "view") onView?.(command.view);
-    else if (command.type === "toggle-space") onToggleSpace?.();
+    else if (command.type === "toggle-space") {
+      if (spaceLocked) {
+        const lockedReply = "المشهد الفضائي ثابت؛ يمكنك إيقاف الحركة أو تشغيلها من شريط المشهد.";
+        setStatus(lockedReply);
+        onToast?.(lockedReply);
+        return;
+      }
+      onToggleSpace?.();
+    }
     else if (command.type === "speak-summary") speak(summaryText);
     else if (command.type === "speak-report") speak(reportText || summaryText);
     else if (command.type === "stop") stopSpeaking(true);
     onToast?.(command.reply);
-  }, [onToast, onToggleSpace, onView, reportText, speak, stopSpeaking, summaryText]);
+  }, [onToast, onToggleSpace, onView, reportText, speak, spaceLocked, stopSpeaking, summaryText]);
 
   const startListening = useCallback(() => {
     if (typeof window === "undefined" || !canUseVoiceCommands(window)) {
@@ -121,11 +129,10 @@ export function VoiceConsole({ onView, onToggleSpace, summaryText = "", reportTe
             </button>
             {speaking ? <button type="button" className="button button-outline" onClick={() => stopSpeaking(true)}><Square size={16} aria-hidden="true" /> إيقاف</button> : null}
           </div>
-          <div className="voice-console-transcript"><span>آخر أمر</span><strong>{transcript || "قل: افتح التقرير أو فعّل الفضاء"}</strong></div>
+          <div className="voice-console-transcript"><span>آخر أمر</span><strong>{transcript || "قل: افتح التقرير أو شغّل تقريرًا صوتيًا"}</strong></div>
           <small className="voice-console-disclosure">يعمل التعرف والقراءة محليًا، ولا تُرسل بيانات الارتباط إلى خدمة صوتية من هذا المكوّن.</small>
         </section>
       ) : null}
     </div>
   );
 }
-

@@ -101,6 +101,21 @@ export function runCompanyAnalysis(reportId, overrides = {}) {
   return { report, checks, findings, changeRows, standards, reportBlueprint, totals: { checks: checks.length, passed, exceptions: checks.length - passed, passRate: checks.length ? pct(passed / checks.length) : 0 }, generatedAt: new Date().toISOString(), engine: "KOSIF deterministic statement lab v2" };
 }
 
+export function buildAiCompanyContext(analysis) {
+  if (!analysis?.report || !analysis?.totals) return null;
+  return {
+    companyId: analysis.report.companyId,
+    reportYear: analysis.report.year,
+    reportType: analysis.report.type,
+    checkCount: analysis.totals.checks,
+    passedChecks: analysis.totals.passed,
+    exceptions: analysis.totals.exceptions,
+    passRate: analysis.totals.passRate,
+    findings: analysis.findings.map(({ id, severity, title, standardId, reason }) => ({ id, severity, title, standardId, reason })),
+    checks: analysis.checks.map(({ id, label, computed, reported, delta, standardId }) => ({ id, label, computed, reported, delta, standardId })),
+  };
+}
+
 export function buildCompanyReportText(analysis) {
   const { report, checks, findings, standards, totals, changeRows } = analysis;
   const lines = [`KOSIF — تقرير تحليلي قابل لإعادة الأداء`, `${report.entity} · ${report.period}`, `المحرك: ${analysis.engine}`, `نتيجة الاختبارات: ${totals.passed}/${totals.checks} ناجحة (${totals.passRate}%)`, "", "الاختبارات والمعادلات:"];

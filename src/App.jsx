@@ -70,6 +70,7 @@ import { WorkspaceAccessibility } from "./components/WorkspaceAccessibility.jsx"
 import { VoiceConsole } from "./components/VoiceConsole.jsx";
 import { ReviewerWorkspace } from "./components/ReviewerWorkspace.jsx";
 import { ProfessionalOutputs } from "./components/ProfessionalOutputs.jsx";
+import { AuditRoomDashboard } from "./components/AuditRoomDashboard.jsx";
 import { AppliedAccountingLab } from "./components/AppliedAccountingLab.jsx";
 import { absBig, buildMateriality, formatMinorUnits, parseMinorUnits } from "./audit-core.js";
 import { buildAdjustmentBridge, buildReportState, opinionLabels } from "./reporting.js";
@@ -87,6 +88,7 @@ const Demo500Workspace = lazy(() => import("./components/Demo500Workspace.jsx").
 const AiConnections = lazy(() => import("./components/AiConnections.jsx").then(m => ({ default: m.AiConnections })));
 const IntelligenceStudio = lazy(() => import("./components/IntelligenceStudio.jsx").then(m => ({ default: m.IntelligenceStudio })));
 const ExecutiveBenchmarkLab = lazy(() => import("./components/ExecutiveBenchmarkLab.jsx").then(m => ({ default: m.ExecutiveBenchmarkLab })));
+const ReportCloneStudio = lazy(() => import("./components/ReportCloneStudio.jsx").then(m => ({ default: m.ReportCloneStudio })));
 
 const TraceabilityWorkspace = lazy(() => import("./components/TraceabilityWorkspace.jsx"));
 
@@ -109,6 +111,7 @@ const viewIcons = {
   evidence: FolderCheck,
   "reviewer-workspace": MessageSquareText,
   results: ListChecks,
+  "report-clone": FileCheck2,
   reports: FileText,
   settings: Settings,
 };
@@ -130,6 +133,10 @@ const DEMO_DATA_PROFILE = Object.freeze({
 const APPEARANCE_KEY = "kosif-audit-studio:appearance";
 const PATH_GUIDE_KEY = "kosif-audit-studio:path-guide:v1";
 const FONT_SCALE_KEY = "kosif-audit-studio:font-scale:v1";
+// The product now has one governed cinematic surface. Keep the legacy theme
+// catalog below for backwards-compatible snapshots/tests, but never let an
+// old local preference switch the active visual language.
+const CINEMATIC_THEME = "violet-dark";
 const themeOrder = ["violet-light", "violet-dark", "heritage"];
 const themeLabels = {
   "violet-light": "بنفسجي مضيء",
@@ -184,12 +191,12 @@ function loadAppearance() {
   try {
     const stored = JSON.parse(localStorage.getItem(APPEARANCE_KEY) || "null");
     return {
-      theme: themeOrder.includes(stored?.theme) ? stored.theme : "violet-light",
+      theme: CINEMATIC_THEME,
       presentationMode: Boolean(stored?.presentationMode),
-      spaceMode: stored?.spaceMode !== false,
+      spaceMode: true,
     };
   } catch {
-    return { theme: "violet-light", presentationMode: false, spaceMode: true };
+    return { theme: CINEMATIC_THEME, presentationMode: false, spaceMode: true };
   }
 }
 
@@ -406,7 +413,7 @@ function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleT
 
       <div className="header-actions" ref={actionsRef}>
         {commandPalette}
-        <VoiceConsole onView={onView} onToggleSpace={onToggleSpace} summaryText={summaryText} reportText={reportText} onToast={onToast} />
+        <VoiceConsole onView={onView} onToggleSpace={onToggleSpace} spaceLocked summaryText={summaryText} reportText={reportText} onToast={onToast} />
         <button
           className={`icon-button header-more-button ${mobileActionsOpen ? "is-active" : ""}`}
           type="button"
@@ -423,26 +430,10 @@ function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleT
             <CircleHelp size={18} aria-hidden="true" />
             <span>دليل المسار</span>
           </button>
-          <button
-            className="button button-quiet theme-button"
-            type="button"
-            onClick={() => runAction(onCycleTheme)}
-            aria-label={`تغيير المظهر. المظهر الحالي: ${themeLabels[theme]}`}
-            title={`المظهر الحالي: ${themeLabels[theme]}`}
-          >
+          <span className="button button-quiet space-mode-lock" aria-label="المشهد الفضائي ثابت">
             <Sparkles size={18} aria-hidden="true" />
-            <span>{themeLabels[theme]}</span>
-          </button>
-          <button
-            className={`button button-quiet space-mode-button ${spaceMode ? "is-active" : ""}`}
-            type="button"
-            aria-pressed={spaceMode}
-            title={spaceMode ? "إيقاف المشهد الفضائي" : "تفعيل المشهد الفضائي"}
-            onClick={() => runAction(onToggleSpace)}
-          >
-            <Sparkles size={18} aria-hidden="true" />
-            <span>{spaceMode ? "المشهد الفضائي" : "الوضع الهادئ"}</span>
-          </button>
+            <span>المشهد الفضائي ثابت</span>
+          </span>
           <button
             className={`button button-quiet presentation-button ${presentationMode ? "is-active" : ""}`}
             type="button"
@@ -472,6 +463,18 @@ function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleT
 }
 
 function Sidebar({ activeView, onView, completion }) {
+  const primaryIds = ["overview", "data-intake", "council", "rounds", "reviewer-workspace", "reports"];
+  const primaryItems = navItems.filter((item) => primaryIds.includes(item.id));
+  const toolItems = navItems.filter((item) => !primaryIds.includes(item.id));
+  const activeInTools = toolItems.some((item) => item.id === activeView);
+  const renderItem = (item) => {
+    const Icon = viewIcons[item.id];
+    return <button key={item.id} type="button" className={activeView === item.id ? "active" : ""} aria-current={activeView === item.id ? "page" : undefined} onClick={() => onView(item.id)}>
+      <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+      <span>{item.label}</span>
+      <ChevronLeft className="rail-chevron" size={16} aria-hidden="true" />
+    </button>;
+  };
   return (
     <aside className="side-rail" aria-label="أقسام التدقيق">
       <div className="rail-progress">
@@ -485,22 +488,12 @@ function Sidebar({ activeView, onView, completion }) {
       </div>
 
       <nav className="rail-nav">
-        {navItems.map((item) => {
-          const Icon = viewIcons[item.id];
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={activeView === item.id ? "active" : ""}
-              aria-current={activeView === item.id ? "page" : undefined}
-              onClick={() => onView(item.id)}
-            >
-              <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
-              <span>{item.label}</span>
-              <ChevronLeft className="rail-chevron" size={16} aria-hidden="true" />
-            </button>
-          );
-        })}
+        <small className="rail-group-label">المسار الرئيسي</small>
+        {primaryItems.map(renderItem)}
+        <details className="rail-toolbox" open={activeInTools || undefined}>
+          <summary><span><Sparkles size={17} /> الأدوات والتحليلات</span><ChevronLeft size={15} /></summary>
+          <div>{toolItems.map(renderItem)}</div>
+        </details>
       </nav>
 
       <div className="rail-governance">
@@ -1750,6 +1743,7 @@ function Reports({ engagement, setEngagement, metrics, dataProfile, accounts, st
         onOpenStandard={onOpenStandard}
         onToast={onToast}
       />
+      <Suspense fallback={<section className="panel report-clone" aria-busy="true"><span className="eyebrow">قالب التقرير</span><h2>جارٍ تجهيز مستنسخ التقارير…</h2></section>}><ReportCloneStudio engagement={engagement} setEngagement={setEngagement} onToast={onToast} /></Suspense>
     </div>
   );
 }
@@ -1872,6 +1866,7 @@ export function App() {
   });
   const [requestedStandard, setRequestedStandard] = useState({ id: null, accountId: null, source: null });
   const [requestedRoundId, setRequestedRoundId] = useState(null);
+  const [requestedBenchmarkReportId, setRequestedBenchmarkReportId] = useState("apple-2024");
   const [pendingSessionRestore, setPendingSessionRestore] = useState(null);
   const mainRef = useRef(null);
 
@@ -1895,10 +1890,13 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = appearance.theme;
-    document.documentElement.dataset.space = appearance.spaceMode ? "on" : "off";
+    document.documentElement.dataset.theme = CINEMATIC_THEME;
+    // The product has one spatial visual language. Keep the legacy preference
+    // in storage for backwards compatibility, but always render the governed
+    // workspace with the cinematic scene enabled.
+    document.documentElement.dataset.space = "on";
     try {
-      localStorage.setItem(APPEARANCE_KEY, JSON.stringify(appearance));
+      localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ ...appearance, theme: CINEMATIC_THEME, spaceMode: true }));
     } catch {
       // Appearance preferences are optional and never block the audit workspace.
     }
@@ -2056,10 +2054,8 @@ export function App() {
 
   function cycleTheme() {
     setAppearance((current) => {
-      const currentIndex = themeOrder.indexOf(current.theme);
-      const theme = themeOrder[(currentIndex + 1) % themeOrder.length];
-      setToast(`تم تطبيق مظهر ${themeLabels[theme]}.`);
-      return { ...current, theme };
+      setToast("المشهد الفضائي الموحد هو المظهر الوحيد في مساحة العمل.");
+      return { ...current, theme: CINEMATIC_THEME, spaceMode: true };
     });
   }
 
@@ -2073,9 +2069,8 @@ export function App() {
 
   function toggleSpaceMode() {
     setAppearance((current) => {
-      const spaceMode = !current.spaceMode;
-      setToast(spaceMode ? "تم تشغيل المشهد الفضائي السينمائي." : "تم إيقاف المشهد الفضائي والعودة للوضع الهادئ.");
-      return { ...current, spaceMode };
+      setToast("المشهد الفضائي ثابت؛ يمكنك إيقاف الحركة أو تشغيلها من شريط المشهد.");
+      return { ...current, theme: CINEMATIC_THEME, spaceMode: true };
     });
   }
 
@@ -2152,6 +2147,11 @@ export function App() {
     changeView("rounds");
   }
 
+  function openBenchmarkReport(reportId) {
+    setRequestedBenchmarkReportId(reportId || "apple-2024");
+    changeView("benchmark-lab");
+  }
+
   let content;
   if (activeView === "data-intake") content = <DataIntakeWorkspace accounts={accounts} dataProfile={dataProfile} formatCurrency={formatCurrency} formatNumber={formatNumber} onCommit={commitAccounts} onStageSession={stageSessionSnapshot} sessionRestorePreview={pendingSessionRestore ? { ...pendingSessionRestore.restored.preview, fileName: pendingSessionRestore.fileName } : null} onConfirmSession={confirmSessionSnapshot} onCancelSession={cancelSessionSnapshot} onReset={reloadDemo} onToast={setToast} />;
   else if (activeView === "trial-balance") content = <TrialBalance accounts={accounts} metrics={metrics} mappingState={engagement.standardMappings} onToast={setToast} onOpenStandard={(standardId, accountId) => openStandard(standardId, accountId, "trial-balance")} />;
@@ -2160,25 +2160,26 @@ export function App() {
   else if (activeView === "applied") content = <AppliedAccountingLab accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} mappingState={engagement.standardMappings} formatCurrency={formatCurrency} onToast={setToast} />;
   else if (activeView === "analytics") content = <AnalyticsWorkspace accounts={accounts} engagement={engagement} setEngagement={setEngagement} onToast={setToast} formatNumber={formatNumber} formatCurrency={formatCurrency} />;
   else if (activeView === "integrity") content = <IntegrityWorkspace accounts={accounts} engagement={engagement} setEngagement={setEngagement} onToast={setToast} formatNumber={formatNumber} formatCurrency={formatCurrency} />;
-  else if (activeView === "council") content = <AuditCouncil accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} onToast={setToast} formatNumber={formatNumber} formatCurrency={formatCurrency} />;
+  else if (activeView === "council") content = <AuditCouncil accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} onToast={setToast} formatNumber={formatNumber} formatCurrency={formatCurrency} onView={changeView} onOpenStandard={openStandard} />;
   else if (activeView === "risk") content = <RiskWorkspace accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} onToast={setToast} onOpenStandard={openStandard} onOpenRound={openRound} onView={changeView} />;
   else if (activeView === "rounds") content = <Rounds engagement={engagement} setEngagement={setEngagement} onToast={setToast} onOpenStandard={openStandard} onView={changeView} requestedRoundId={requestedRoundId} />;
   else if (activeView === "evidence") content = <Evidence engagement={engagement} setEngagement={setEngagement} onToast={setToast} />;
   else if (activeView === "reviewer-workspace") content = <ReviewerWorkspace accounts={accounts} engagement={engagement} setEngagement={setEngagement} onToast={setToast} onOpenRound={openRound} onOpenStandard={openStandard} />;
   else if (activeView === "results") content = <ResultsCenter accounts={accounts} engagement={engagement} metrics={metrics} dataProfile={dataProfile} stages={stages} onView={changeView} onOpenStandard={openStandard} onOpenRound={openRound} onToast={setToast} formatNumber={formatNumber} formatCurrency={formatCurrency} />;
   else if (activeView === "reports") content = <Reports engagement={engagement} setEngagement={setEngagement} metrics={metrics} dataProfile={dataProfile} accounts={accounts} stages={stages} onView={changeView} onToast={setToast} onOpenStandard={openStandard} />;
+  else if (activeView === "report-clone") content = <Suspense fallback={<section className="panel report-clone" aria-busy="true"><span className="eyebrow">قالب التقرير</span><h2>جارٍ تجهيز مستنسخ التقارير…</h2></section>}><ReportCloneStudio engagement={engagement} setEngagement={setEngagement} onToast={setToast} /></Suspense>;
   else if (activeView === "demo500") content = <Suspense fallback={<p>جارٍ تنفيذ التجربة…</p>}><Demo500Workspace onToast={setToast}/></Suspense>;
-  else if (activeView === "ai-connections") content = <Suspense fallback={<p>جارٍ تجهيز الاتصالات…</p>}><AiConnections accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} reportState={reportState} onToast={setToast}/></Suspense>;
-  else if (activeView === "benchmark-lab") content = <Suspense fallback={<section className="panel" aria-busy="true">جارٍ تجهيز مختبر التقارير…</section>}><ExecutiveBenchmarkLab engagement={engagement} metrics={metrics} reportState={reportState} onView={changeView} onToast={setToast} /></Suspense>;
+  else if (activeView === "ai-connections") content = <Suspense fallback={<p>جارٍ تجهيز الاتصالات…</p>}><AiConnections accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} reportState={reportState} onToast={setToast} onOpenStandard={openStandard}/></Suspense>;
+  else if (activeView === "benchmark-lab") content = <Suspense fallback={<section className="panel" aria-busy="true">جارٍ تجهيز مختبر التقارير…</section>}><ExecutiveBenchmarkLab initialReportId={requestedBenchmarkReportId} engagement={engagement} setEngagement={setEngagement} metrics={metrics} reportState={reportState} onView={changeView} onToast={setToast} onOpenStandard={openStandard} /></Suspense>;
   else if (activeView === "intelligence") content = <Suspense fallback={<section className="panel" aria-busy="true">جارٍ تجهيز الإيجنت…</section>}><IntelligenceStudio accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} reportState={reportState} onView={changeView} onToast={setToast} /></Suspense>;
   else if (activeView === "settings") content = <SettingsView engagement={engagement} setEngagement={setEngagement} onToast={setToast} onSaved={() => changeView("overview")} summaryText={`${engagement.entity.name}. ${metrics.accountCount} حسابًا. ${engagement.rounds.length} جولة. ${engagement.findings.length} نتيجة. اكتمال البوابات ${completion} بالمئة.`} />;
-  else content = <Overview metrics={metrics} engagement={engagement} stages={stages} dataProfile={dataProfile} reportState={reportState} onView={changeView} />;
+  else content = <AuditRoomDashboard metrics={metrics} engagement={engagement} risks={engagement.findings || []} evidence={engagement.evidence || []} reportState={reportState} onView={changeView} onOpenCompany={openBenchmarkReport} />;
 
   const voiceSummary = `${engagement.entity.name}. ${metrics.accountCount} حسابًا. الميزان ${metrics.isBalanced ? "متوازن" : "غير متوازن"}. ${reportState.passedGates} من ${reportState.gates.length} بوابة مكتملة. ${reportState.openFindings} نتيجة مفتوحة.`;
   const voiceReport = `${voiceSummary} نموذج التقرير في حالة ${reportState.reportReady ? "جاهز للمراجعة البشرية" : "مسودة محكومة"}. أقسامه تشمل الرأي، أساس الرأي، الرقابة الداخلية، الاستمرارية، المعلومات الأخرى، الحوكمة، ومدة التعيين.`;
 
   return (
-    <div data-spatial-motion={spatial.motion ? "on" : "off"} className={`app-shell ${spatial.enabled ? "spatial-enabled" : ""} ${appearance.presentationMode ? "presentation-mode" : ""} ${appearance.spaceMode ? "space-mode" : ""}`} data-active-view={activeView} data-space-mode={appearance.spaceMode ? "on" : "off"} dir="rtl">
+    <div data-spatial-motion={spatial.motion ? "on" : "off"} className={`app-shell spatial-enabled space-mode ${appearance.presentationMode ? "presentation-mode" : ""}`} data-active-view={activeView} data-space-mode="on" dir="rtl">
       <a className="skip-link" href="#main-content">تخطي إلى المحتوى</a>
       <Header engagement={engagement} onView={changeView} onReloadDemo={reloadDemo} onOpenGuide={() => setPathGuideOpen(true)} theme={appearance.theme} onCycleTheme={cycleTheme} presentationMode={appearance.presentationMode} onTogglePresentation={togglePresentationMode} spaceMode={appearance.spaceMode} onToggleSpace={toggleSpaceMode} summaryText={voiceSummary} reportText={voiceReport} onToast={setToast} commandPalette={<CommandPalette accounts={accounts} rounds={engagement.rounds} evidence={engagement.evidence} mappingState={engagement.standardMappings} onView={changeView} onOpenStandard={openStandard} onOpenRound={openRound} />} />
       <div className="workspace-layout">

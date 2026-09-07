@@ -520,6 +520,13 @@ export function createCompleteDemoEngagement(accounts = generateTrialBalance()) 
 export function createFreshEngagement(previous = baseEngagement, source = {}, changedAt = new Date().toISOString()) {
   const fresh = JSON.parse(JSON.stringify(baseEngagement));
   const sourceLabel = String(source?.label || "ميزان مراجعة مستورد");
+  // A learned report template is a reusable schema, not evidence tied to the
+  // previous dataset. Keep its structure when a new ledger is committed, but
+  // clear populated values so old company facts cannot bleed into the new
+  // engagement.
+  const retainedTemplate = previous?.reportTemplate && typeof previous.reportTemplate === "object"
+    ? { ...previous.reportTemplate, data: {}, dataSourceName: null }
+    : null;
 
   return {
     ...fresh,
@@ -624,6 +631,7 @@ export function createFreshEngagement(previous = baseEngagement, source = {}, ch
       opinion: "لم يُحدد — مسودة محكومة",
       lastUpdated: changedAt,
     },
+    reportTemplate: retainedTemplate,
   };
 }
 
@@ -648,6 +656,7 @@ export const navItems = [
   { id: "evidence", label: "طلبات الأدلة" },
   { id: "reviewer-workspace", label: "مساحة المراجع" },
   { id: "results", label: "مركز النتائج" },
+  { id: "report-clone", label: "مستنسخ التقارير" },
   { id: "reports", label: "المخرجات" },
   { id: "settings", label: "إعداد الارتباط" },
 ];
