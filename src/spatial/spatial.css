@@ -23,3 +23,22 @@
 @keyframes spatial-ring-pulse{0%{opacity:.42;box-shadow:0 0 12px color-mix(in srgb,var(--gold) 15%,transparent)}100%{opacity:.9;box-shadow:0 0 27px color-mix(in srgb,var(--gold) 30%,transparent)}}
 @keyframes spatial-sheen{0%{transform:translateX(-38%)}100%{transform:translateX(38%)}}
 @media(prefers-reduced-motion:reduce){.spatial-workspace::before,.spatial-visual::before,.spatial-visual::after,.spatial-cube,.spatial-ring,.spatial-satellite{animation:none}}
+
+/* Cinematic interaction layer inspired by scroll-led hero scenes and Spline pointer response. */
+.spatial-workspace[data-cinematic="on"]{background:radial-gradient(circle at 72% 28%,color-mix(in srgb,var(--gold) 12%,transparent),transparent 28%),radial-gradient(circle at 24% 78%,color-mix(in srgb,var(--teal) 13%,transparent),transparent 34%),var(--surface)}
+.spatial-workspace[data-cinematic="on"] .spatial-grid{transform:rotateX(calc(65deg - var(--scroll-progress,0) * 4deg)) translateY(calc(var(--scroll-progress,0) * -14px));transition:transform .45s ease-out}
+.spatial-workspace[data-cinematic="on"] .spatial-visual{background:linear-gradient(180deg,transparent 62%,color-mix(in srgb,var(--ink) 4%,transparent));}
+.spatial-orbit{transform:translate(-50%,-50%) rotateX(var(--rx,-12deg)) rotateY(calc(var(--ry,-22deg) + var(--focus-y,0deg)));}
+.spatial-cinematic-pulse{position:absolute;left:50%;top:45%;width:260px;height:260px;border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:50%;transform:translate(-50%,-50%) scale(calc(.86 + var(--scroll-progress,0) * .12));box-shadow:0 0 42px color-mix(in srgb,var(--teal) 12%,transparent),inset 0 0 30px color-mix(in srgb,var(--gold) 8%,transparent);opacity:.72;pointer-events:none;transition:transform .5s ease-out}
+.spatial-workspace[data-focus="evidence"] .spatial-cinematic-pulse{border-color:color-mix(in srgb,var(--gold) 40%,transparent);box-shadow:0 0 46px color-mix(in srgb,var(--gold) 17%,transparent),inset 0 0 32px color-mix(in srgb,var(--gold) 9%,transparent)}
+.spatial-workspace[data-focus="report"] .spatial-cinematic-pulse{border-color:color-mix(in srgb,var(--red) 36%,transparent);box-shadow:0 0 46px color-mix(in srgb,var(--red) 15%,transparent),inset 0 0 32px color-mix(in srgb,var(--red) 8%,transparent)}
+.spatial-focus-switcher{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:20px 0 12px;max-width:520px}
+.spatial-focus-switcher button{display:grid;gap:4px;text-align:right;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 80%,transparent);color:var(--muted);cursor:pointer;font:inherit;transition:transform .22s ease,border-color .22s ease,background .22s ease,color .22s ease}
+.spatial-focus-switcher button:hover,.spatial-focus-switcher button:focus-visible{transform:translateY(-2px);border-color:var(--teal);outline:none;color:var(--ink)}
+.spatial-focus-switcher button.is-active{background:color-mix(in srgb,var(--teal) 15%,var(--surface));border-color:var(--teal);color:var(--ink);box-shadow:0 10px 24px color-mix(in srgb,var(--teal) 12%,transparent)}
+.spatial-focus-switcher b{font-size:11px}.spatial-focus-switcher span{font-size:16px;font-weight:700;direction:ltr;text-align:right}
+.spatial-focus-readout{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;max-width:560px;margin:0 0 18px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 84%,transparent)}
+.spatial-focus-readout strong{color:var(--ink);font-size:12px}.spatial-focus-readout span{color:var(--muted);font-size:11px;line-height:1.6}.spatial-focus-readout button{border:0;background:transparent;color:var(--teal);font:inherit;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.satellite-focus{top:44%;left:-82px;border-color:var(--teal);color:var(--teal);transform:translateZ(150px) rotateY(6deg)}
+@media(max-width:680px){.spatial-focus-switcher{max-width:none}.spatial-focus-readout{grid-template-columns:1fr auto}.spatial-focus-readout span{grid-column:1 / -1;grid-row:2}.satellite-focus{left:-62px}.spatial-cinematic-pulse{width:220px;height:220px}}
+@media(prefers-reduced-motion:reduce){.spatial-grid,.spatial-cinematic-pulse,.spatial-focus-switcher button{transition:none}.spatial-cinematic-pulse{transform:translate(-50%,-50%)}.spatial-workspace[data-cinematic="on"] .spatial-grid{transform:rotateX(65deg)}}
