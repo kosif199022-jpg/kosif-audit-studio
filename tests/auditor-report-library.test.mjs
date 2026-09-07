@@ -6,7 +6,7 @@ import { buildMappingMetrics } from "../src/standards.js";
 import { buildReportState } from "../src/reporting.js";
 
 test("keeps official audit report sources first-party and traceable", () => {
-  assert.equal(AUDIT_REPORT_SOURCES.length, 6);
+  assert.equal(AUDIT_REPORT_SOURCES.length, 11);
   assert.equal(new Set(AUDIT_REPORT_SOURCES.map((source) => source.id)).size, AUDIT_REPORT_SOURCES.length);
   assert.equal(AUDIT_REPORT_SOURCES.every((source) => /^https:\/\//.test(source.url)), true);
   assert.equal(AUDIT_REPORT_SOURCES.some((source) => source.url.includes("sec.gov")), true);
@@ -46,6 +46,8 @@ test("builds a deterministic seven-part auditor report blueprint from the 5,000-
   assert.equal(blueprint.trace.findingCount, engagement.findings.length);
   assert.equal(blueprint.sourceIds.includes("iaasb-isa701"), true);
   assert.equal(blueprint.sourceIds.includes("pcaob-as3101"), true);
+  assert.equal(blueprint.sourceIds.includes("ifrs-navigator"), true);
+  assert.equal(blueprint.sourceIds.includes("iesba-code"), true);
   assert.deepEqual(
     buildAuditorReportBlueprint({ engagement, metrics, reportState }),
     blueprint,
