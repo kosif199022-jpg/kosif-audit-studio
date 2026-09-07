@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handleAi,invokeAiProvider,sanitizeAiSummary} from '../worker/ai-gateway.js';
+import {handleAi,invokeAiProvider,sanitizeAiSummary,sanitizeAiCompanyContext} from '../worker/ai-gateway.js';
 const origin='https://kosif.example';
 const testKey='not-a-real-provider-key-12345';
 function setup(){const records=new Map();return {records,env:{AI_KEY_ENCRYPTION_SECRET:'a'.repeat(64),AI_SESSIONS:{get:async k=>records.get(k)||null,put:async(k,v)=>records.set(k,v),delete:async k=>records.delete(k)}}};}
@@ -29,4 +29,11 @@ test('summary redaction and provider failures do not leak keys or records',async
 });
 test('Gemini and Claude use fixed endpoints, header credentials and bounded output',async()=>{
  for(const id of ['gemini','claude']){let captured;const result=await invokeAiProvider({id,model:'test-model',key:testKey},'review','quality',{},async(url,options)=>{captured={url,options};return new Response(JSON.stringify(id==='gemini'?{candidates:[{content:{parts:[{text:'answer'}]}}]}:{content:[{type:'text',text:'answer'}]}));});assert.equal(result.text,'answer');assert.ok(!captured.url.includes(testKey));const body=JSON.parse(captured.options.body);assert.equal(id==='gemini'?body.generationConfig.maxOutputTokens:body.max_tokens,1200);}
+});
+
+test('company report context is whitelisted before external AI sees it',async()=>{
+ assert.deepEqual(sanitizeAiCompanyContext({companyId:'apple',reportYear:'2024',reportType:'technology',checkCount:5,passedChecks:4,exceptions:1,passRate:80,findings:[{id:'EX-1',severity:'عالية',title:'فرق معلن',standardId:'IAS 1',reason:'سبب قابل للشرح',apiKey:testKey,secret:'drop'}],prompt:'drop'}),{companyId:'apple',reportYear:'2024',reportType:'technology',checkCount:5,passedChecks:4,exceptions:1,passRate:80,findings:[{id:'EX-1',severity:'عالية',title:'فرق معلن',standardId:'IAS 1',reason:'سبب قابل للشرح'}]});
+ const {env}=setup(),{cookie}=await configured(env);let body;
+ const r=await handleAi(req('run','POST',{provider:'openai',role:'quality',question:'راجع الشركة',summary:{accountCount:5},companyContext:{companyId:'apple',reportYear:'2024',checkCount:1,passedChecks:0,exceptions:1,findings:[{title:'فرق'}],secret:testKey},consent:true},cookie),env,async(url,options)=>{body=options.body;return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:'ok'}]}]}));});
+ assert.equal(r.status,200);assert.ok(body.includes('\\"companyId\\":\\"apple\\"'));assert.ok(!body.includes(testKey));assert.ok(!body.includes('secret'));
 });

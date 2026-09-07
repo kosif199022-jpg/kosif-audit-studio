@@ -1,126 +1,65 @@
 import { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  BrainCircuit,
-  CheckCircle2,
-  Download,
-  FileSearch,
-  Gauge,
-  Globe2,
-  LockKeyhole,
-  Sparkles,
-  Target,
-} from "lucide-react";
+import { AlertTriangle, ArrowLeft, BrainCircuit, CheckCircle2, Download, FileCheck2, FileSearch, Globe2, Layers3, Play, RefreshCcw, Sparkles, Table2 } from "lucide-react";
 import { downloadTextFile } from "../session-export.js";
-import {
-  BENCHMARK_DIMENSIONS,
-  REFERENCE_PACKET,
-  buildBenchmarkScore,
-  buildLocalAiReview,
-} from "../report-benchmark.js";
+import { BENCHMARK_DIMENSIONS, REFERENCE_PACKET, buildCompanyReportText, buildLocalAiReview, getBenchmarkCompanies, getBenchmarkReport, getBenchmarkReports, runCompanyAnalysis } from "../report-benchmark.js";
 import "../benchmark-lab.css";
 
-function scoreTone(score) {
-  if (score >= 85) return "good";
-  if (score >= 65) return "watch";
-  return "risk";
+const format = value => Number(value || 0).toLocaleString("en-US");
+const statusLabel = item => item.pass ? "مطابق" : "استثناء";
+const statusClass = item => item.pass ? "is-pass" : "is-exception";
+
+function ReportSelector({ report, onChange }) {
+  const companies = getBenchmarkCompanies();
+  return <div className="benchmark-selector-grid">
+    <label><span>الشركة</span><select value={report.companyId} onChange={event => { const company = companies.find(item => item.id === event.target.value); onChange(getBenchmarkReport(company.reports[0].id)); }}><option value="">اختر الشركة</option>{companies.map(company => <option key={company.id} value={company.id}>{company.entity}</option>)}</select></label>
+    <label><span>التقرير / الفترة</span><select value={report.id} onChange={event => onChange(getBenchmarkReport(event.target.value))}>{getBenchmarkReports().filter(item => item.companyId === report.companyId).map(item => <option key={item.id} value={item.id}>{item.year} · {item.period}</option>)}</select></label>
+  </div>;
 }
 
-function ScoreDial({ score }) {
-  return (
-    <div className={`benchmark-score-dial tone-${scoreTone(score)}`} style={{ "--dial-score": score }} aria-label={`درجة الجاهزية ${score} من 100`}>
-      <div className="benchmark-score-dial-inner">
-        <strong>{score}</strong>
-        <span>/ 100</span>
-      </div>
-    </div>
-  );
-}
+function Metric({ label, value, hint, tone = "" }) { return <article className={`benchmark-live-metric ${tone}`}><span>{label}</span><strong>{value}</strong>{hint && <small>{hint}</small>}</article>; }
 
 export function ExecutiveBenchmarkLab({ engagement, metrics, reportState, onView, onToast }) {
+  const [selected, setSelected] = useState(() => getBenchmarkReport("apple-2024"));
+  const [overrides, setOverrides] = useState({});
+  const [analysis, setAnalysis] = useState(() => runCompanyAnalysis("apple-2024"));
   const [aiReview, setAiReview] = useState(null);
-  const score = useMemo(() => buildBenchmarkScore({ engagement, metrics, reportState }), [engagement, metrics, reportState]);
-  const runLocalReview = () => {
-    const next = buildLocalAiReview({ engagement, metrics, reportState });
-    setAiReview(next);
-    onToast?.("شُغّل تحليل AI المحلي من نفس حالة الارتباط دون إرسال بيانات إلى الخارج.");
-  };
-  const exportBrief = () => {
-    const payload = {
-      generatedAt: new Date().toISOString(),
-      packet: REFERENCE_PACKET,
-      score,
-      aiReview: aiReview || buildLocalAiReview({ engagement, metrics, reportState }),
-      guardrail: "عرض تجريبي استشاري؛ لا يمثل رأيًا مهنيًا موقعًا.",
-    };
-    downloadTextFile(JSON.stringify(payload, null, 2), "kosif-interview-benchmark.json", "application/json;charset=utf-8");
-    onToast?.("تم تنزيل موجز المقارنة للعرض والمقابلة.");
-  };
-  return (
-    <div className="view-stack benchmark-lab">
-      <section className="benchmark-hero panel">
-        <div className="benchmark-orbit" aria-hidden="true"><span /><span /><span /></div>
-        <div className="benchmark-hero-copy">
-          <span className="eyebrow"><Globe2 size={15} aria-hidden="true" /> Global report benchmark</span>
-          <h1>مختبر التقارير العالمية</h1>
-          <p>حوّل الحزمة المرفقة إلى سيناريو عرض حي: افهم بنية تقارير الشركات الكبرى، شغّل التحليل على شركة محمود الدسوقي، ثم أظهر النتيجة مع مصدرها وخطوتها التالية.</p>
-          <div className="button-row">
-            <button type="button" className="button button-dark" onClick={runLocalReview}><BrainCircuit size={17} aria-hidden="true" /> تشغيل AI محلي</button>
-            <button type="button" className="button button-outline" onClick={exportBrief}><Download size={17} aria-hidden="true" /> تنزيل موجز العرض</button>
-            <button type="button" className="button button-glass" onClick={() => onView?.("ai-connections")}><Sparkles size={17} aria-hidden="true" /> إضافة API خارجي <ArrowLeft size={15} aria-hidden="true" /></button>
-          </div>
-        </div>
-        <div className="benchmark-hero-score">
-          <ScoreDial score={score.total} />
-          <strong>{score.label}</strong>
-          <span>درجة تغطية تشغيلية مبنية على الجلسة الحالية</span>
-        </div>
-      </section>
+  const [batch, setBatch] = useState(null);
+  const [expandedCheck, setExpandedCheck] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const computed = useMemo(() => runCompanyAnalysis(selected.id, overrides), [selected.id, overrides]);
+  const facts = Object.entries(selected.facts);
 
-      <section className="benchmark-stat-grid" aria-label="ملخص الحزمة والارتباط">
-        <article className="benchmark-stat"><FileSearch size={20} aria-hidden="true" /><strong>{REFERENCE_PACKET.pageCount.toLocaleString("ar-SA-u-nu-latn")}</strong><span>صفحة في الحزمة</span></article>
-        <article className="benchmark-stat"><Globe2 size={20} aria-hidden="true" /><strong>{REFERENCE_PACKET.reports.length}</strong><span>تقارير شركات مفهرسة</span></article>
-        <article className="benchmark-stat"><Target size={20} aria-hidden="true" /><strong>{metrics.accountCount.toLocaleString("ar-SA-u-nu-latn")}</strong><span>حساب في سيناريو العرض</span></article>
-        <article className="benchmark-stat"><Gauge size={20} aria-hidden="true" /><strong>{Math.round(metrics.mappingRate || 0)}%</strong><span>تغطية الربط المعياري</span></article>
-      </section>
+  function choose(report) { setSelected(report); setOverrides({}); setAnalysis(runCompanyAnalysis(report.id)); setAiReview(null); setBatch(null); }
+  function runSelected() { setBusy(true); window.setTimeout(() => { setAnalysis(computed); setBusy(false); onToast?.(`اكتمل تشغيل ${selected.entity} مع ${computed.totals.checks} اختبارًا قابلاً لإعادة الأداء.`); }, 220); }
+  function runAll() { setBusy(true); window.setTimeout(() => { const results = getBenchmarkReports().map(report => ({ report, analysis: runCompanyAnalysis(report.id) })); setBatch(results); setBusy(false); onToast?.(`اكتملت محاكاة جميع التقارير الثمانية؛ الفروقات ظاهرة لكل تقرير.`); }, 260); }
+  function reviewLocal() { const next = buildLocalAiReview({ companyAnalysis: analysis }); setAiReview(next); onToast?.("شُغّل عقل التحليل المحلي على الأرقام المشتقة، دون إرسال بيانات خارجية."); }
+  function exportReport() { downloadTextFile(buildCompanyReportText(analysis), `kosif-${analysis.report.id}-analytical-report.txt`, "text/plain;charset=utf-8"); onToast?.("تم تنزيل التقرير التحليلي القابل لإعادة الأداء."); }
+  function exportJson() { downloadTextFile(JSON.stringify({ packet: REFERENCE_PACKET.fileName, analysis }, null, 2), `kosif-${analysis.report.id}-reperformance.json`, "application/json;charset=utf-8"); }
+  function challenge(key, value) { setOverrides(current => ({ ...current, [key]: value === "" ? undefined : Number(value) })); }
 
-      <section className="panel benchmark-card" aria-labelledby="reference-packet-title">
-        <div className="section-heading"><div><span className="eyebrow">Reference packet</span><h2 id="reference-packet-title">ما الذي تعلمه التطبيق من التقارير؟</h2><p>{REFERENCE_PACKET.note} جرى تحويل الأقسام المتكررة إلى فحوص قابلة للتشغيل بدل نسخ نصوص الشركات.</p></div><span className="benchmark-lock"><LockKeyhole size={15} aria-hidden="true" /> مصدر محلي مفهرس</span></div>
-        <div className="reference-report-grid">
-          {REFERENCE_PACKET.reports.map((report) => (
-            <article className="reference-report" key={report.id}>
-              <div className="reference-report-head"><span>{report.year}</span><strong>{report.entity}</strong></div>
-              <small>{report.document} · {report.auditor}</small>
-              <ul>{report.emphasis.map((item) => <li key={item}>{item}</li>)}</ul>
-            </article>
-          ))}
-        </div>
-      </section>
+  return <div className="view-stack benchmark-lab">
+    <section className="benchmark-hero panel">
+      <div className="benchmark-orbit" aria-hidden="true"><span /><span /><span /></div>
+      <div className="benchmark-hero-copy"><span className="eyebrow"><Globe2 size={15} aria-hidden="true" /> Executable report lab</span><h1>مختبر تشغيل التقارير</h1><p>التقارير المرفقة أصبحت قواعد إعادة أداء: اختر شركة، شغّل المعادلات على أرقامها المنشورة، راجع الفرق، ثم اربط النتيجة بالمعيار وسبب الحكم. هذا مسار عمل، وليس رفًّا للملفات.</p><div className="button-row"><button type="button" className="button button-dark" onClick={runSelected} disabled={busy}><Play size={16} aria-hidden="true" /> {busy ? "جارٍ التشغيل…" : "تشغيل التقرير المحدد"}</button><button type="button" className="button button-outline" onClick={runAll} disabled={busy}><Layers3 size={16} aria-hidden="true" /> تشغيل الشركات الثمانية</button><button type="button" className="button button-glass" onClick={() => onView?.("ai-connections")}><Sparkles size={16} aria-hidden="true" /> ربط AI وAPI <ArrowLeft size={15} aria-hidden="true" /></button></div></div>
+      <div className="benchmark-hero-score"><div className="benchmark-live-ring"><strong>{analysis.totals.passRate}%</strong><span>مطابقة الحساب</span></div><b>{analysis.totals.exceptions ? `${analysis.totals.exceptions} استثناء` : "لا فروقات"}</b><small>النتيجة من تشغيل فعلي على القيم المنشورة</small></div>
+    </section>
 
-      <section className="panel benchmark-card" aria-labelledby="coverage-title">
-        <div className="section-heading"><div><span className="eyebrow">Coverage map</span><h2 id="coverage-title">مقارنة قدرات KOSIF مع النمط العالمي</h2><p>الدرجات تقيس اكتمال المسار في هذه الجلسة، ولا تدّعي أن الأداة بديل عن شركة مراجعة أو توقيع مهني.</p></div></div>
-        <div className="benchmark-dimension-list">
-          {score.dimensions.map((item) => (
-            <div className="benchmark-dimension" key={item.id}>
-              <div className="benchmark-dimension-title"><strong>{item.label}</strong><span>{item.status}</span></div>
-              <div className="benchmark-bar"><span style={{ width: `${item.score}%` }} /></div>
-              <small>{item.reference} · <b>{item.score}/100</b></small>
-            </div>
-          ))}
-        </div>
-      </section>
+    <section className="panel benchmark-card benchmark-run-card" aria-labelledby="company-run-title"><div className="section-heading"><div><span className="eyebrow">1 · تشغيل شركة</span><h2 id="company-run-title">اختر المصدر والزمن</h2><p>القيم الحالية قابلة للتحدي؛ عدّل رقمًا ثم أعد التشغيل لترى كيف يتحول الاختلاف إلى استثناء موثق.</p></div><FileSearch size={25} aria-hidden="true" /></div><ReportSelector report={selected} onChange={choose} /><div className="benchmark-source-strip"><span><FileCheck2 size={15} aria-hidden="true" /> {selected.sources.income.statement}</span><span>الصفحة الفعلية {selected.sources.income.physicalPage} · المطبوعة {selected.sources.income.printedPage}</span><span>المراجع المنشور: {selected.auditor || REFERENCE_PACKET.reports.find(item => item.id === selected.id)?.auditor}</span></div></section>
 
-      <section className="panel benchmark-card benchmark-ai-card" aria-labelledby="benchmark-ai-title">
-        <div className="section-heading"><div><span className="eyebrow">AI review loop</span><h2 id="benchmark-ai-title">التحليل الذكي القابل للتفسير</h2><p>ابدأ بالوضع المحلي للعرض الفوري، ثم أضف مفتاح API من شاشة الاتصالات عندما تريد رأيًا استشاريًا من نموذج خارجي.</p></div><BrainCircuit size={28} aria-hidden="true" /></div>
-        {!aiReview ? <div className="benchmark-ai-empty"><Sparkles size={24} aria-hidden="true" /><p>اضغط «تشغيل AI محلي» لرؤية ملخص عربي، إشارات المخاطر، وأقسام التقرير التي ستُعرض على صاحب العمل.</p></div> : <div className="benchmark-ai-result"><div className="benchmark-ai-summary"><CheckCircle2 size={19} aria-hidden="true" /><strong>{aiReview.title}</strong><span>{aiReview.summary}</span></div><div className="benchmark-findings">{aiReview.findings.map((finding) => <article key={finding.title}><span className={`finding-severity severity-${finding.severity === "عالية" ? "high" : finding.severity === "متوسطة" ? "medium" : "low"}`}>{finding.severity}</span><strong>{finding.title}</strong><p>{finding.rationale}</p><small>الخطوة التالية: {finding.nextStep}</small></article>)}</div><p className="benchmark-guardrail"><LockKeyhole size={15} aria-hidden="true" /> {aiReview.guardrail}</p></div>}
-      </section>
+    <section className="benchmark-live-metrics" aria-label="نتيجة التشغيل"><Metric label="اختبارات الحساب" value={`${analysis.totals.passed}/${analysis.totals.checks}`} hint="إعادة أداء مستقلة" tone="violet" /><Metric label="الاستثناءات" value={analysis.totals.exceptions} hint="تحتاج تفسيرًا أو دليلًا" tone={analysis.totals.exceptions ? "red" : "green"} /><Metric label="الإيراد / صافي الإيراد" value={format(selected.facts.sales?.current || selected.facts.revenue?.current || selected.facts.netRevenue?.current)} hint={`${selected.currency} millions`} /><Metric label="صافي الدخل" value={format(selected.facts.netIncome?.current)} hint={selected.type === "bank" ? "نموذج بنكي" : "قائمة الدخل"} /></section>
 
-      <section className="benchmark-next panel">
-        <div><span className="eyebrow">Demo path</span><h2>ثلاث دقائق لعرض التطبيق</h2><p>افتح «تجربة 500 حساب» أو «البيانات» لتبديل المصدر، ثم عد إلى المختبر وشغّل AI. عند الحاجة، انتقل إلى «اتصالات AI والمراجعين» لإضافة مفتاحك المشفر.</p></div>
-        <div className="button-row"><button type="button" className="button button-outline" onClick={() => onView?.("demo500")}>فتح تجربة الحسابات <ArrowLeft size={16} aria-hidden="true" /></button><button type="button" className="button button-outline" onClick={() => onView?.("reports")}>فتح المخرجات <ArrowLeft size={16} aria-hidden="true" /></button></div>
-      </section>
-    </div>
-  );
+    <section className="panel benchmark-card" aria-labelledby="checks-title"><div className="section-heading"><div><span className="eyebrow">2 · المقارنة المنشورة</span><h2 id="checks-title">من الرقم المنشور إلى النتيجة</h2><p>كل صف يعرض القيمة التي حسبها المحرك، والقيمة المنشورة، والفرق، والمرجع والمعيار. افتح الصف لرؤية سبب الاختبار.</p></div><Table2 size={25} aria-hidden="true" /></div><div className="benchmark-check-table-wrap"><table className="benchmark-check-table"><thead><tr><th>الاختبار</th><th>محسوب</th><th>منشور</th><th>الفرق</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>{analysis.checks.map(item => <tr key={item.id} className={statusClass(item)} onClick={() => setExpandedCheck(expandedCheck === item.id ? null : item.id)}><td><strong>{item.label}</strong>{expandedCheck === item.id && <div className="benchmark-check-detail"><span><b>المعيار:</b> {item.standardId}</span><span><b>السبب:</b> {item.reason}</span></div>}</td><td>{format(item.computed)}</td><td>{format(item.reported)}</td><td className={item.delta ? "delta" : "zero"}>{format(item.delta)}</td><td><span className={`benchmark-result-pill ${statusClass(item)}`}>{item.pass ? <CheckCircle2 size={14} aria-hidden="true" /> : <AlertTriangle size={14} aria-hidden="true" />}{statusLabel(item)}</span></td><td><small>ص {item.source.printedPage} · {item.source.label}</small></td></tr>)}</tbody></table></div></section>
+
+    <section className="benchmark-two-col"><article className="panel benchmark-card"><div className="section-heading"><div><span className="eyebrow">3 · المقارنة الزمنية</span><h2>حركة الأرقام</h2></div><RefreshCcw size={23} aria-hidden="true" /></div><div className="benchmark-change-list">{analysis.changeRows.slice(0, 10).map(row => <div key={row.key}><span>{row.label}</span><b>{format(row.current)}</b><small>{row.change >= 0 ? "▲" : "▼"} {Math.abs(row.changePct)}% مقابل السابق</small></div>)}</div></article><article className="panel benchmark-card"><div className="section-heading"><div><span className="eyebrow">4 · ربط المعيار</span><h2>لماذا ظهرت النتيجة؟</h2></div><BrainCircuit size={23} aria-hidden="true" /></div><div className="benchmark-standard-list">{analysis.standards.map(item => <div key={item.standardId}><strong>{item.standardId}</strong><p>{item.rationale}</p><small>{item.title}</small></div>)}</div></article></section>
+
+    <section className="panel benchmark-card benchmark-challenge-card"><div className="section-heading"><div><span className="eyebrow">5 · اختبار قابل للتحدي</span><h2>غيّر رقمًا ثم أعد التشغيل</h2><p>هذه أداة محاكاة داخلية: لا تعدّل التقرير المنشور، بل تنشئ سيناريو مستقلًا وتكشف هل تلتقطه قواعد التطبيق.</p></div><AlertTriangle size={24} aria-hidden="true" /></div><div className="benchmark-fact-grid">{facts.slice(0, 8).map(([key, item]) => <label key={key}><span>{item.label}</span><input type="number" value={overrides[key] ?? item.current} onChange={event => challenge(key, event.target.value)} /><small>المنشور: {format(item.current)} · السابق: {format(item.prior)}</small></label>)}</div><div className="button-row"><button type="button" className="button button-dark" onClick={runSelected}><RefreshCcw size={16} aria-hidden="true" /> إعادة تشغيل السيناريو</button><button type="button" className="button button-outline" onClick={() => { setOverrides({}); setAnalysis(runCompanyAnalysis(selected.id)); }}>إرجاع للقيم المنشورة</button></div></section>
+
+    <section className="panel benchmark-card benchmark-report-card"><div className="section-heading"><div><span className="eyebrow">6 · التقرير الناتج</span><h2>تقرير تحليلي قابل للتسليم</h2><p>التقرير يعرض الأعمال التي أداها المحرك، الفروقات، مصادر الأرقام، المعايير، والأسئلة المفتوحة. لا يختلق رأيًا موقعًا.</p></div><Download size={25} aria-hidden="true" /></div><div className="benchmark-report-preview"><header><strong>{analysis.report.entity}</strong><span>{analysis.report.period}</span></header><p>{analysis.reportBlueprint?.model || "تحليل KOSIF قابل لإعادة الأداء"}</p><div className="benchmark-report-summary"><span>الاختبارات <b>{analysis.totals.checks}</b></span><span>المطابق <b>{analysis.totals.passed}</b></span><span>الاستثناءات <b>{analysis.totals.exceptions}</b></span><span>مصادر الصفحات <b>{new Set(analysis.checks.map(item => item.source.physicalPage)).size}</b></span></div><ul>{analysis.findings.slice(0, 4).map(item => <li key={item.id}><b>{item.severity}</b> {item.title} — {item.rationale}</li>)}</ul></div><div className="button-row"><button type="button" className="button button-dark" onClick={exportReport}><Download size={16} aria-hidden="true" /> تنزيل التقرير النصي</button><button type="button" className="button button-outline" onClick={exportJson}>تنزيل سجل إعادة الأداء JSON</button><button type="button" className="button button-glass" onClick={reviewLocal}><BrainCircuit size={16} aria-hidden="true" /> تشغيل AI على التقرير</button></div>{aiReview && <div className="benchmark-ai-result"><strong>{aiReview.title}</strong><p>{aiReview.summary}</p>{aiReview.findings.map(item => <div key={item.id}><span>{item.severity}</span><b>{item.title}</b><p>{item.rationale} السبب: {item.reason}</p><small>المعيار: {item.standardId} · الإجراء: {item.nextStep}</small></div>)}<small>{aiReview.guardrail}</small></div>}</section>
+
+    {batch && <section className="panel benchmark-card" aria-labelledby="batch-title"><div className="section-heading"><div><span className="eyebrow">7 · محاكاة شاملة</span><h2 id="batch-title">نتائج التقارير الثمانية</h2><p>كل تقرير شُغّل بمحركه نفسه مع اختلاف قواعد القطاع؛ لا توجد درجة جاهزية تخمينية.</p></div><Layers3 size={24} aria-hidden="true" /></div><div className="benchmark-batch-grid">{batch.map(({ report, analysis: item }) => <button type="button" key={report.id} className={`benchmark-batch-row ${item.totals.exceptions ? "has-exception" : "all-pass"}`} onClick={() => choose(report)}><span><b>{report.entity}</b><small>{report.year} · {report.type === "bank" ? "قطاع بنكي" : "شركة تشغيلية"}</small></span><strong>{item.totals.passed}/{item.totals.checks}</strong><em>{item.totals.exceptions ? `${item.totals.exceptions} استثناء` : "مطابق"}</em></button>)}</div></section>}
+
+    <section className="benchmark-next panel"><div><span className="eyebrow">AI + evidence</span><h2>الخطوة التالية: ربط دفتر الشركة الحقيقي</h2><p>استخدم هذه الأرقام لتوضيح المنهجية، ثم افتح الاتصالات لإضافة API. النموذج الخارجي يحصل على ملخص مشتق، بينما تبقى الأرقام والأدلة والتوقيع داخل ملف الارتباط.</p></div><div className="button-row"><button type="button" className="button button-outline" onClick={() => onView?.("ai-connections")}>إعداد API <ArrowLeft size={16} aria-hidden="true" /></button><button type="button" className="button button-outline" onClick={() => onView?.("reports")}>فتح المخرجات <ArrowLeft size={16} aria-hidden="true" /></button></div></section>
+  </div>;
 }
 
 export { BENCHMARK_DIMENSIONS };
