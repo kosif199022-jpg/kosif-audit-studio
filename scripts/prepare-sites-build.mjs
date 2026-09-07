@@ -17,6 +17,7 @@ for (const file of [index, worker, hosting]) {
 mkdirSync(path.join(dist, "server"), { recursive: true });
 mkdirSync(path.join(dist, ".openai"), { recursive: true });
 copyFileSync(worker, path.join(dist, "server", "index.js"));
+copyFileSync(path.join(root, "worker", "ai-gateway.js"), path.join(dist, "server", "ai-gateway.js"));
 copyFileSync(hosting, path.join(dist, ".openai", "hosting.json"));
 if (existsSync(migrations)) {
   const migrationOutput = path.join(dist, ".openai", "drizzle");

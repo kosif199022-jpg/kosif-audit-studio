@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handleAi,invokeAiProvider,sanitizeAiSummary,sanitizeAiCompanyContext} from '../worker/ai-gateway.js';
+import {handleAi,invokeAiProvider,sanitizeAiSummary,sanitizeAiCompanyContext,sanitizeAiDocuments,buildRealtimeSession,RESEARCH_DOMAINS} from '../worker/ai-gateway.js';
 const origin='https://kosif.example';
 const testKey='not-a-real-provider-key-12345';
 function setup(){const records=new Map();return {records,env:{AI_KEY_ENCRYPTION_SECRET:'a'.repeat(64),AI_SESSIONS:{get:async k=>records.get(k)||null,put:async(k,v)=>records.set(k,v),delete:async k=>records.delete(k)}}};}
@@ -36,4 +36,26 @@ test('company report context is whitelisted before external AI sees it',async()=
  const {env}=setup(),{cookie}=await configured(env);let body;
  const r=await handleAi(req('run','POST',{provider:'openai',role:'quality',question:'راجع الشركة',summary:{accountCount:5},companyContext:{companyId:'apple',reportYear:'2024',checkCount:1,passedChecks:0,exceptions:1,findings:[{title:'فرق'}],secret:testKey},consent:true},cookie),env,async(url,options)=>{body=options.body;return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:'ok'}]}]}));});
  assert.equal(r.status,200);assert.ok(body.includes('\\"companyId\\":\\"apple\\"'));assert.ok(!body.includes(testKey));assert.ok(!body.includes('secret'));
+});
+
+test('document excerpts are bounded, consent-gated, and carry page locators',async()=>{
+ const id='a'.repeat(64);
+ assert.deepEqual(sanitizeAiDocuments([{documentId:id,page:4,locator:'PDF p.4',text:'حقيقة قابلة للفحص',secret:testKey},{documentId:'bad',page:0,text:'drop'}]),[{documentId:id,page:4,locator:'PDF p.4',text:'حقيقة قابلة للفحص'}]);
+ const {env}=setup(),{cookie}=await configured(env);let body='';const fetcher=async(url,options)=>{body=options.body;return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:'أطلب المستند ص4'}]}]}));};
+ assert.equal((await handleAi(req('run','POST',{provider:'openai',role:'isa',question:'راجع المقتطف',documents:[{documentId:id,page:4,text:'نص'}],consent:true},cookie),env,fetcher)).status,400);
+ assert.equal((await handleAi(req('run','POST',{provider:'openai',role:'isa',question:'راجع المقتطف',documents:[{documentId:id,page:4,text:'نص'}],documentConsent:true,consent:true},cookie),env,fetcher)).status,200);
+ assert.match(body,/documentId/);assert.ok(!body.includes(testKey));
+});
+
+test('realtime session uses a fixed safe voice contract and never returns the provider key',async()=>{
+ const session=buildRealtimeSession({model:'evil',voice:'bad',shareSummary:true,summary:{accountCount:12,apiKey:testKey}});
+ assert.equal(session.model,'gpt-realtime-2.1');assert.equal(session.audio.output.voice,'marin');assert.equal(session.tools[0].name,'open_workspace');assert.deepEqual(session.audio.input.transcription.language,'ar');assert.ok(!JSON.stringify(session).includes(testKey));
+ const {env}=setup(),{cookie}=await configured(env);let sent;
+ const response=await handleAi(new Request(origin+'/api/ai/realtime',{method:'POST',headers:{origin,'content-type':'application/json',cookie},body:JSON.stringify({sdp:'v=0\r\nm=audio 9 RTP/AVP 0',consent:true})}),env,async(url,options)=>{sent={url,options};return new Response('v=0\r\nm=audio 9 RTP/AVP 0');});
+ assert.equal(response.status,200);assert.equal(sent.url,'https://api.openai.com/v1/realtime/calls');assert.equal(sent.options.body instanceof FormData,true);assert.ok(!JSON.stringify(session).includes(testKey));
+});
+
+test('research keeps web search on allow-listed professional domains',async()=>{
+ const {env}=setup(),{cookie}=await configured(env);let payload;const response=await handleAi(new Request(origin+'/api/ai/research',{method:'POST',headers:{origin,'content-type':'application/json',cookie},body:JSON.stringify({question:'ما أثر ISA 530؟',consent:true})}),env,async(url,options)=>{payload=JSON.parse(options.body);return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:'نتيجة',annotations:[{type:'url_citation',url:'https://www.iaasb.org/publications/isa-530',title:'ISA 530'},{type:'url_citation',url:'https://example.com/no',title:'drop'}]}]}]}));});
+ assert.equal(response.status,200);assert.deepEqual(payload.tools[0].filters.allowed_domains,RESEARCH_DOMAINS);const body=await response.json();assert.equal(body.citations.length,1);assert.equal(body.citations[0].url,'https://www.iaasb.org/publications/isa-530');
 });

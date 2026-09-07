@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Radio, Sparkles, Square, Volume2 } from "lucide-react";
 import { canUseVoiceCommands, parseVoiceCommand } from "../voice-commands.js";
 import "../voice-console.css";
+const RealtimeVoice = lazy(() => import("./RealtimeVoice.jsx").then((module) => ({ default: module.RealtimeVoice })));
 
 function localArabicVoice() {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
@@ -9,8 +10,9 @@ function localArabicVoice() {
   return voices.find((voice) => /^ar([-_]|$)/i.test(voice.lang)) || voices[0] || null;
 }
 
-export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summaryText = "", reportText = "", onToast }) {
+export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summaryText = "", reportText = "", voiceContext = {}, onToast }) {
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState("realtime");
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -116,8 +118,10 @@ export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summa
         <i aria-hidden="true" />
       </button>
       {open ? (
-        <section className="voice-console-panel" aria-label="مركز الصوت المحلي">
-          <header><span><Sparkles size={16} aria-hidden="true" /> مركز الصوت</span><small>الجهاز فقط</small></header>
+        <section className="voice-console-panel" aria-label="مركز الصوت">
+          <header><span><Sparkles size={16} aria-hidden="true" /> مركز الصوت</span><button type="button" className="voice-close" onClick={() => { setOpen(false); recognitionRef.current?.stop(); stopSpeaking(false); }}>إغلاق</button></header>
+          <div className="voice-mode-tabs"><button type="button" aria-pressed={mode === "realtime"} onClick={() => { recognitionRef.current?.stop(); stopSpeaking(false); setMode("realtime"); }}>محادثة OpenAI حية</button><button type="button" aria-pressed={mode === "local"} onClick={() => setMode("local")}>أوامر وقراءة المتصفح</button></div>
+          {mode === "realtime" ? <Suspense fallback={<p>جارٍ تجهيز الصوت…</p>}><RealtimeVoice onView={onView} summary={voiceContext} /></Suspense> : <>
           <p className="voice-console-status" aria-live="polite">{status}</p>
           <div className="voice-console-actions">
             <button type="button" className={`button ${listening ? "button-gold" : "button-dark"}`} onClick={startListening}>
@@ -130,7 +134,8 @@ export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summa
             {speaking ? <button type="button" className="button button-outline" onClick={() => stopSpeaking(true)}><Square size={16} aria-hidden="true" /> إيقاف</button> : null}
           </div>
           <div className="voice-console-transcript"><span>آخر أمر</span><strong>{transcript || "قل: افتح التقرير أو شغّل تقريرًا صوتيًا"}</strong></div>
-          <small className="voice-console-disclosure">يعمل التعرف والقراءة محليًا، ولا تُرسل بيانات الارتباط إلى خدمة صوتية من هذا المكوّن.</small>
+          <small className="voice-console-disclosure">القراءة تستخدم صوتًا محليًا متاحًا على جهازك. الإملاء قد يعالج مزوّد المتصفح صوتك؛ لا يرسل التطبيق ملفات الارتباط في هذا الوضع.</small>
+          </>}
         </section>
       ) : null}
     </div>

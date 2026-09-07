@@ -89,6 +89,7 @@ const AiConnections = lazy(() => import("./components/AiConnections.jsx").then(m
 const IntelligenceStudio = lazy(() => import("./components/IntelligenceStudio.jsx").then(m => ({ default: m.IntelligenceStudio })));
 const ExecutiveBenchmarkLab = lazy(() => import("./components/ExecutiveBenchmarkLab.jsx").then(m => ({ default: m.ExecutiveBenchmarkLab })));
 const ReportCloneStudio = lazy(() => import("./components/ReportCloneStudio.jsx").then(m => ({ default: m.ReportCloneStudio })));
+const DocumentWorkbench = lazy(() => import("./components/DocumentWorkbench.jsx").then(m => ({ default: m.DocumentWorkbench })));
 
 const TraceabilityWorkspace = lazy(() => import("./components/TraceabilityWorkspace.jsx"));
 
@@ -99,6 +100,7 @@ const viewIcons = {
   "ai-connections": BrainCircuit,
   "benchmark-lab": Globe2,
   "data-intake": FileUp,
+  "document-lab": FileUp,
   "trial-balance": Scale,
   traceability: Network,
   standards: BookOpen,
@@ -362,7 +364,7 @@ function PathGuide({ open, onClose, onView }) {
   );
 }
 
-function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleTheme, presentationMode, onTogglePresentation, spaceMode, onToggleSpace, summaryText, reportText, onToast, commandPalette }) {
+function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleTheme, presentationMode, onTogglePresentation, spaceMode, onToggleSpace, summaryText, reportText, voiceContext, onToast, commandPalette }) {
   const periodYear = engagement.entity.period?.match(/\d{4}/)?.[0] || "2025";
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const actionsRef = useRef(null);
@@ -413,7 +415,7 @@ function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleT
 
       <div className="header-actions" ref={actionsRef}>
         {commandPalette}
-        <VoiceConsole onView={onView} onToggleSpace={onToggleSpace} spaceLocked summaryText={summaryText} reportText={reportText} onToast={onToast} />
+        <VoiceConsole onView={onView} onToggleSpace={onToggleSpace} spaceLocked summaryText={summaryText} reportText={reportText} voiceContext={voiceContext} onToast={onToast} />
         <button
           className={`icon-button header-more-button ${mobileActionsOpen ? "is-active" : ""}`}
           type="button"
@@ -463,7 +465,7 @@ function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleT
 }
 
 function Sidebar({ activeView, onView, completion }) {
-  const primaryIds = ["overview", "data-intake", "council", "rounds", "reviewer-workspace", "reports"];
+  const primaryIds = ["overview", "data-intake", "document-lab", "council", "rounds", "reviewer-workspace", "reports"];
   const primaryItems = navItems.filter((item) => primaryIds.includes(item.id));
   const toolItems = navItems.filter((item) => !primaryIds.includes(item.id));
   const activeInTools = toolItems.some((item) => item.id === activeView);
@@ -2154,6 +2156,7 @@ export function App() {
 
   let content;
   if (activeView === "data-intake") content = <DataIntakeWorkspace accounts={accounts} dataProfile={dataProfile} formatCurrency={formatCurrency} formatNumber={formatNumber} onCommit={commitAccounts} onStageSession={stageSessionSnapshot} sessionRestorePreview={pendingSessionRestore ? { ...pendingSessionRestore.restored.preview, fileName: pendingSessionRestore.fileName } : null} onConfirmSession={confirmSessionSnapshot} onCancelSession={cancelSessionSnapshot} onReset={reloadDemo} onToast={setToast} />;
+  else if (activeView === "document-lab") content = <Suspense fallback={<section className="panel document-workbench"><span className="eyebrow">تشغيل المستندات</span><h2>جارٍ تجهيز مختبر المستندات…</h2></section>}><DocumentWorkbench engagement={engagement} setEngagement={setEngagement} metrics={metrics} reportState={reportState} onView={changeView} onToast={setToast} /></Suspense>;
   else if (activeView === "trial-balance") content = <TrialBalance accounts={accounts} metrics={metrics} mappingState={engagement.standardMappings} onToast={setToast} onOpenStandard={(standardId, accountId) => openStandard(standardId, accountId, "trial-balance")} />;
   else if (activeView === "traceability") content = <Suspense fallback={<section className="panel page-intro" aria-busy="true"><span className="eyebrow">Traceability</span><h2>جارٍ تجهيز رسم الإسناد…</h2></section>}><TraceabilityWorkspace accounts={accounts} engagement={engagement} dataProfile={dataProfile} /></Suspense>;
   else if (activeView === "standards") content = <StandardsCenter accounts={accounts} engagement={engagement} setEngagement={setEngagement} metrics={metrics} onToast={setToast} formatNumber={formatNumber} formatCurrency={formatCurrency} requestedStandardId={requestedStandard.id} requestedAccountId={requestedStandard.accountId} requestedSource={requestedStandard.source} />;
@@ -2181,7 +2184,7 @@ export function App() {
   return (
     <div data-spatial-motion={spatial.motion ? "on" : "off"} className={`app-shell spatial-enabled space-mode ${appearance.presentationMode ? "presentation-mode" : ""}`} data-active-view={activeView} data-space-mode="on" dir="rtl">
       <a className="skip-link" href="#main-content">تخطي إلى المحتوى</a>
-      <Header engagement={engagement} onView={changeView} onReloadDemo={reloadDemo} onOpenGuide={() => setPathGuideOpen(true)} theme={appearance.theme} onCycleTheme={cycleTheme} presentationMode={appearance.presentationMode} onTogglePresentation={togglePresentationMode} spaceMode={appearance.spaceMode} onToggleSpace={toggleSpaceMode} summaryText={voiceSummary} reportText={voiceReport} onToast={setToast} commandPalette={<CommandPalette accounts={accounts} rounds={engagement.rounds} evidence={engagement.evidence} mappingState={engagement.standardMappings} onView={changeView} onOpenStandard={openStandard} onOpenRound={openRound} />} />
+      <Header engagement={engagement} onView={changeView} onReloadDemo={reloadDemo} onOpenGuide={() => setPathGuideOpen(true)} theme={appearance.theme} onCycleTheme={cycleTheme} presentationMode={appearance.presentationMode} onTogglePresentation={togglePresentationMode} spaceMode={appearance.spaceMode} onToggleSpace={toggleSpaceMode} summaryText={voiceSummary} reportText={voiceReport} voiceContext={{ accountCount: metrics.accountCount, balanced: metrics.isBalanced, openFindings: reportState.openFindings, pendingEvidence: reportState.pendingEvidence, completedRounds: engagement.rounds.filter(round => round.status === "complete").length }} onToast={setToast} commandPalette={<CommandPalette accounts={accounts} rounds={engagement.rounds} evidence={engagement.evidence} mappingState={engagement.standardMappings} onView={changeView} onOpenStandard={openStandard} onOpenRound={openRound} />} />
       <div className="workspace-layout">
         <Sidebar activeView={activeView} onView={changeView} completion={completion} />
         <main id="main-content" className="main-content" ref={mainRef} tabIndex="-1" data-kosif-ready="true">

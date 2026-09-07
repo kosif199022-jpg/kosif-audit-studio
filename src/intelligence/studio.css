@@ -5,7 +5,7 @@
 .ki-studio .ki-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
 .ki-studio .ki-card{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:20px;margin-block:12px;min-width:0}
 .ki-studio .ki-chat{padding:20px}.ki-studio .ki-messages{max-height:60vh;overflow:auto;margin-block:18px}
-.ki-studio .ki-preserve{white-space:pre-wrap}.ki-studio .ki-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.ki-studio .ki-preserve{white-space:pre-wrap}.ki-studio .ki-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.ki-studio .spin{animation:ki-spin 1s linear infinite}@keyframes ki-spin{to{transform:rotate(360deg)}}
 .ki-studio label{display:grid;gap:7px;margin-block:10px;font-size:13px}
 .ki-studio input,.ki-studio textarea,.ki-studio select{font:inherit;color:var(--ink);background:var(--surface-muted);border:1px solid var(--line-strong);border-radius:10px;padding:11px;min-width:0;width:100%;box-sizing:border-box}
 .ki-studio textarea{min-height:85px;resize:vertical}.ki-studio .ki-memo{min-height:420px}

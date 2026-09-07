@@ -16,9 +16,12 @@ const wrapper = `\nexport default { async fetch(request, env, ctx) {
  headers.delete('oai-authenticated-user-email');
  return sitesWorker.fetch(new Request(request, { headers }), env, ctx);
 } };\n`;
-writeFileSync(path.join(output, '_worker.js'), source.replace('export default {', 'const sitesWorker = {') + '\n' + gateway + wrapper);
+writeFileSync(path.join(output, '_worker.js'), source.replace("import { handleAi } from './ai-gateway.js';", '').replace('export default {', 'const sitesWorker = {') + '\n' + gateway + wrapper);
 writeFileSync(path.join(output, '_routes.json'), JSON.stringify({version:1,include:['/*'],exclude:[]}));
-const assets = ['/', '/index.html', '/manifest.webmanifest', ...['assets','fonts'].flatMap(dir => readdirSync(path.join(output,dir)).map(file => `/${dir}/${file}`))];
+// Precache the entry only. PDF, XLSX, DOCX and their workers load on demand.
+const entryHtml = readFileSync(path.join(output,'index.html'),'utf8');
+const entryAssets = [...entryHtml.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)].map(match => match[1]);
+const assets = ['/', '/index.html', '/manifest.webmanifest', ...entryAssets, ...readdirSync(path.join(output,'fonts')).map(file => `/fonts/${file}`)];
 const revision = createHash('sha256').update(assets.join('|') + readFileSync(path.join(output,'index.html'),'utf8')).digest('hex').slice(0,16);
 writeFileSync(path.join(output, 'sw.js'), `
 const CACHE = 'kosif-primary-${revision}';

@@ -1,3 +1,5 @@
+import { handleAi } from './ai-gateway.js';
+
 const providerDefinitions = [
   { id: "kosif-local", name: "KOSIF المحلي", execution: "browser", providerType: "deterministic", model: "KOSIF-COUNCIL-v4" },
   { id: "gemini", name: "Gemini", execution: "server", providerType: "llm", keyName: "GEMINI_API_KEY", modelName: "GEMINI_MODEL" },
@@ -110,7 +112,7 @@ function secureStaticResponse(response) {
   headers.set("x-content-type-options", "nosniff");
   headers.set("referrer-policy", "strict-origin-when-cross-origin");
   headers.set("permissions-policy", "camera=(), geolocation=(), microphone=(self)");
-  headers.set("content-security-policy", "default-src 'self'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
+  headers.set("content-security-policy", "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -613,6 +615,7 @@ async function handleApi(request, env, url) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/ai/')) return handleAi(request, env);
     if (url.pathname.startsWith("/api/")) return handleApi(request, env, url);
 
     const response = await env.ASSETS.fetch(request);

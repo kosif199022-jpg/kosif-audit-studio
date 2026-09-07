@@ -644,6 +644,7 @@ export const navItems = [
   { id: "benchmark-lab", label: "مختبر التقارير العالمية" },
   { id: "intelligence", label: "الإيجنت وخطة العمل" },
   { id: "data-intake", label: "استيراد وتحضير البيانات" },
+  { id: "document-lab", label: "مختبر مستندات المجلس" },
   { id: "trial-balance", label: "ميزان المراجعة" },
   { id: "traceability", label: "رسم الإسناد" },
   { id: "standards", label: "مركز المعايير" },

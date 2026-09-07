@@ -190,5 +190,6 @@ test("emits the files required by Sites packaging", async () => {
     "0000_execution_contract_v1_1.sql",
     "0001_execution_guards.sql",
     "0002_cloud_foundation_v1.sql",
+    "0003_ai_byok_sessions.sql",
   ]);
 });
