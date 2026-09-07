@@ -1,3 +1,4 @@
+import { parseMajorToMinor } from "./minor-units.js";
 const round = (value, digits = 2) => Number(Number(value || 0).toFixed(digits));
 
 function sumCategoryMinor(accounts, keys) {
@@ -22,7 +23,7 @@ function naturalBalanceMinor(account) {
   }
   const amount = canonicalMinor(account?.amountMinor);
   if (amount !== null) return amount;
-  return BigInt(Math.round(Number(account?.amount || 0) * 100));
+  return parseMajorToMinor(account?.amount || 0);
 }
 
 function accountExposureMinor(account) {

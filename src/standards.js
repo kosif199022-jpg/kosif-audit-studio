@@ -1,3 +1,4 @@
+import { resolveMinor } from "./minor-units.js";
 export const STANDARD_SOURCE = {
   title: "مكتبة المعايير المرفقة",
   accountingEdition: "المعايير الدولية للتقرير المالي — النسخة العربية المحدثة 2025",
@@ -782,13 +783,7 @@ export function getAccountStandardLinks(account, mappingState = createStandardMa
 }
 
 export function buildStandardsCoverage(accounts, mappingState = createStandardMappings()) {
-  const minor = (value, fallback) => {
-    try {
-      return BigInt(value ?? Math.round(Number(fallback || 0) * 100));
-    } catch {
-      return 0n;
-    }
-  };
+  const minor = resolveMinor;
   const coverage = new Map(standardCatalog.map((standard) => [standard.id, {
     ...standard,
     accountCount: 0,

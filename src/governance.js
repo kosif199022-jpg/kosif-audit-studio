@@ -1,3 +1,4 @@
+import { parseMajorToMinor } from "./minor-units.js";
 import { buildAnalyticalReview } from "./analytics.js";
 import { resolveAccountMapping } from "./standards.js";
 
@@ -94,7 +95,7 @@ export function sha256HexSync(value) {
 
 function accountMinor(account) {
   if (typeof account?.amountMinor === "string" && /^\d+$/.test(account.amountMinor)) return BigInt(account.amountMinor);
-  return BigInt(Math.round(Number(account?.amount || 0) * 100));
+  return parseMajorToMinor(account?.amount || 0);
 }
 
 function compareMinorDescending(first, second) {
@@ -452,3 +453,6 @@ export function buildReconciliationCases(entries) {
     };
   });
 }
+
+// ISA 530 MUS/PPS planning and ISA 450 evaluation (separate from scope selection).
+export { planMonetarySample, evaluateMonetarySample, samplingToMisstatementSchedule } from "./sampling.js";

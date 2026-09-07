@@ -264,7 +264,7 @@ export function AuditCouncil({ accounts, engagement, setEngagement, metrics, for
 
         <section className="panel gov-round-history">
           <div className="gov-section-head"><div><span className="eyebrow">Round snapshots</span><h3>سجل جولات المجلس</h3><p>كل جولة تحفظ إصدار المحرك، أساس التحليل، بصمة المدخل والمصدر المنفذ.</p></div><Network size={25} /></div>
-          {(engagement.council?.rounds || []).length ? <div className="gov-round-list">{engagement.council.rounds.slice(0, 6).map((round) => <article key={round.id}><span><strong>{round.id}</strong><small>{localDateTime(round.generatedAt)}</small></span><div><b>{round.consensus.recommendation}</b><small>{formatNumber(round.population)} حسابًا · عينة {formatNumber(round.sampleSize)} · {round.analysisBasis || "أساس قديم"}</small>{round.inputDigest ? <code dir="ltr">{round.inputDigest.slice(0, 16)}…</code> : null}</div><CheckCircle2 size={19} /></article>)}</div> : <div className="gov-empty"><BrainCircuit size={30} /><strong>لم تُشغّل جولة بعد</strong><p>ابدأ جولة لحفظ لقطة يمكن للمراجع البشري مناقشتها واعتماد خطتها.</p></div>}
+          {(engagement.council?.rounds || []).length ? <div className="gov-round-list">{engagement.council.rounds.slice(0, 6).map((round) => <article key={round.id}><span><strong>{round.id}</strong><small>{localDateTime(round.generatedAt)}</small></span><div><b>{round.consensus.recommendation}</b><small>{formatNumber(round.population)} حسابًا · حسابات النطاق {formatNumber(round.sampleSize)} · {round.analysisBasis || "أساس قديم"}</small>{round.inputDigest ? <code dir="ltr">{round.inputDigest.slice(0, 16)}…</code> : null}</div><CheckCircle2 size={19} /></article>)}</div> : <div className="gov-empty"><BrainCircuit size={30} /><strong>لم تُشغّل جولة بعد</strong><p>ابدأ جولة لحفظ لقطة يمكن للمراجع البشري مناقشتها واعتماد خطتها.</p></div>}
         </section>
       </div>
 
@@ -274,7 +274,7 @@ export function AuditCouncil({ accounts, engagement, setEngagement, metrics, for
       </section>
 
       <section className="panel gov-sample-panel">
-        <div className="gov-section-head"><div><span className="eyebrow">ISA 530 · Reproducible</span><h3>عينة موجهة بالمخاطر</h3><p>60% اختيار موجّه بالمخاطر والقيمة، والباقي اختيار منهجي قابل لإعادة الإنتاج.</p></div><button type="button" className="button button-outline" onClick={exportSample}><Download size={17} /> تصدير العينة CSV</button></div>
+        <div className="gov-section-head"><div><span className="eyebrow">تحديد نطاق الحسابات · ISA 315 / ISA 330</span><h3>نطاق فحص موجّه بالمخاطر</h3><p>اختيار حكمي لحسابات الميزان حسب المخاطر والقيمة؛ لا يُسقط على المجتمع. معاينة الحركات داخل الحساب تُخطط بصورة مستقلة أدناه.</p></div><button type="button" className="button button-outline" onClick={exportSample}><Download size={17} /> تصدير النطاق CSV</button></div>
         <div className="table-scroll" tabIndex="0"><table><thead><tr><th>#</th><th>الحساب</th><th>المجال</th><th>المخاطر</th><th className="numeric">القيمة</th><th>أساس الاختيار</th></tr></thead><tbody>{sample.slice(0, 16).map((item) => <tr key={item.id}><td>{item.order}</td><td><strong>{item.name}</strong><small className="gov-table-code"><bdi>{item.code}</bdi></small></td><td>{item.area}</td><td><span className={`risk-badge risk-${item.risk}`}>{riskLabels[item.risk]}</span></td><td className="numeric">{formatCurrency(item.amount)}</td><td>{item.basis}</td></tr>)}</tbody></table></div>
       </section>
     </div>
