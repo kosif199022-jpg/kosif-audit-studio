@@ -465,7 +465,7 @@ function Header({ engagement, onView, onReloadDemo, onOpenGuide, theme, onCycleT
 }
 
 function Sidebar({ activeView, onView, completion }) {
-  const primaryIds = ["overview", "data-intake", "document-lab", "council", "rounds", "reviewer-workspace", "reports"];
+  const primaryIds = ["overview", "data-intake", "council", "reports"];
   const primaryItems = navItems.filter((item) => primaryIds.includes(item.id));
   const toolItems = navItems.filter((item) => !primaryIds.includes(item.id));
   const activeInTools = toolItems.some((item) => item.id === activeView);
@@ -490,7 +490,7 @@ function Sidebar({ activeView, onView, completion }) {
       </div>
 
       <nav className="rail-nav">
-        <small className="rail-group-label">المسار الرئيسي</small>
+        <small className="rail-group-label">مسار العمل</small>
         {primaryItems.map(renderItem)}
         <details className="rail-toolbox" open={activeInTools || undefined}>
           <summary><span><Sparkles size={17} /> الأدوات والتحليلات</span><ChevronLeft size={15} /></summary>
@@ -595,30 +595,46 @@ function Overview({ metrics, engagement, stages, dataProfile, reportState, onVie
 
   return (
     <div className="view-stack">
-      <section className="hero" aria-labelledby="hero-title">
+      <section className="hero hero-reset" aria-labelledby="hero-title">
         <div className="hero-content">
-          <span className="hero-kicker">KOSIF · {heroDatasetLabel}</span>
+          <span className="hero-kicker">KOSIF · مركز المراجعة</span>
           <h1 id="hero-title">
-            مراجعة أوضح.
-            <span> قرار مهني أقوى.</span>
+            ابدأ مراجعتك
+            <span> من مكان واحد.</span>
           </h1>
-          <p>حوّل ملف الارتباط إلى مسار قابل للتتبع: أرقام حتمية، أدلة منظمة، وتقارير محكومة مع إبقاء الاعتماد النهائي بيد المراجع البشري.</p>
+          <p>ارفع المستندات، اختر الشركة، شغّل مجلس المراجعين، ثم استلم تقريرًا مهنيًا موثقًا. كل خطوة واضحة، وكل نتيجة مرتبطة بدليل ومعيار.</p>
           <div className="hero-guardrails" aria-label="ضمانات المنصة">
             <span><Check size={15} aria-hidden="true" /> أرقام حتمية</span>
             <span><Check size={15} aria-hidden="true" /> أدلة قابلة للتتبع</span>
             <span><Check size={15} aria-hidden="true" /> {isCompleteDemo ? "نتائج كل المسارات مكتملة" : "حالة كل مسار ظاهرة بوضوح"}</span>
           </div>
           <div className="hero-actions">
-            <button className="button button-gold" type="button" onClick={() => onView("rounds")}>
-              {completedRounds === engagement.rounds.length ? `استعرض ${completedRounds} جولة مكتملة` : `استعرض الجولات (${completedRounds}/${engagement.rounds.length})`}
-              <ArrowLeft size={18} aria-hidden="true" />
+            <button className="button button-gold" type="button" onClick={() => onView("data-intake")}>
+              ابدأ ملف مراجعة جديد <ArrowLeft size={18} aria-hidden="true" />
             </button>
             <button className="button button-glass" type="button" onClick={() => onView("reports")}>
-              افتح التقرير المحكوم
+              شاهد نموذج التقرير
             </button>
           </div>
         </div>
-        <span className="hero-edition">KOSIF REVIEW · INDEPENDENT EDITION</span>
+        <div className="hero-status"><span className="status-dot" /> جاهز للعمل · {heroDatasetLabel}</div>
+      </section>
+
+      <section className="start-panel" aria-labelledby="start-title">
+        <div className="start-panel-heading">
+          <div><span className="eyebrow">أربع خطوات فقط</span><h2 id="start-title">كيف تعمل على الملف؟</h2><p>لا تحتاج إلى معرفة أين توجد الأدوات. اتبع المسار بالترتيب، وسيقودك التطبيق تلقائيًا.</p></div>
+          <span className="start-progress"><b>{completedRounds}</b><small>جولات مكتملة</small></span>
+        </div>
+        <div className="start-steps">
+          {[
+            { id: "data-intake", n: "01", icon: FileUp, title: "أضف المستندات", detail: "ميزان، دفتر أستاذ، فواتير أو PDF" },
+            { id: "council", n: "02", icon: BrainCircuit, title: "جهّز المجلس", detail: "اختر الأدوار ومزوّد الذكاء الاصطناعي" },
+            { id: "rounds", n: "03", icon: RotateCcw, title: "شغّل المراجعة", detail: "جولات وأسئلة وأدلة إضافية" },
+            { id: "reports", n: "04", icon: FileText, title: "استلم التقرير", detail: "نتيجة، معايير، مصادر وتصدير" },
+          ].map(({ id, n, icon: Icon, title, detail }) => (
+            <button className="start-step" key={id} type="button" onClick={() => onView(id)}><span className="start-step-number">{n}</span><span className="start-step-icon"><Icon size={19} /></span><span><b>{title}</b><small>{detail}</small></span><ArrowLeft size={17} aria-hidden="true" /></button>
+          ))}
+        </div>
       </section>
 
       <section className="panel" aria-labelledby="engagement-title">
