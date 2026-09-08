@@ -1,0 +1,29 @@
+/* KOSIF Audit Cinema Theme */
+
+:root {
+  --audit-bg: #050914;
+  --audit-panel: rgba(15, 23, 42, .78);
+  --audit-glass: blur(18px);
+}
+
+.audit-cinema-panel {
+  background: var(--audit-panel);
+  backdrop-filter: var(--audit-glass);
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.12);
+  overflow: hidden;
+}
+
+.audit-galaxy-node {
+  transform-style: preserve-3d;
+  transition: transform .35s ease;
+}
+
+.audit-galaxy-node:hover {
+  transform: translateZ(40px) scale(1.08);
+}
+
+.ai-council-room {
+  display: grid;
+  gap: 20px;
+}
