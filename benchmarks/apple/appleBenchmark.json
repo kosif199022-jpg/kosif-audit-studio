@@ -1,0 +1,28 @@
+{
+  "benchmark": "Apple Audit Model",
+  "framework": "US GAAP",
+  "areas": [
+    {
+      "area": "Revenue Recognition",
+      "risk": "High",
+      "standards": ["ASC 606", "IFRS 15"],
+      "procedures": ["Contract testing", "Cut-off testing", "Analytical review"]
+    },
+    {
+      "area": "Internal Controls",
+      "risk": "High",
+      "procedures": ["Control walkthrough", "Operating effectiveness testing"]
+    },
+    {
+      "area": "Disclosure Quality",
+      "risk": "Medium",
+      "procedures": ["Notes review", "Accounting policy comparison"]
+    }
+  ],
+  "modules": [
+    "Risk Engine",
+    "Evidence Explorer",
+    "AI Council Review",
+    "Opinion Engine"
+  ]
+}
