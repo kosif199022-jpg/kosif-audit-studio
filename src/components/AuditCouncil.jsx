@@ -15,6 +15,8 @@ import {
   Scale,
   ShieldCheck,
   UserCheck,
+  MessageSquareText,
+  Send,
 } from "lucide-react";
 import { buildCouncilSnapshot, buildEvidenceLineage, buildRiskSample } from "../governance.js";
 import { buildAdjustmentBridge } from "../reporting.js";
@@ -131,6 +133,8 @@ export function AuditCouncil({ accounts, engagement, setEngagement, metrics, for
   const [providerRegistry, setProviderRegistry] = useState(() => createDefaultProviderRegistry());
   const [providerBusy, setProviderBusy] = useState(false);
   const [selectedSeatIds, setSelectedSeatIds] = useState(() => COUNCIL_SEATS.map((seat) => seat.id));
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState(() => [{ id: "welcome", role: "council", text: "أنا منسق مجلس KOSIF. اسأل عن المخاطر، الأدلة المطلوبة، أو سبب توصية أي عضو." }]);
   const councilRounds = engagement.council?.rounds || [];
   const latestCouncilRound = councilRounds[0] || null;
   const matrix = useMemo(
@@ -152,6 +156,25 @@ export function AuditCouncil({ accounts, engagement, setEngagement, metrics, for
 
   const notify = (message) => {
     if (typeof onToast === "function") onToast(message);
+  };
+
+  const sendCouncilMessage = (event) => {
+    event?.preventDefault();
+    const question = chatInput.trim();
+    if (!question) return;
+    const normalized = question.toLowerCase();
+    let answer = `استنادًا إلى اللقطة الحالية: ${snapshot.consensus.recommendation}.`;
+    if (normalized.includes("دليل") || normalized.includes("مستند")) {
+      answer = evidencePlan.length
+        ? `يقترح المجلس ${formatNumber(evidencePlan.length)} طلبًا إضافيًا مرتبطًا بالجولة ${latestCouncilRound?.id || "الحالية"}. افتح سجل PBC لمراجعة المالك والاستحقاق قبل الإرسال.`
+        : "لا توجد طلبات إضافية مشتقة من الجولة الحالية. تأكد من تشغيل جولة طعن عند وجود تعارض أو نقص في الإثبات.";
+    } else if (normalized.includes("خطر") || normalized.includes("مخاطر")) {
+      answer = `الإشارات المرتفعة المسجلة: ${formatNumber(snapshot.consensus.high)}، والمتوسطة: ${formatNumber(snapshot.consensus.medium)}. يظل الحكم استشاريًا ويحتاج إلى دليل وإجراء موثق.`;
+    } else if (normalized.includes("تقرير") || normalized.includes("رأي")) {
+      answer = "المجلس لا يختار رأي التقرير. دوره تقديم اعتراضات وخطة أدلة؛ قرار ISA 705 والاعتماد النهائي يبقيان لدى المراجع البشري في مساحة التقرير.";
+    }
+    setChatMessages((current) => [...current, { id: `u-${Date.now()}`, role: "user", text: question }, { id: `a-${Date.now()}-a`, role: "council", text: answer }]);
+    setChatInput("");
   };
 
   const runRound = (scope = "selected", roundType = "blind") => {
@@ -407,6 +430,12 @@ export function AuditCouncil({ accounts, engagement, setEngagement, metrics, for
           {councilRounds.length ? <div className="gov-round-list">{councilRounds.slice(0, 8).map((round) => <article key={round.id}><span><strong>{round.id}</strong><small>{localDateTime(round.generatedAt)}</small></span><div><b>{round.roundType === "challenge" ? "جولة طعن · " : "جولة عمياء · "}{round.consensus.recommendation}</b><small>{formatNumber(round.population)} حسابًا · حسابات النطاق {formatNumber(round.sampleSize)} · {round.coverageMode || "تغطية قديمة"}</small>{round.inputDigest ? <code dir="ltr">{round.inputDigest.slice(0, 16)}…</code> : null}</div><CheckCircle2 size={19} /></article>)}</div> : <div className="gov-empty"><BrainCircuit size={30} /><strong>لم تُشغّل جولة بعد</strong><p>ابدأ جولة لحفظ لقطة يمكن للمراجع البشري مناقشتها واعتماد خطتها.</p></div>}
         </section>
       </div>
+
+      <section className="panel gov-chat-panel" aria-labelledby="gov-chat-title">
+        <div className="gov-section-head"><div><span className="eyebrow">Council dialogue · Live context</span><h3 id="gov-chat-title">محادثة مباشرة مع منسق المجلس</h3><p>اسأل بالعربية عن سبب التوصية أو الإجراء التالي؛ تُبنى الإجابة من لقطة الجلسة الحالية ولا تنشئ اعتمادًا تلقائيًا.</p></div><MessageSquareText size={25} /></div>
+        <div className="gov-chat-messages" aria-live="polite">{chatMessages.slice(-8).map((message) => <div key={message.id} className={`gov-chat-message ${message.role}`}><span>{message.role === "user" ? "أنت" : "منسق المجلس"}</span><p>{message.text}</p></div>)}</div>
+        <form className="gov-chat-form" onSubmit={sendCouncilMessage}><input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder="مثال: ما المستند المطلوب لإغلاق الإشارة المرتفعة؟" aria-label="رسالة إلى منسق المجلس" /><button type="submit" className="button button-gold"><Send size={17} /> إرسال</button></form>
+      </section>
 
       <section className="panel gov-lineage-panel">
         <div className="gov-section-head"><div><span className="eyebrow">Evidence lineage</span><h3>من الحساب إلى النتيجة</h3><p>تربط السلسلة الحساب بالمعيار والتأكيد والخطر والإجراء وطلب المستند والجولة والملاحظة.</p></div></div>
