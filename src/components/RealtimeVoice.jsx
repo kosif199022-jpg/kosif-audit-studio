@@ -4,7 +4,7 @@ import { aiRequest, createRealtimeClient } from '../realtime-client.js';
 
 export function RealtimeVoice({ onView, summary = {} }) {
   const [status, setStatus] = useState('idle');
-  const [message, setMessage] = useState('أضف مفتاح OpenAI ثم ابدأ محادثة صوتية.');
+  const [message, setMessage] = useState('الاتصال الصوتي الخادمي جاهز؛ وافق على استخدام الميكروفون ثم ابدأ.');
   const [ready, setReady] = useState(false);
   const [consent, setConsent] = useState(false);
   const [shareSummary, setShareSummary] = useState(false);
@@ -28,7 +28,7 @@ export function RealtimeVoice({ onView, summary = {} }) {
       const realtime = realtimeResult.status === 'fulfilled' ? realtimeResult.value : null;
       const configured = registry?.providers?.some((provider) => provider.id === 'openai' && provider.configured) || realtime?.serverConfigured === true;
       setReady(configured);
-      setMessage(configured ? 'اتصال الصوت الخادمي مُعد؛ ابدأ المحادثة لاختبار الميكروفون.' : 'أضف مفتاح OpenAI من اتصالات AI أولًا.');
+      setMessage(configured ? 'اتصال الصوت الخادمي مُعد؛ وافق على استخدام الميكروفون ثم ابدأ.' : 'الاتصال الصوتي الخادمي غير متاح مؤقتًا. حاول مرة أخرى لاحقًا.');
     }).catch((error) => {
       if (live) setMessage(error.message);
     });
@@ -100,7 +100,6 @@ export function RealtimeVoice({ onView, summary = {} }) {
       ) : null}
       {!active ? (
         <>
-          <button className="button button-outline" type="button" onClick={() => onView?.('ai-connections')}>إعداد مفتاح OpenAI</button>
           <div className="voice-model-fields">
             <label>نموذج الصوت<input value={model} maxLength={80} onChange={(event) => setModel(event.target.value)} dir="ltr" /></label>
             <label>الصوت<select value={voice} onChange={(event) => setVoice(event.target.value)}><option value="marin">Marin</option><option value="cedar">Cedar</option><option value="alloy">Alloy</option></select></label>
