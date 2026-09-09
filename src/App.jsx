@@ -637,6 +637,29 @@ function Overview({ metrics, engagement, stages, dataProfile, reportState, onVie
         </div>
       </section>
 
+      <section className="panel workflow-map-panel" aria-labelledby="workflow-map-title">
+        <SectionHeading id="workflow-map-title" eyebrow="خريطة الملف" title="من المستند إلى التقرير المحكوم" description="كل انتقال يترك أثرًا في الجولات وسجل الأدلة؛ يمكنك فتح أي مرحلة مباشرة." />
+        <div className="workflow-map" role="list" aria-label="خريطة دورة المراجعة">
+          {[
+            { id: "data-intake", n: "01", title: "المستند", detail: "استلام وفحص الملف", icon: FileUp },
+            { id: "rounds", n: "02", title: "الجولة", detail: "خطة وإجراءات وأسئلة", icon: RotateCcw },
+            { id: "council", n: "03", title: "مجلس AI", detail: "آراء متعددة قابلة للتتبع", icon: BrainCircuit },
+            { id: "evidence", n: "04", title: "طلبات المتابعة", detail: "أدلة واعتمادات", icon: FolderCheck },
+            { id: "reports", n: "05", title: "التقرير", detail: "رأي وتصدير محكوم", icon: FileText },
+          ].map(({ id, n, title, detail, icon: Icon }, index, nodes) => (
+            <div className="workflow-node-wrap" key={id}>
+              <button type="button" className="workflow-node" onClick={() => onView(id)} role="listitem">
+                <span className="workflow-node-index">{n}</span>
+                <span className="workflow-node-icon"><Icon size={20} aria-hidden="true" /></span>
+                <strong>{title}</strong>
+                <small>{detail}</small>
+              </button>
+              {index < nodes.length - 1 ? <span className="workflow-connector" aria-hidden="true"><ArrowLeft size={16} /></span> : null}
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="panel" aria-labelledby="engagement-title">
         <SectionHeading
           id="engagement-title"
@@ -1370,6 +1393,7 @@ function Evidence({ engagement, setEngagement, onToast }) {
 
 function Reports({ engagement, setEngagement, metrics, dataProfile, accounts, stages, onView, onToast, onOpenStandard }) {
   const [workbookBusy, setWorkbookBusy] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const adjustmentBridge = useMemo(
     () => buildAdjustmentBridge(accounts, engagement.adjustments),
     [accounts, engagement.adjustments],
@@ -1620,6 +1644,10 @@ function Reports({ engagement, setEngagement, metrics, dataProfile, accounts, st
     onToast(reportReady ? "فُتحت معاينة الطباعة للتقرير المكتمل؛ يمكنك حفظه PDF." : "فُتحت معاينة الطباعة؛ احفظ PDF كمسودة ما لم تكن كل البوابات مكتملة.");
   }
 
+  function openPreview() {
+    setPreviewOpen(true);
+  }
+
   return (
     <div className="view-stack">
       <section className={`report-hero ${reportReady ? "ready" : "locked"}`}>
@@ -1630,8 +1658,33 @@ function Reports({ engagement, setEngagement, metrics, dataProfile, accounts, st
           <h1>{reportReady ? "التقرير جاهز للإصدار" : "التقرير محمي ببوابات الإكمال"}</h1>
           <p>{reportReady ? "اكتملت الأدلة والتسويات وسُجل اعتماد المراجع البشري." : "أكمل العناصر المتبقية؛ لن تُحوّل المسودة إلى تقرير قابل للإصدار تلقائيًا."}</p>
         </div>
-        <div className="button-row"><button type="button" className="button button-outline" onClick={printReport}><Printer size={18} aria-hidden="true" /> PDF للجلسة الحالية</button></div>
+        <div className="button-row"><button type="button" className="button button-outline" onClick={openPreview}><FileCheck2 size={18} aria-hidden="true" /> معاينة التقرير</button><button type="button" className="button button-outline" onClick={printReport}><Printer size={18} aria-hidden="true" /> PDF للجلسة الحالية</button></div>
       </section>
+
+      {previewOpen ? (
+        <div className="report-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewOpen(false); }}>
+          <section className="report-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="report-preview-title">
+            <header className="report-preview-header">
+              <div><span className="eyebrow">معاينة قبل الطباعة</span><h2 id="report-preview-title">تقرير المراجعة · {engagement.entity.name}</h2><p>{reportReady ? "نسخة جاهزة للإصدار بعد اعتماد المراجع البشري." : "مسودة محكومة؛ ستظهر العلامة المائية عند الطباعة."}</p></div>
+              <button type="button" className="icon-button" aria-label="إغلاق المعاينة" onClick={() => setPreviewOpen(false)}><X size={20} /></button>
+            </header>
+            <div className="report-preview-paper">
+              {!reportReady ? <span className="report-preview-watermark">مسودة غير معتمدة</span> : null}
+              <div className="report-preview-brand"><span className="brand-mark"><ShieldCheck size={21} /></span><div><strong>KOSIF</strong><small>تقرير مراجعة محكوم</small></div><span className="report-preview-date">{engagement.entity.period}</span></div>
+              <div className="report-preview-opinion"><span>نوع الرأي المشتق</span><strong>{reportOpinion}</strong><small>{engagement.entity.framework} · {formatNumber(metrics.accountCount)} حساب · {formatCurrency(metrics.materiality)} أهمية نسبية</small></div>
+              <div className="report-preview-grid">
+                <article><span>البوابات</span><strong>{gates.filter((gate) => gate.pass).length}/{gates.length}</strong><small>{reportReady ? "مكتملة" : "تحتاج متابعة"}</small></article>
+                <article><span>الأدلة</span><strong>{engagement.evidence.filter((item) => item.status === "approved").length}</strong><small>أدلة معتمدة</small></article>
+                <article><span>الجولات</span><strong>{engagement.rounds.filter((round) => round.status === "complete").length}</strong><small>جولات مكتملة</small></article>
+                <article><span>النتائج المفتوحة</span><strong>{engagement.findings.filter((item) => item.status !== "closed").length}</strong><small>تتطلب قرارًا</small></article>
+              </div>
+              <div className="report-preview-sections"><span>يشمل التقرير</span><div><b>أساس الرأي</b><b>الرقابة الداخلية</b><b>الاستمرارية</b><b>المعلومات الأخرى</b><b>الحوكمة</b><b>جسر التسويات</b><b>تتبع الأدلة</b></div></div>
+              <p className="report-preview-note"><ShieldCheck size={16} /> جميع الأرقام مشتقة من جلسة المراجعة الحالية. الاعتماد النهائي والحكم المهني مسؤولية المراجع البشري.</p>
+            </div>
+            <footer className="report-preview-footer"><span>{reportReady ? "يمكنك الآن فتح معاينة الطباعة وحفظ PDF." : "يمكنك معاينة المسودة، ولن تُعامل كتقرير صادر."}</span><div className="button-row"><button type="button" className="button button-outline" onClick={() => setPreviewOpen(false)}>إغلاق</button><button type="button" className="button button-gold" onClick={() => { setPreviewOpen(false); printReport(); }}><Printer size={17} /> فتح الطباعة</button></div></footer>
+          </section>
+        </div>
+      ) : null}
 
       <section className="panel export-center" aria-labelledby="export-center-title">
         <SectionHeading id="export-center-title" eyebrow="PDF · XLSX · JSON" title="مركز حزم العمل" description="مخرجات حية تُبنى من الجلسة الحالية نفسها، سواء كانت بيانات العرض أو ميزانًا مستوردًا، مع بقاء الإصدار النهائي محكومًا بالبوابات والاعتماد البشري." />
@@ -1639,7 +1692,7 @@ function Reports({ engagement, setEngagement, metrics, dataProfile, accounts, st
           <article>
             <span className="export-icon"><FileText size={23} aria-hidden="true" /></span>
             <div><h3>PDF للجلسة الحالية</h3><p>يفتح تقرير الجلسة الحالية للطباعة أو الحفظ PDF؛ تظهر علامة «مسودة غير معتمدة» تلقائيًا عند نقص أي بوابة.</p></div>
-            <button type="button" className="button button-outline" onClick={printReport}><Printer size={17} aria-hidden="true" /> طباعة / حفظ PDF</button>
+            <div className="button-row"><button type="button" className="button button-outline" onClick={openPreview}><FileCheck2 size={17} aria-hidden="true" /> معاينة</button><button type="button" className="button button-outline" onClick={printReport}><Printer size={17} aria-hidden="true" /> طباعة / حفظ PDF</button></div>
           </article>
           <article>
             <span className="export-icon"><Scale size={23} aria-hidden="true" /></span>
