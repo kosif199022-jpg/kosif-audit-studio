@@ -186,6 +186,24 @@ export function AnalyticsWorkspace({
         </article>
       </section>
 
+      <section className="panel analytics-3d-panel" aria-labelledby="analytics-3d-title">
+        <div className="cap-section-head">
+          <div><span className="eyebrow">Spatial analytics · 3D</span><h3 id="analytics-3d-title">خريطة التعرض والمخاطر ثلاثية الأبعاد</h3><p>مقارنة بصرية تفاعلية مرتبطة مباشرة بتوزيع المجالات في الميزان؛ مرّر المؤشر فوق العمود لقراءة القيمة.</p></div>
+          <span className="analytics-3d-legend"><i className="legend-dot legend-high" /> تعرض مرتفع <i className="legend-dot legend-normal" /> تعرض تشغيلي</span>
+        </div>
+        <div className="analytics-3d-scene" role="img" aria-label="أعمدة ثلاثية الأبعاد للتعرض حسب المجال">
+          <div className="analytics-3d-gridline gridline-a" /><div className="analytics-3d-gridline gridline-b" /><div className="analytics-3d-gridline gridline-c" />
+          <div className="analytics-3d-bars">
+            {analysis.areas.slice(0, 8).map((area, index) => {
+              const height = Math.max(12, Math.round((area.exposure / maxAreaExposure) * 100));
+              const riskHeight = Math.max(4, Math.round((area.high / Math.max(1, area.accountCount)) * height));
+              return <div className="analytics-3d-bar-wrap" key={area.key} style={{ "--bar-height": `${height}%`, "--risk-height": `${riskHeight}%`, "--bar-delay": `${index * 55}ms` }} title={`${area.label}: ${safeCurrency(formatCurrency, area.exposure)}`}><div className="analytics-3d-bar"><span className="bar-risk" /><span className="bar-core" /></div><strong>{area.label}</strong><small dir="ltr">{safeCurrency(formatCurrency, area.exposure)}</small></div>;
+            })}
+          </div>
+          <div className="analytics-3d-axis"><span>منخفض</span><span>متوسط</span><span>مرتفع</span></div>
+        </div>
+      </section>
+
       <section className="panel" aria-labelledby="analytics-insights-title">
         <div className="cap-section-head">
           <div><span className="eyebrow">نقاط تستحق الفحص</span><h3 id="analytics-insights-title">قراءة المؤشرات</h3><p>يربط كل مؤشر بإطار محاسبي وإجراء مراجعة مناسب.</p></div>
