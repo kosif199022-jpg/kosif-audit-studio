@@ -12,6 +12,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { buildAnalyticalReview, buildRoundRiskTrend } from "../analytics.js";
+import { buildSalesIntelligence } from "../sales-intelligence.js";
 import { formatMinorUnits } from "../audit-core.js";
 import "../capabilities.css";
 
@@ -47,6 +48,7 @@ export function AnalyticsWorkspace({
   onToast,
 }) {
   const analysis = useMemo(() => buildAnalyticalReview(accounts), [accounts]);
+  const salesIntelligence = useMemo(() => buildSalesIntelligence(engagement.salesRows || [], analysis.areas), [analysis.areas, engagement.salesRows]);
   const roundRiskTrend = useMemo(
     () => buildRoundRiskTrend(engagement.rounds || [], engagement.findings || []),
     [engagement.findings, engagement.rounds],
@@ -202,6 +204,13 @@ export function AnalyticsWorkspace({
           </div>
           <div className="analytics-3d-axis"><span>منخفض</span><span>متوسط</span><span>مرتفع</span></div>
         </div>
+      </section>
+
+      <section className="panel sales-bridge-panel" aria-labelledby="sales-bridge-title">
+        <div className="cap-section-head"><div><span className="eyebrow">Operational intelligence bridge</span><h3 id="sales-bridge-title">جسر المبيعات إلى مخاطر المراجعة</h3><p>نمط مستوحى من لوحة التحليل المرفقة: قنوات، جودة سجل، متابعة وتوقع قصير المدى، مع إبقاء القرار المهني للمراجع.</p></div><span className="sales-quality-badge">جودة {salesIntelligence.quality}%</span></div>
+        <div className="sales-kpi-grid"><div><span>إجمالي المبيعات</span><strong dir="ltr">{safeCurrency(formatCurrency, salesIntelligence.totalSales)}</strong></div><div><span>الهامش الإجمالي</span><strong dir="ltr">{salesIntelligence.grossMarginPct.toFixed(1)}%</strong></div><div><span>توقع 30 يومًا</span><strong dir="ltr">{safeCurrency(formatCurrency, salesIntelligence.forecast30)}</strong></div><div><span>حالات المتابعة</span><strong>{safeNumber(formatNumber, salesIntelligence.followup)}</strong></div></div>
+        <div className="sales-bridge-grid"><div className="sales-channel-list"><h4>مزيج القنوات</h4>{salesIntelligence.byChannel.slice(0, 5).map((item) => <div className="sales-channel-row" key={item.label}><span>{item.label}</span><b><i style={{ width: `${salesIntelligence.totalSales ? (item.sales / salesIntelligence.totalSales) * 100 : 0}%` }} /></b><strong dir="ltr">{safeCurrency(formatCurrency, item.sales)}</strong></div>)}</div><div className="sales-insight-list"><h4>إشارات قابلة للإجراء</h4>{salesIntelligence.insights.map((item) => <article className={`sales-insight tone-${item.tone}`} key={item.title}><strong>{item.title}</strong><p>{item.detail}</p></article>)}</div></div>
+        {salesIntelligence.proxy && <small className="sales-proxy-note">لا توجد صفوف مبيعات مستقلة في الارتباط الحالي؛ عُرضت قراءة proxy من مجالات الميزان للتوجيه فقط.</small>}
       </section>
 
       <section className="panel" aria-labelledby="analytics-insights-title">
