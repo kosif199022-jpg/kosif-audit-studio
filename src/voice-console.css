@@ -24,6 +24,8 @@
 .voice-console-panel header span { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; }
 .voice-console-panel header small, .voice-console-disclosure { color: var(--muted); font-size: .62rem; }
 .voice-console-status { min-height: 40px; margin: 12px 0; color: var(--ink-2); font-size: .76rem; line-height: 1.7; }
+.voice-device-help { display: grid; gap: 7px; padding: 10px; color: var(--muted); background: color-mix(in srgb, var(--accent-exception) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent-exception) 30%, var(--line)); border-radius: 11px; font-size: .66rem; line-height: 1.65; }
+.voice-device-help .button { justify-self: start; }
 .voice-console-actions { align-items: stretch; flex-wrap: wrap; }
 .voice-console-actions .button { flex: 1 1 130px; justify-content: center; }
 .voice-console-transcript { align-items: flex-start; flex-direction: column; margin-top: 13px; padding: 11px; background: color-mix(in srgb, var(--view-accent-soft) 65%, var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
