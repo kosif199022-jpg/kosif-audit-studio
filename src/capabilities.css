@@ -438,3 +438,24 @@
 @media (prefers-reduced-motion: reduce) {
   .cap-standard-row { transition: none; }
 }
+\n+.analytics-3d-panel { overflow: hidden; }
+.analytics-3d-legend { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: .72rem; white-space: nowrap; }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.legend-high { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent); }
+.legend-normal { background: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 18%, transparent); margin-inline-start: 7px; }
+.analytics-3d-scene { position: relative; min-height: 340px; margin-top: 16px; padding: 28px 24px 22px; overflow: hidden; perspective: 900px; isolation: isolate; background: radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--teal-soft) 70%, transparent), transparent 55%), linear-gradient(160deg, color-mix(in srgb, var(--surface-muted) 85%, #0a1329), var(--surface)); border: 1px solid var(--line); border-radius: 20px; }
+.analytics-3d-scene::after { content: ""; position: absolute; inset: 55% -10% -45%; z-index: -1; transform: rotateX(65deg); transform-origin: top; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--teal) 22%, transparent) 0 1px, transparent 1px 58px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--teal) 18%, transparent) 0 1px, transparent 1px 46px); opacity: .7; }
+.analytics-3d-gridline { position: absolute; inset-inline: 24px; height: 1px; background: color-mix(in srgb, var(--line-strong) 55%, transparent); transform: rotateX(58deg); transform-origin: center; opacity: .6; }
+.gridline-a { inset-block-start: 42%; } .gridline-b { inset-block-start: 60%; } .gridline-c { inset-block-start: 78%; }
+.analytics-3d-bars { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(8, minmax(46px, 1fr)); align-items: end; gap: clamp(8px, 1.8vw, 22px); min-height: 276px; padding: 10px 10px 0; transform: rotateX(10deg) rotateY(-5deg); transform-style: preserve-3d; }
+.analytics-3d-bar-wrap { position: relative; height: 240px; display: flex; flex-direction: column; justify-content: end; align-items: center; gap: 7px; transform-style: preserve-3d; animation: analytics-rise 700ms cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--bar-delay); }
+.analytics-3d-bar { position: relative; width: min(54px, 100%); height: var(--bar-height); min-height: 26px; transform: skewY(-7deg); transform-origin: bottom; filter: drop-shadow(10px 12px 10px rgb(0 0 0 / 20%)); }
+.analytics-3d-bar::before { content: ""; position: absolute; inset: 0 9px 0 0; background: linear-gradient(180deg, color-mix(in srgb, var(--teal) 88%, white), var(--teal)); border-radius: 7px 7px 3px 3px; box-shadow: inset 0 1px rgb(255 255 255 / 35%); }
+.analytics-3d-bar::after { content: ""; position: absolute; inset: 0 0 auto 0; height: 11px; transform: skewX(-42deg); transform-origin: left; background: color-mix(in srgb, var(--teal) 75%, white); border-radius: 6px 5px 2px 2px; }
+.analytics-3d-bar .bar-risk { position: absolute; z-index: 2; inset: auto 9px 0 0; height: var(--risk-height); background: linear-gradient(180deg, var(--red), color-mix(in srgb, var(--red) 74%, #581a22)); border-radius: 0 0 3px 3px; }
+.analytics-3d-bar-wrap strong { max-width: 100%; overflow: hidden; color: var(--ink); font-size: .68rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-3d-bar-wrap small { max-width: 100%; overflow: hidden; color: var(--muted); font-size: .56rem; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-3d-axis { position: absolute; inset-inline-start: 10px; inset-block: 35px 76px; display: flex; flex-direction: column; justify-content: space-between; color: var(--muted); font-size: .58rem; }
+@keyframes analytics-rise { from { opacity: 0; transform: translateY(26px) scaleY(.8); } to { opacity: 1; transform: translateY(0) scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .analytics-3d-bar-wrap { animation: none; } }
+@media (max-width: 720px) { .analytics-3d-scene { padding-inline: 12px; overflow-x: auto; } .analytics-3d-bars { min-width: 660px; } .analytics-3d-legend { display: none; } }
