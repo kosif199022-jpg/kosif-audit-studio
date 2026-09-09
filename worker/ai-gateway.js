@@ -14,6 +14,8 @@ export const AI_ROLE_FOCUS = Object.freeze({
 const AI_PROVIDERS = ['openai','gemini','claude'];
 const AI_COOKIE = '__Host-kosif_ai_session';
 const AI_TTL = 86400;
+const REALTIME_DEFAULT_MODEL = 'gpt-realtime-2.1';
+const realtimeCounters = new Map();
 // Workers' native fetch needs its global receiver when passed as a callback.
 const aiFetch = (url, options) => globalThis.fetch(url, options);
 const D1_READY = new WeakMap();
@@ -43,6 +45,17 @@ function aiStore(env) {
 async function aiRead(token,env){if(!token)return null;const raw=await aiStore(env).get('session:'+token);if(!raw)return null;const e=JSON.parse(raw);const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:aiUnhex(e.iv)},await aiKey(env),aiUnhex(e.data));const record=JSON.parse(new TextDecoder().decode(bytes));return record.expiresAt>Date.now()?record:null;}
 async function aiReadJson(body,limit=32768){if(!body)return {};const reader=body.getReader();let total=0;const chunks=[];try{while(true){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>limit){await reader.cancel();throw new Error('too_large');}chunks.push(value);}const bytes=new Uint8Array(total);let pos=0;for(const chunk of chunks){bytes.set(chunk,pos);pos+=chunk.length;}return JSON.parse(new TextDecoder().decode(bytes));}finally{reader.releaseLock();}}
 function aiPublic(record){return {available:true,expiresAt:record?.expiresAt || null,providers:AI_PROVIDERS.map(id=>({id,configured:!!record?.providers?.[id],model:record?.providers?.[id]?.model || null})),roles:AI_ROLES};}
+function serverRealtimeConfig(env){
+ if(typeof env?.OPENAI_API_KEY!=='string' || env.OPENAI_API_KEY.length<16) return null;
+ return {id:'openai',key:env.OPENAI_API_KEY,model:typeof env.OPENAI_MODEL==='string'&&env.OPENAI_MODEL?env.OPENAI_MODEL:REALTIME_DEFAULT_MODEL};
+}
+function allowRealtimeRequest(request){
+ const key=request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'anonymous';
+ const now=Date.now(), current=realtimeCounters.get(key);
+ if(!current || now-current.startedAt>3600000){realtimeCounters.set(key,{startedAt:now,count:1});return true;}
+ if(current.count>=12)return false;
+ current.count+=1;return true;
+}
 
 export function sanitizeAiSummary(input={}) {
  input=input && typeof input==='object' && !Array.isArray(input)?input:{};
@@ -127,8 +140,8 @@ async function aiRealtime(config,input,fetcher,identity='anonymous') {
  const form=new FormData();
  // OpenAI's WebRTC endpoint expects typed multipart parts, otherwise some
  // proxies/browser runtimes label both fields as text/plain and reject them.
- form.set('sdp',new Blob([input.sdp],{type:'application/sdp'}));
- form.set('session',new Blob([JSON.stringify(session)],{type:'application/json'}));
+ form.set('sdp',input.sdp);
+ form.set('session',JSON.stringify(session));
  let response;
  try {
   response=await fetcher('https://api.openai.com/v1/realtime/calls',{method:'POST',headers:{authorization:'Bearer '+config.key,accept:'application/sdp','OpenAI-Safety-Identifier':await realtimeSafetyIdentifier(identity)},body:form,redirect:'error',signal:AbortSignal.timeout(30000)});
@@ -158,13 +171,24 @@ async function aiResearch(config,input,fetcher) {
 export async function handleAi(request,env,fetcher=aiFetch) {
  const url=new URL(request.url);
  if(!['/api/ai/config','/api/ai/run','/api/ai/realtime','/api/ai/research'].includes(url.pathname))return aiJson({error:'not_found'},404);
- if(!aiStore(env) || !env.AI_KEY_ENCRYPTION_SECRET)return aiJson({available:false,error:'ai_storage_unavailable'},503);
+ const serverVoice=serverRealtimeConfig(env);
+ // Realtime can run from a server secret without requiring a browser BYOK
+ // session. The key is read only in the Worker and never returned to clients.
+ if(url.pathname==='/api/ai/realtime' && request.method==='GET')return aiJson({available:!!serverVoice,serverConfigured:!!serverVoice,model:serverVoice?.model||null,voices:REALTIME_VOICES});
+ if(url.pathname==='/api/ai/config' && request.method==='GET' && (!aiStore(env) || !env.AI_KEY_ENCRYPTION_SECRET))return aiJson({available:!!serverVoice,serverConfigured:!!serverVoice,expiresAt:null,providers:AI_PROVIDERS.map(id=>({id,configured:id==='openai'&&!!serverVoice,model:id==='openai'?serverVoice?.model||null:null})),roles:AI_ROLES});
+ if(!aiStore(env) || !env.AI_KEY_ENCRYPTION_SECRET){
+  if(url.pathname!=='/api/ai/realtime')return aiJson({available:false,error:'ai_storage_unavailable'},503);
+ }
  if(request.method!=='GET' && (request.headers.get('origin')!==url.origin || request.headers.get('sec-fetch-site')==='cross-site'))return aiJson({error:'origin_rejected'},403);
  if(!['GET','PUT','DELETE','POST'].includes(request.method))return aiJson({error:'method_not_allowed'},405);
  const token=aiToken(request);
  try {
   const record=await aiRead(token,env);
-  if(url.pathname==='/api/ai/config' && request.method==='GET')return aiJson(aiPublic(record));
+  if(url.pathname==='/api/ai/config' && request.method==='GET'){
+   const view=aiPublic(record);
+   if(serverVoice && !view.providers.some(item=>item.id==='openai'&&item.configured))view.providers=view.providers.map(item=>item.id==='openai'?{...item,configured:true,model:serverVoice.model}:item);
+   return aiJson(view);
+  }
   if(url.pathname==='/api/ai/config' && request.method==='DELETE'){if(token)await aiStore(env).delete('session:'+token);return aiJson(aiPublic(null),200,{'set-cookie':aiCookie('',0)});}
   if(!request.headers.get('content-type')?.startsWith('application/json'))return aiJson({error:'json_required'},415);
   const input=await aiReadJson(request.body,65536);
@@ -187,10 +211,15 @@ export async function handleAi(request,env,fetcher=aiFetch) {
    return aiJson(result,result.ok?200:502);
   }
   if(['/api/ai/realtime','/api/ai/research'].includes(url.pathname) && request.method==='POST') {
-   if(!record)return aiJson({error:'session_required'},401);
    if(input.consent!==true)return aiJson({error:'consent_required'},400);
-   if(!record.providers.openai)return aiJson({error:'provider_unconfigured'},400);
-   return url.pathname.endsWith('/realtime')?await aiRealtime(record.providers.openai,input,fetcher,token || 'anonymous'):await aiResearch(record.providers.openai,input,fetcher);
+   if(url.pathname.endsWith('/realtime')){
+    if(!allowRealtimeRequest(request))return aiJson({error:'rate_limited'},429,{'retry-after':'3600'});
+    const config=record?.providers?.openai || serverVoice;
+    if(!config)return aiJson({error:'provider_unconfigured'},400);
+    return await aiRealtime(config,input,fetcher,token || request.headers.get('cf-connecting-ip') || 'anonymous');
+   }
+   if(!record?.providers?.openai)return aiJson({error:'provider_unconfigured'},400);
+   return await aiResearch(record.providers.openai,input,fetcher);
   }
   return aiJson({error:'method_not_allowed'},405);
  } catch(error) {return aiJson({error:error.message==='too_large'?'request_too_large':error instanceof SyntaxError?'invalid_json':'request_failed'},error.message==='too_large'?413:error instanceof SyntaxError?400:502);}
