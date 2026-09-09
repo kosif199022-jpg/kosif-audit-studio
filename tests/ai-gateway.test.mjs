@@ -52,7 +52,7 @@ test('realtime session uses a fixed safe voice contract and never returns the pr
  assert.equal(session.model,'gpt-realtime-2.1');assert.equal(session.audio.output.voice,'marin');assert.equal(session.tools[0].name,'open_workspace');assert.deepEqual(session.audio.input.transcription.language,'ar');assert.ok(!JSON.stringify(session).includes(testKey));
  const {env}=setup(),{cookie}=await configured(env);let sent;
  const response=await handleAi(new Request(origin+'/api/ai/realtime',{method:'POST',headers:{origin,'content-type':'application/json',cookie},body:JSON.stringify({sdp:'v=0\r\nm=audio 9 RTP/AVP 0',consent:true})}),env,async(url,options)=>{sent={url,options};return new Response('v=0\r\nm=audio 9 RTP/AVP 0');});
- assert.equal(response.status,200);assert.equal(sent.url,'https://api.openai.com/v1/realtime/calls');assert.equal(sent.options.body instanceof FormData,true);assert.ok(!JSON.stringify(session).includes(testKey));
+ assert.equal(response.status,200);assert.equal(sent.url,'https://api.openai.com/v1/realtime/calls');assert.equal(sent.options.body instanceof FormData,true);assert.equal(sent.options.body.get('sdp').type,'application/sdp');assert.equal(sent.options.body.get('session').type,'application/json');assert.equal(sent.options.headers.accept,'application/sdp');assert.match(sent.options.headers['OpenAI-Safety-Identifier'],/^[a-f0-9]{32}$/);assert.ok(!JSON.stringify(session).includes(testKey));
 });
 
 test('research keeps web search on allow-listed professional domains',async()=>{
