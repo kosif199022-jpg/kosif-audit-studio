@@ -42,10 +42,10 @@ function aiStore(env) {
   delete:async key=>{await ready;return env.DB.prepare('DELETE FROM ai_byok_sessions WHERE id = ?').bind(key).run();},
  };
 }
-async function aiRead(token,env){if(!token)return null;const raw=await aiStore(env).get('session:'+token);if(!raw)return null;const e=JSON.parse(raw);const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:aiUnhex(e.iv)},await aiKey(env),aiUnhex(e.data));const record=JSON.parse(new TextDecoder().decode(bytes));return record.expiresAt>Date.now()?record:null;}
+async function aiRead(token,env){if(!token)return null;const store=aiStore(env);if(!store)return null;const raw=await store.get('session:'+token);if(!raw)return null;const e=JSON.parse(raw);const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:aiUnhex(e.iv)},await aiKey(env),aiUnhex(e.data));const record=JSON.parse(new TextDecoder().decode(bytes));return record.expiresAt>Date.now()?record:null;}
 async function aiReadJson(body,limit=32768){if(!body)return {};const reader=body.getReader();let total=0;const chunks=[];try{while(true){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>limit){await reader.cancel();throw new Error('too_large');}chunks.push(value);}const bytes=new Uint8Array(total);let pos=0;for(const chunk of chunks){bytes.set(chunk,pos);pos+=chunk.length;}return JSON.parse(new TextDecoder().decode(bytes));}finally{reader.releaseLock();}}
 function aiPublic(record){return {available:true,expiresAt:record?.expiresAt || null,providers:AI_PROVIDERS.map(id=>({id,configured:!!record?.providers?.[id],model:record?.providers?.[id]?.model || null})),roles:AI_ROLES};}
-function serverRealtimeConfig(env){
+export function serverRealtimeConfig(env){
  if(typeof env?.OPENAI_API_KEY!=='string' || env.OPENAI_API_KEY.length<16) return null;
  return {id:'openai',key:env.OPENAI_API_KEY,model:typeof env.OPENAI_MODEL==='string'&&env.OPENAI_MODEL?env.OPENAI_MODEL:REALTIME_DEFAULT_MODEL};
 }
@@ -134,7 +134,7 @@ async function realtimeSafetyIdentifier(identity) {
  return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('').slice(0,32);
 }
 
-async function aiRealtime(config,input,fetcher,identity='anonymous') {
+export async function aiRealtime(config,input,fetcher,identity='anonymous') {
  if(typeof input.sdp!=='string'||input.sdp.length>32000||!input.sdp.startsWith('v=0')||!input.sdp.includes('m=audio'))return aiJson({error:'invalid_sdp'},400);
  const session=buildRealtimeSession(input);
  const form=new FormData();
