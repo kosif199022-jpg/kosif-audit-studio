@@ -274,6 +274,11 @@ export function createRealtimeClient({
       audio.setAttribute?.('playsinline', '');
       audio.setAttribute?.('aria-hidden', 'true');
       audio.style && (audio.style.display = 'none');
+      // Safari is more reliable when the autoplay media element is attached to
+      // the document before the remote track arrives.
+      if (typeof document !== 'undefined' && document.body && audio instanceof Element) {
+        document.body.appendChild(audio);
+      }
       peer.ontrack = (event) => {
         if (!audio) return;
         const remote = event.streams?.[0] || (
