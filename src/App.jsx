@@ -588,6 +588,17 @@ function Overview({ metrics, engagement, stages, dataProfile, reportState, onVie
   const openHigh = engagement.findings.filter((item) => item.severity === "high" && item.status !== "closed").length;
   const hasOpenItems = openEvidence > 0 || openHigh > 0 || metrics.unmapped > 0;
   const completedRounds = engagement.rounds.filter((item) => item.status === "complete").length;
+  const nextAction = reportState.pendingManualPbc > 0
+    ? { view: "reviewer-workspace", label: "إكمال طلبات المراجعة", detail: `${reportState.pendingManualPbc} طلبًا يحتاج قرارًا أو ملاحظة من المراجع.` }
+    : openEvidence > 0
+      ? { view: "evidence", label: "فحص الأدلة المفتوحة", detail: `${openEvidence} طلبات أدلة ما زالت مفتوحة في نطاق الارتباط.` }
+      : metrics.unmapped > 0
+        ? { view: "standards", label: "استكمال ربط الحسابات", detail: `${metrics.unmapped} حسابًا يحتاج ربطًا بمعيار قبل الاعتماد.` }
+        : engagement.rounds.some((item) => item.status === "active")
+          ? { view: "rounds", label: "متابعة الجولة النشطة", detail: "الجولة الحالية مفتوحة وتنتظر إجراءً أو دليلًا إضافيًا." }
+          : engagement.humanApproval
+            ? { view: "reports", label: "استعراض التقرير", detail: "بوابات الاعتماد مكتملة ويمكن مراجعة المخرجات قبل الطباعة." }
+            : { view: "council", label: "تشغيل مجلس المراجعين", detail: "ابدأ بالتحليل الاستشاري لتوليد أولويات الجولة التالية." };
   const isCompleteDemo = dataProfile?.source === "demo" && metrics.accountCount === 5_000;
   const heroDatasetLabel = isCompleteDemo
     ? `سيناريو العرض الشامل · ${formatNumber(metrics.accountCount)} حساب`
@@ -635,6 +646,12 @@ function Overview({ metrics, engagement, stages, dataProfile, reportState, onVie
             <button className="start-step" key={id} type="button" onClick={() => onView(id)}><span className="start-step-number">{n}</span><span className="start-step-icon"><Icon size={19} /></span><span><b>{title}</b><small>{detail}</small></span><ArrowLeft size={17} aria-hidden="true" /></button>
           ))}
         </div>
+      </section>
+
+      <section className="next-action-panel" aria-labelledby="next-action-title">
+        <div className="next-action-mark"><Sparkles size={20} aria-hidden="true" /></div>
+        <div className="next-action-copy"><span className="eyebrow">مساعد المسار</span><h2 id="next-action-title">الإجراء التالي المقترح</h2><p>{nextAction.detail}</p></div>
+        <button type="button" className="button button-gold" onClick={() => onView(nextAction.view)}>{nextAction.label}<ArrowLeft size={17} aria-hidden="true" /></button>
       </section>
 
       <section className="panel workflow-map-panel" aria-labelledby="workflow-map-title">
