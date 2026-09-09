@@ -22,11 +22,11 @@ export function RealtimeVoice({ onView, summary = {} }) {
 
   useEffect(() => {
     let live = true;
-    aiRequest('config').then((registry) => {
+    Promise.all([aiRequest('config'), aiRequest('realtime').catch(() => null)]).then(([registry, realtime]) => {
       if (!live) return;
-      const configured = registry.providers?.some((provider) => provider.id === 'openai' && provider.configured);
+      const configured = registry.providers?.some((provider) => provider.id === 'openai' && provider.configured) || realtime?.serverConfigured === true;
       setReady(configured);
-      setMessage(configured ? 'اتصال OpenAI مُعد؛ ابدأ المحادثة لاختبار الصوت.' : 'أضف مفتاح OpenAI من اتصالات AI أولًا.');
+      setMessage(configured ? 'اتصال الصوت الخادمي مُعد؛ ابدأ المحادثة لاختبار الميكروفون.' : 'أضف مفتاح OpenAI من اتصالات AI أولًا.');
     }).catch((error) => {
       if (live) setMessage(error.message);
     });
