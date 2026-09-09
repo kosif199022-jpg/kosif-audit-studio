@@ -160,6 +160,49 @@ a, button, input, select, [tabindex] { -webkit-tap-highlight-color: transparent;
 .skip-link:focus { transform: translateY(0); }
 .app-shell { min-height: 100vh; min-height: 100dvh; overflow-x: clip; }
 
+/* Workflow map: a compact, keyboard accessible route through the audit file. */
+.workflow-map-panel { overflow: hidden; }
+.workflow-map { display: flex; align-items: stretch; gap: 10px; padding: 8px 2px 2px; overflow-x: auto; scrollbar-width: thin; }
+.workflow-node-wrap { min-width: 150px; flex: 1 1 0; display: flex; align-items: center; gap: 10px; }
+.workflow-node { min-height: 146px; width: 100%; display: grid; justify-items: start; align-content: center; gap: 6px; padding: 16px; text-align: start; color: var(--ink); background: linear-gradient(155deg, color-mix(in srgb, var(--surface) 88%, var(--teal-soft)), var(--surface-muted)); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-sm); transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.workflow-node:hover, .workflow-node:focus-visible { transform: translateY(-4px); border-color: var(--gold); box-shadow: var(--shadow-md); }
+.workflow-node-index { color: var(--gold-deep); font-size: .76rem; font-weight: 700; letter-spacing: .12em; }
+.workflow-node-icon { display: grid; place-items: center; width: 34px; height: 34px; color: var(--teal); background: var(--teal-soft); border-radius: 10px; }
+.workflow-node strong { font-size: .96rem; }
+.workflow-node small { color: var(--muted); font-size: .76rem; line-height: 1.5; }
+.workflow-connector { flex: 0 0 auto; display: grid; place-items: center; width: 20px; color: var(--gold-deep); }
+[dir="rtl"] .workflow-connector svg { transform: rotate(180deg); }
+
+/* The report is previewed in a contained paper surface before print. */
+.report-preview-backdrop { position: fixed; z-index: 500; inset: 0; display: grid; place-items: center; padding: 24px; background: rgb(8 13 26 / 72%); backdrop-filter: blur(10px); }
+.report-preview-dialog { width: min(940px, 100%); max-height: min(92vh, 980px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 22px; box-shadow: 0 28px 80px rgb(0 0 0 / 38%); }
+.report-preview-header, .report-preview-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.report-preview-header h2 { margin: 3px 0; font-size: 1.18rem; }
+.report-preview-header p, .report-preview-footer { color: var(--muted); }
+.report-preview-header p { margin: 0; font-size: .84rem; }
+.report-preview-footer { border-top: 1px solid var(--line); border-bottom: 0; font-size: .82rem; }
+.report-preview-paper { position: relative; overflow: auto; padding: clamp(22px, 5vw, 54px); background: #fffdf9; color: #241934; }
+.report-preview-watermark { position: absolute; inset: 44% 0 auto; color: rgb(172 75 66 / 12%); font-size: clamp(2.4rem, 8vw, 5.6rem); font-weight: 700; letter-spacing: .12em; text-align: center; transform: rotate(-15deg); pointer-events: none; }
+.report-preview-brand { display: flex; align-items: center; gap: 11px; padding-bottom: 20px; border-bottom: 2px solid #e5c56c; }
+.report-preview-brand .brand-mark { width: 38px; height: 38px; flex-basis: 38px; }
+.report-preview-brand div { display: grid; gap: 1px; }
+.report-preview-brand strong { font-size: 1.14rem; letter-spacing: .14em; }
+.report-preview-brand small { color: #786c86; }
+.report-preview-date { margin-inline-start: auto; color: #786c86; font-size: .84rem; }
+.report-preview-opinion { display: grid; gap: 6px; padding: 26px 0 18px; }
+.report-preview-opinion span, .report-preview-grid span, .report-preview-sections > span { color: #786c86; font-size: .78rem; }
+.report-preview-opinion strong { font-size: clamp(1.25rem, 3vw, 1.75rem); color: #3e2368; }
+.report-preview-opinion small { color: #786c86; }
+.report-preview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.report-preview-grid article { display: grid; gap: 6px; padding: 14px; background: #f6f1ff; border: 1px solid #e4d8f6; border-radius: 12px; }
+.report-preview-grid strong { font-size: 1.45rem; color: #3e2368; }
+.report-preview-grid small { color: #786c86; }
+.report-preview-sections { display: grid; gap: 10px; margin-top: 24px; padding-top: 18px; border-top: 1px solid #e5ddef; }
+.report-preview-sections div { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-preview-sections b { padding: 7px 10px; color: #3e2368; background: #fff7dc; border: 1px solid #ecd48c; border-radius: 999px; font-size: .78rem; }
+.report-preview-note { display: flex; align-items: flex-start; gap: 7px; margin: 24px 0 0; padding: 12px; color: #655771; background: #faf6ea; border-radius: 10px; font-size: .8rem; line-height: 1.7; }
+@media (max-width: 680px) { .report-preview-backdrop { padding: 10px; } .report-preview-dialog { max-height: 96vh; border-radius: 16px; } .report-preview-header, .report-preview-footer { padding: 14px; align-items: flex-start; } .report-preview-footer { display: grid; } .report-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .report-preview-paper { padding: 24px 18px; } }
+
 .app-header {
   position: sticky;
   z-index: 100;
