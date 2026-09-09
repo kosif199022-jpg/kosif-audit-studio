@@ -459,3 +459,22 @@
 @keyframes analytics-rise { from { opacity: 0; transform: translateY(26px) scaleY(.8); } to { opacity: 1; transform: translateY(0) scaleY(1); } }
 @media (prefers-reduced-motion: reduce) { .analytics-3d-bar-wrap { animation: none; } }
 @media (max-width: 720px) { .analytics-3d-scene { padding-inline: 12px; overflow-x: auto; } .analytics-3d-bars { min-width: 660px; } .analytics-3d-legend { display: none; } }
+
+.sales-bridge-panel { border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); }
+.sales-quality-badge { border: 1px solid color-mix(in srgb, var(--teal) 42%, var(--line)); color: var(--teal); border-radius: 999px; padding: .35rem .65rem; font-size: .76rem; white-space: nowrap; }
+.sales-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; margin-top: 1rem; }
+.sales-kpi-grid > div { background: color-mix(in srgb, var(--surface-2) 82%, transparent); border: 1px solid var(--line); border-radius: .75rem; padding: .75rem; display: grid; gap: .3rem; }
+.sales-kpi-grid span { color: var(--muted); font-size: .76rem; }
+.sales-kpi-grid strong { font-size: 1.05rem; color: var(--ink); }
+.sales-bridge-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 1rem; margin-top: 1rem; }
+.sales-channel-list, .sales-insight-list { border-top: 1px solid var(--line); padding-top: .75rem; }
+.sales-channel-list h4, .sales-insight-list h4 { margin: 0 0 .65rem; font-size: .9rem; }
+.sales-channel-row { display: grid; grid-template-columns: 7rem minmax(5rem, 1fr) auto; align-items: center; gap: .6rem; margin: .6rem 0; font-size: .78rem; }
+.sales-channel-row b { display: block; height: .45rem; border-radius: 99px; background: color-mix(in srgb, var(--line) 70%, transparent); overflow: hidden; }
+.sales-channel-row i { display: block; height: 100%; background: linear-gradient(90deg, var(--violet), var(--gold)); border-radius: inherit; }
+.sales-channel-row strong { font-size: .74rem; font-weight: 600; }
+.sales-insight { border-inline-start: 3px solid var(--teal); padding: .5rem .7rem; margin: .5rem 0; background: color-mix(in srgb, var(--surface-2) 76%, transparent); border-radius: .5rem; }
+.sales-insight.tone-high { border-color: var(--red); } .sales-insight.tone-medium { border-color: var(--gold); }
+.sales-insight strong { font-size: .8rem; } .sales-insight p { margin: .2rem 0 0; color: var(--muted); font-size: .75rem; line-height: 1.55; }
+.sales-proxy-note { display: block; margin-top: .8rem; color: var(--muted); }
+@media (max-width: 780px) { .sales-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sales-bridge-grid { grid-template-columns: 1fr; } }
