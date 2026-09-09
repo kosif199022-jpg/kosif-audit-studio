@@ -11,7 +11,14 @@ if ((source.match(/export default \{/g) || []).length !== 1) throw new Error('Un
 // Keep the underlying Worker and all gates intact, denying anonymous API access.
 const gateway = readFileSync(path.join(root, 'worker/ai-gateway.js'), 'utf8').replace(/export /g, '');
 const wrapper = `\nexport default { async fetch(request, env, ctx) {
- if (new URL(request.url).pathname.startsWith('/api/ai/')) return handleAi(request, env);
+ const pathname = new URL(request.url).pathname;
+ // Keep the OpenAI secret in the dedicated Worker. BYOK sessions stay local.
+ if (pathname === '/api/ai/realtime' && env.REALTIME_SERVICE && !request.headers.get('cookie')) {
+  const headers = new Headers(request.headers);
+  headers.delete('cookie'); headers.delete('authorization');
+  return env.REALTIME_SERVICE.fetch(new Request(request, { headers }));
+ }
+ if (pathname.startsWith('/api/ai/')) return handleAi(request, env);
  const headers = new Headers(request.headers);
  headers.delete('oai-authenticated-user-email');
  return sitesWorker.fetch(new Request(request, { headers }), env, ctx);
