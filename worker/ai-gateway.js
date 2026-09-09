@@ -25,7 +25,12 @@ async function aiEncrypt(value,env){const iv=crypto.getRandomValues(new Uint8Arr
 function aiStore(env) {
  if(env.AI_SESSIONS)return env.AI_SESSIONS;
  if(!env.DB?.prepare)return null;
- const ready=D1_READY.get(env) || env.DB.prepare('CREATE TABLE IF NOT EXISTS ai_byok_sessions (id TEXT PRIMARY KEY, value TEXT NOT NULL, expires_at INTEGER NOT NULL)').run().then(()=>true);
+ // The Sites/Cloudflare deployment applies drizzle/0003_ai_byok_sessions.sql
+ // before the worker is published.  Running DDL on the first user write can
+ // hold a D1 request until the Sites execution deadline even though the table
+ // already exists.  Keep the per-environment readiness promise for callers,
+ // but let the migration own schema creation.
+ const ready=D1_READY.get(env) || Promise.resolve(true);
  D1_READY.set(env,ready);
  return {
   get:async key=>{await ready;return (await env.DB.prepare('SELECT value FROM ai_byok_sessions WHERE id = ? AND expires_at > ?').bind(key,Date.now()).first())?.value || null;},
