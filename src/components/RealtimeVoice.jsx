@@ -103,7 +103,7 @@ export function RealtimeVoice({ onView, summary = {} }) {
             <label>نموذج الصوت<input value={model} maxLength={80} onChange={(event) => setModel(event.target.value)} dir="ltr" /></label>
             <label>الصوت<select value={voice} onChange={(event) => setVoice(event.target.value)}><option value="marin">Marin</option><option value="cedar">Cedar</option><option value="alloy">Alloy</option></select></label>
           </div>
-          <label className="voice-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> أوافق على إرسال صوتي ونص المحادثة إلى OpenAI باستخدام مفتاحي؛ تطبق رسوم المزوّد.</label>
+          <label className="voice-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> أوافق على إرسال صوتي ونص المحادثة إلى OpenAI؛ تطبق رسوم الحساب المهيأ للخدمة.</label>
           <label className="voice-consent"><input type="checkbox" checked={shareSummary} onChange={(event) => setShareSummary(event.target.checked)} /> مشاركة مؤشرات الملف العددية لشرحها أثناء الحديث.</label>
           {shareSummary ? <details><summary>معاينة المؤشرات</summary><pre>{JSON.stringify(summary, null, 2)}</pre></details> : null}
         </>
