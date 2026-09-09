@@ -1,18 +1,22 @@
 // KOSIF Audit Studio — voice.js
-// مساعد صوتي مباشر (Live): استماع مستمر، مقاطعة أثناء الحديث (barge-in)، وموجّه نوايا عربي حتمي
-// يجيب من حالة الملف الفعلية. لا مفاتيح في المتصفح: الوضع الافتراضي محلي بالكامل عبر Web Speech API،
-// ووضع «بوابة خادمية» اختياري يرسل النص فقط إلى KOSIF AI Gateway الذي يملك مفاتيح المزوّد.
+// OpenAI Realtime WebRTC عبر Cloudflare Worker، مع بقاء موجّه النوايا المحلي
+// كمسار احتياطي حتمي. لا يُرسل مفتاح OpenAI إلى المتصفح في أي وقت.
 
 import { normalizeText } from './engine.js';
 
+const DEFAULT_REALTIME_ENDPOINT = 'https://kosif-audit-realtime.kosif199022.workers.dev/api/realtime/session';
 const Recognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
 
 export function voiceSupport() {
-  const synth = typeof window !== 'undefined' && 'speechSynthesis' in window;
-  return { recognition: Boolean(Recognition), synthesis: synth, full: Boolean(Recognition) && synth };
+  const webrtc = typeof window !== 'undefined'
+    && typeof RTCPeerConnection !== 'undefined'
+    && Boolean(navigator?.mediaDevices?.getUserMedia);
+  const recognition = Boolean(Recognition) || webrtc;
+  const synthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  return { recognition, synthesis, webrtc, full: webrtc || (Boolean(Recognition) && synthesis) };
 }
 
-/* ---------- موجّه النوايا ---------- */
+/* ---------- موجّه النوايا المحلي الاحتياطي ---------- */
 
 const VIEW_WORDS = Object.freeze([
   ['agent', ['استوديو الايجنت', 'الايجنت', 'المساعد الذكي']],
@@ -38,208 +42,363 @@ const VIEW_WORDS = Object.freeze([
 function has(text, ...words) { return words.some((word) => text.includes(normalizeText(word))); }
 function findView(text) { return VIEW_WORDS.find(([, words]) => words.some((word) => text.includes(normalizeText(word))))?.[0] ?? null; }
 
-const INTENTS = [
-  { id: 'help', test: (t) => has(t, 'مساعده', 'ماذا تستطيع', 'ايش تقدر', 'الاوامر'), handle: () => ({
-    reply: 'أستطيع فتح أي شاشة، وقراءة حالة الملف: الاتزان، الأهمية النسبية، أعلى المخاطر، القيود المعلّمة، القوائم، النسب، مسودة الرأي، وعقد جلسة المجلس. جرّب: افتح التحليلات، أو ما هي الأهمية النسبية.'
-  }) },
-  { id: 'stop', test: (t) => has(t, 'توقف', 'اسكت', 'اصمت', 'كفايه', 'انهي الجلسه'), handle: (_, api) => { api.stop(); return { reply: 'تم إنهاء الجلسة الصوتية.', silent: true }; } },
-  { id: 'demo', test: (t) => has(t, 'بيانات تجريبيه', 'حمل التجريبي', 'الخمسه الاف', '5000'), handle: (_, api) => { api.actions.loadDemo(); return { reply: 'حمّلت خمسة آلاف حساب تجريبي متزن ببذرة ثابتة.' }; } },
-  { id: 'council', test: (t) => has(t, 'اعقد', 'شغل المجلس', 'جلسه المجلس', 'انعقاد'), handle: (_, api) => {
-    const result = api.actions.convene();
-    return { reply: result ? `انعقد المجلس. ${result.verdictText} مؤشر التوافق ${result.consensus} بالمئة.` : 'لا يمكن عقد المجلس قبل تحميل الميزان.', view: 'council' };
-  } },
-  { id: 'open', test: (t) => has(t, 'افتح', 'اذهب', 'روح', 'انتقل', 'اعرض', 'ورني') && findView(t), handle: (_, api, t) => {
-    const view = findView(t);
-    return { reply: `فتحت ${api.viewLabel(view)}.`, view };
-  } },
-  { id: 'open-bare', test: (t) => findView(t) && t.split(' ').length <= 2 && !has(t, 'هل', 'ما ', 'كم', 'ماذا'), handle: (_, api, t) => {
-    const view = findView(t);
-    return { reply: `فتحت ${api.viewLabel(view)}.`, view };
-  } },
-  { id: 'balance', test: (t) => has(t, 'متزن', 'الاتزان', 'الفرق', 'هل الميزان'), handle: (ctx) => ({
-    reply: !ctx.analysis ? 'لم يُحمّل ميزان بعد.' : ctx.analysis.balanced ? `الميزان متزن حسابيًا، ${ctx.analysis.accounts} حساب في ${ctx.analysis.categories} فئة. الاتزان لا يثبت صحة التصنيف أو التقييم.` : `الميزان غير متزن؛ الفرق ${ctx.analysis.imbalanceText}.`
-  }) },
-  { id: 'materiality', test: (t) => has(t, 'الاهميه', 'اهميه الاداء', 'الحد التافه'), handle: (ctx) => ({
-    reply: ctx.materiality ? `الأهمية الإجمالية ${ctx.materiality.overall}، أهمية الأداء ${ctx.materiality.performance}، والحد الواضح التفاهة ${ctx.materiality.trivial}. الأساس ${ctx.materiality.benchmark}.` : 'الأهمية النسبية لم تُحدد بعد. أفتح شاشة التخطيط؟', view: ctx.materiality ? null : 'planning'
-  }) },
-  { id: 'risks', test: (t) => has(t, 'اعلى المخاطر', 'اهم المخاطر', 'كم خطر', 'المخاطر المرتفعه', 'المخاطر المفتوحه'), handle: (ctx) => ({
-    reply: ctx.risks.total ? `رصد المحرك ${ctx.risks.total} إشارة، منها ${ctx.risks.high} مرتفعة أو حرجة مفتوحة. أعلى ثلاث: ${ctx.risks.top.join('، ')}.` : 'لا مخاطر مرصودة بعد؛ حمّل الميزان أولًا.'
-  }) },
-  { id: 'journal', test: (t) => has(t, 'القيود المعلمه', 'كم قيد', 'قيود يدويه', 'فحص القيود'), handle: (ctx) => ({
-    reply: ctx.journal ? `فُحص ${ctx.journal.total} قيد؛ ${ctx.journal.flagged} معلّم و${ctx.journal.pending} بانتظار المراجعة وفق ISA 240.` : 'لم تُحمّل قيود يومية بعد.'
-  }) },
-  { id: 'statements', test: (t) => has(t, 'اجمالي الاصول', 'الربح', 'الخساره', 'صافي', 'القوائم الماليه', 'المركز المالي'), handle: (ctx) => ({
-    reply: ctx.statements ? `إجمالي الأصول ${ctx.statements.assets}، الالتزامات ${ctx.statements.liabilities}، حقوق الملكية ${ctx.statements.equity}، و${ctx.statements.profitLabel} ${ctx.statements.profit}. المعادلة المحاسبية ${ctx.statements.equationHolds ? 'محققة' : 'غير محققة'}.` : 'لا قوائم مشتقة بعد.'
-  }) },
-  { id: 'ratios', test: (t) => has(t, 'نسبه التداول', 'النسب', 'الرافعه', 'هامش', 'ايام التحصيل'), handle: (ctx) => ({
-    reply: ctx.ratios.length ? `${ctx.ratios.map((item) => `${item.label} ${item.value}`).join('، ')}. النسب مؤشرات تحليلية تحتاج مقارنة بالسنة السابقة والقطاع.` : 'لا نسب محسوبة بعد.'
-  }) },
-  { id: 'benford', test: (t) => has(t, 'بنفورد', 'الرقم الاول'), handle: (ctx) => ({
-    reply: ctx.benford ? `اختبار بنفورد على ${ctx.benford.total} قيمة: ${ctx.benford.label}، بانحراف متوسط ${ctx.benford.mad}.` : 'لم يُنفذ اختبار بنفورد بعد.'
-  }) },
-  { id: 'goingConcern', test: (t) => has(t, 'الاستمراريه'), handle: (ctx) => ({
-    reply: ctx.goingConcern ? (ctx.goingConcern.hits.length ? `ظهرت ${ctx.goingConcern.hits.length} مؤشرات استمرارية: ${ctx.goingConcern.hits.join('، ')}. المؤشر لا يعني عدم تأكد جوهري؛ يلزم تقييم الإدارة.` : 'لا مؤشرات مالية للاستمرارية من القوائم المشتقة.') : 'لا بيانات كافية.'
-  }) },
-  { id: 'opinion', test: (t) => has(t, 'مسوده الراي', 'الراي', 'التحريفات', 'ISA 705', 'متحفظ'), handle: (ctx) => ({
-    reply: ctx.opinion ? `مسودة الرأي الحالية: ${ctx.opinion.label} وفق ${ctx.opinion.standard}. ${ctx.opinion.basis} ${ctx.misstatements ? `التعرض غير المصحح ${ctx.misstatements.exposure}؛ ${ctx.misstatements.verdict}.` : ''} الرأي النهائي يصدره المراجع باسمه.` : 'لا مسودة رأي بعد.'
-  }) },
-  { id: 'readiness', test: (t) => has(t, 'الجاهزيه', 'وين وصلنا', 'اين وصلنا', 'الخطوه التاليه', 'ماذا بعد', 'وش الباقي'), handle: (ctx) => ({
-    reply: `جاهزية الملف ${ctx.readiness} بالمئة. ${ctx.nextAction}`
-  }) },
-  { id: 'gates', test: (t) => has(t, 'البوابات', 'ما يمنع', 'العوائق'), handle: (ctx) => ({
-    reply: ctx.gates.failed.length ? `البوابات غير المكتملة: ${ctx.gates.failed.join('، ')}.` : 'كل البوابات مكتملة؛ يبقى الاعتماد البشري.'
-  }) },
-  { id: 'council-status', test: (t) => has(t, 'المجلس', 'راي المجلس', 'النزاعات'), handle: (ctx) => ({
-    reply: ctx.council ? `آخر جلسة: ${ctx.council.verdict}، توافق ${ctx.council.consensus} بالمئة، ${ctx.council.objections} اعتراض و${ctx.council.conflicts} نزاع منها ${ctx.council.resolved} محسوم.` : 'لم تُعقد جلسة مجلس بعد. قل: اعقد جلسة المجلس.'
-  }) }
-];
-
 export function routeIntent(transcript, context, api) {
   const text = normalizeText(transcript);
-  for (const intent of INTENTS) {
-    if (intent.test(text)) return { intent: intent.id, ...intent.handle(context, api, text) };
+  const view = findView(text);
+
+  if (has(text, 'مساعده', 'ماذا تستطيع', 'ايش تقدر', 'الاوامر')) {
+    return { intent: 'help', reply: 'أستطيع فتح الشاشات وقراءة حالة الملف، الأهمية، المخاطر، القيود، القوائم، الرأي والجلسات. قل مثلًا: افتح التحليلات.' };
+  }
+  if (has(text, 'توقف', 'اسكت', 'اصمت', 'كفايه', 'انهي الجلسه')) {
+    api?.stop?.();
+    return { intent: 'stop', reply: 'تم إنهاء الجلسة الصوتية.', silent: true };
+  }
+  if (has(text, 'بيانات تجريبيه', 'حمل التجريبي', 'الخمسه الاف', '5000')) {
+    api?.actions?.loadDemo?.();
+    return { intent: 'demo', reply: 'حمّلت خمسة آلاف حساب تجريبي متزن ببذرة ثابتة.' };
+  }
+  if (has(text, 'اعقد', 'شغل المجلس', 'جلسه المجلس', 'انعقاد')) {
+    const result = api?.actions?.convene?.();
+    return { intent: 'council', reply: result ? `انعقد المجلس. ${result.verdictText} مؤشر التوافق ${result.consensus} بالمئة.` : 'لا يمكن عقد المجلس قبل تحميل الميزان.', view: 'council' };
+  }
+  if (view && (has(text, 'افتح', 'اذهب', 'روح', 'انتقل', 'اعرض', 'ورني') || text.split(' ').length <= 2)) {
+    return { intent: 'open', reply: `فتحت ${api?.viewLabel?.(view) ?? view}.`, view };
+  }
+  if (has(text, 'متزن', 'الاتزان', 'الفرق', 'هل الميزان')) {
+    return { intent: 'balance', reply: !context?.analysis ? 'لم يُحمّل ميزان بعد.' : context.analysis.balanced ? `الميزان متزن حسابيًا، ${context.analysis.accounts} حساب في ${context.analysis.categories} فئة.` : `الميزان غير متزن؛ الفرق ${context.analysis.imbalanceText}.` };
+  }
+  if (has(text, 'الاهميه', 'اهميه الاداء', 'الحد التافه')) {
+    return { intent: 'materiality', reply: context?.materiality ? `الأهمية الإجمالية ${context.materiality.overall}، أهمية الأداء ${context.materiality.performance}، والحد الواضح التفاهة ${context.materiality.trivial}. الأساس ${context.materiality.benchmark}.` : 'الأهمية النسبية لم تُحدد بعد.', view: context?.materiality ? null : 'planning' };
+  }
+  if (has(text, 'اعلى المخاطر', 'اهم المخاطر', 'كم خطر', 'المخاطر المرتفعه', 'المخاطر المفتوحه')) {
+    return { intent: 'risks', reply: context?.risks?.total ? `رصد المحرك ${context.risks.total} إشارة، منها ${context.risks.high} مرتفعة أو حرجة مفتوحة. أعلى ثلاث: ${(context.risks.top ?? []).join('، ')}.` : 'لا مخاطر مرصودة بعد.' };
+  }
+  if (has(text, 'القيود المعلمه', 'كم قيد', 'قيود يدويه', 'فحص القيود')) {
+    return { intent: 'journal', reply: context?.journal ? `فُحص ${context.journal.total} قيد؛ ${context.journal.flagged} معلّم و${context.journal.pending} بانتظار المراجعة وفق ISA 240.` : 'لم تُحمّل قيود يومية بعد.' };
+  }
+  if (has(text, 'اجمالي الاصول', 'الربح', 'الخساره', 'صافي', 'القوائم الماليه', 'المركز المالي')) {
+    return { intent: 'statements', reply: context?.statements ? `إجمالي الأصول ${context.statements.assets}، الالتزامات ${context.statements.liabilities}، حقوق الملكية ${context.statements.equity}، و${context.statements.profitLabel} ${context.statements.profit}.` : 'لا قوائم مشتقة بعد.' };
+  }
+  if (has(text, 'نسبه التداول', 'النسب', 'الرافعه', 'هامش', 'ايام التحصيل')) {
+    return { intent: 'ratios', reply: context?.ratios?.length ? context.ratios.map((item) => `${item.label} ${item.value}`).join('، ') : 'لا نسب محسوبة بعد.' };
+  }
+  if (has(text, 'بنفورد', 'الرقم الاول')) {
+    return { intent: 'benford', reply: context?.benford ? `اختبار بنفورد على ${context.benford.total} قيمة: ${context.benford.label}، بانحراف متوسط ${context.benford.mad}.` : 'لم يُنفذ اختبار بنفورد بعد.' };
+  }
+  if (has(text, 'الاستمراريه')) {
+    return { intent: 'goingConcern', reply: context?.goingConcern ? ((context.goingConcern.hits ?? []).length ? `ظهرت ${context.goingConcern.hits.length} مؤشرات استمرارية: ${context.goingConcern.hits.join('، ')}.` : 'لا مؤشرات مالية للاستمرارية من القوائم المشتقة.') : 'لا بيانات كافية.' };
+  }
+  if (has(text, 'مسوده الراي', 'الراي', 'التحريفات', 'isa 705', 'متحفظ')) {
+    return { intent: 'opinion', reply: context?.opinion ? `مسودة الرأي الحالية: ${context.opinion.label} وفق ${context.opinion.standard}. ${context.opinion.basis ?? ''}` : 'لا مسودة رأي بعد.' };
+  }
+  if (has(text, 'الجاهزيه', 'وين وصلنا', 'اين وصلنا', 'الخطوه التاليه', 'ماذا بعد', 'وش الباقي')) {
+    return { intent: 'readiness', reply: `جاهزية الملف ${context?.readiness ?? 0} بالمئة. ${context?.nextAction ?? ''}` };
+  }
+  if (has(text, 'البوابات', 'ما يمنع', 'العوائق')) {
+    return { intent: 'gates', reply: context?.gates?.failed?.length ? `البوابات غير المكتملة: ${context.gates.failed.join('، ')}.` : 'كل البوابات مكتملة؛ يبقى الاعتماد البشري.' };
+  }
+  if (has(text, 'المجلس', 'راي المجلس', 'النزاعات')) {
+    return { intent: 'council-status', reply: context?.council ? `آخر جلسة: ${context.council.verdict}، توافق ${context.council.consensus} بالمئة.` : 'لم تُعقد جلسة مجلس بعد.' };
   }
   return { intent: 'unknown', reply: 'لم أفهم الطلب. أستطيع فتح الشاشات وقراءة الاتزان والأهمية والمخاطر والقوائم ومسودة الرأي. قل «مساعدة» لسماع الأوامر.' };
 }
 
-/* ---------- الجلسة الصوتية ---------- */
+/* ---------- OpenAI Realtime WebRTC ---------- */
 
-export function createVoiceAssistant({ getContext, api, onEvent = () => {}, lang = 'ar-SA' } = {}) {
+function safeContextSnapshot(ctx = {}) {
+  const copy = {
+    engagement: ctx.engagement ?? null,
+    readiness: ctx.readiness ?? null,
+    nextAction: ctx.nextAction ?? null,
+    materiality: ctx.materiality ?? null,
+    risks: ctx.risks ?? null,
+    journal: ctx.journal ?? null,
+    statements: ctx.statements ?? null,
+    ratios: ctx.ratios ?? null,
+    opinion: ctx.opinion ?? null,
+    council: ctx.council ?? null,
+    gates: ctx.gates ?? null
+  };
+  return JSON.stringify(copy, (_, value) => typeof value === 'bigint' ? value.toString() : value).slice(0, 14000);
+}
+
+export function createVoiceAssistant({ getContext = () => ({}), api = {}, onEvent = () => {}, lang = 'ar-SA' } = {}) {
   const support = voiceSupport();
-  let recognition = null;
   let active = false;
   let speaking = false;
   let muted = false;
-  let audio = null; // { context, analyser, stream }
-  let gateway = null; // { url, token? }
-  let restartTimer = null;
+  let gateway = { url: DEFAULT_REALTIME_ENDPOINT };
+  let pc = null;
+  let dc = null;
+  let localStream = null;
+  let remoteAudio = null;
+  let audioMeter = null;
+  let connectAttempt = 0;
+  let assistantBuffer = '';
   const transcript = [];
 
-  function emit(type, payload = {}) { onEvent({ type, ...payload, at: Date.now() }); }
+  const emit = (type, payload = {}) => onEvent({ type, ...payload });
 
-  function pickVoice() {
-    const voices = window.speechSynthesis?.getVoices?.() ?? [];
-    return voices.find((voice) => voice.lang?.toLowerCase().startsWith('ar') && /natural|online|google/i.test(voice.name))
-      || voices.find((voice) => voice.lang?.toLowerCase().startsWith('ar')) || null;
+  function cleanupPeer({ emitStopped = true } = {}) {
+    const wasActive = active;
+    active = false;
+    speaking = false;
+    try { dc?.close(); } catch {}
+    dc = null;
+    try { pc?.close(); } catch {}
+    pc = null;
+    localStream?.getTracks().forEach((track) => track.stop());
+    localStream = null;
+    if (audioMeter) {
+      try { audioMeter.context.close(); } catch {}
+      audioMeter = null;
+    }
+    if (remoteAudio) {
+      try { remoteAudio.pause(); } catch {}
+      remoteAudio.srcObject = null;
+      remoteAudio.remove();
+      remoteAudio = null;
+    }
+    assistantBuffer = '';
+    if (emitStopped && wasActive) emit('stopped');
   }
 
-  function speak(text) {
-    if (!support.synthesis || muted || !text) return Promise.resolve();
-    return new Promise((resolve) => {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      const voice = pickVoice();
-      if (voice) utterance.voice = voice;
-      utterance.rate = 1.02;
-      utterance.onstart = () => { speaking = true; emit('speaking', { text }); };
-      utterance.onend = utterance.onerror = () => { speaking = false; emit('idle'); resolve(); };
-      window.speechSynthesis.speak(utterance);
+  async function attachMeter(stream) {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = new AudioContextClass();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 256;
+      context.createMediaStreamSource(stream).connect(analyser);
+      audioMeter = { context, analyser };
+      emit('meter-ready');
+    } catch (error) {
+      emit('meter-unavailable', { message: error?.message ?? String(error) });
+    }
+  }
+
+  function send(event) {
+    if (!dc || dc.readyState !== 'open') return false;
+    dc.send(JSON.stringify(event));
+    return true;
+  }
+
+  function updateRealtimeContext() {
+    const context = getContext?.() ?? {};
+    return send({
+      type: 'session.update',
+      session: {
+        type: 'realtime',
+        instructions: [
+          'أنت KOSIF Live، مساعد مراجعة مالية عربي داخل تطبيق KOSIF Audit Studio.',
+          'تحدث بالعربية السعودية/الفصحى المبسطة بإيجاز ووضوح.',
+          'لا تدّع تنفيذ إجراء داخل التطبيق لم يحدث فعلًا، ولا تصدر رأيًا مهنيًا نهائيًا نيابة عن المراجع البشري.',
+          'عندما يسأل المستخدم عن أرقام الملف استخدم فقط السياق المرسل ولا تخمّن.',
+          `سياق ملف المراجعة الحالي: ${safeContextSnapshot(context)}`
+        ].join('\n')
+      }
     });
   }
 
-  function interrupt() {
-    if (speaking && support.synthesis) { window.speechSynthesis.cancel(); speaking = false; emit('interrupted'); }
-  }
+  function handleRealtimeEvent(data) {
+    if (!data || typeof data !== 'object') return;
 
-  async function respond(text) {
-    const context = getContext();
-    let result;
-    if (gateway?.url) {
-      emit('thinking');
-      try {
-        const response = await fetch(gateway.url, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', ...(gateway.token ? { Authorization: `Bearer ${gateway.token}` } : {}) },
-          body: JSON.stringify({ transcript: text, context, lang })
-        });
-        const data = await response.json();
-        result = { intent: 'gateway', reply: String(data.reply ?? '').slice(0, 1200), view: data.view ?? null };
-      } catch (error) {
-        result = { intent: 'gateway-error', reply: 'تعذر الوصول إلى البوابة الخادمية؛ أعمل بالوضع المحلي.' };
-        gateway = null;
+    if (data.type === 'input_audio_buffer.speech_started') {
+      if (speaking) emit('interrupted');
+      speaking = false;
+      emit('listening');
+    }
+
+    if (data.type === 'conversation.item.input_audio_transcription.completed') {
+      const text = String(data.transcript ?? '').trim();
+      if (text) {
+        transcript.push({ role: 'user', text, at: Date.now() });
+        emit('final', { text });
+        emit('thinking');
       }
-    } else {
-      result = routeIntent(text, context, api);
     }
-    transcript.push({ role: 'assistant', text: result.reply, intent: result.intent, at: Date.now() });
-    emit('reply', result);
-    if (result.view) api.openView(result.view);
-    if (!result.silent) await speak(result.reply);
-    return result;
+
+    if (data.type === 'response.created') emit('thinking');
+
+    if (data.type === 'response.output_audio.started' || data.type === 'response.audio.started') {
+      speaking = true;
+      emit('speaking');
+    }
+
+    if (data.type === 'response.output_audio_transcript.delta' || data.type === 'response.audio_transcript.delta') {
+      assistantBuffer += String(data.delta ?? '');
+      if (assistantBuffer) emit('interim', { text: assistantBuffer });
+    }
+
+    if (data.type === 'response.output_audio_transcript.done' || data.type === 'response.audio_transcript.done') {
+      const text = String(data.transcript ?? assistantBuffer).trim();
+      assistantBuffer = '';
+      if (text) {
+        transcript.push({ role: 'assistant', text, at: Date.now() });
+        emit('reply', { reply: text, intent: 'gateway' });
+      }
+    }
+
+    if (data.type === 'response.done') {
+      speaking = false;
+      assistantBuffer = '';
+      emit('idle');
+    }
+
+    if (data.type === 'error') {
+      emit('error', { code: 'realtime', message: data.error?.message ?? 'Realtime API error' });
+    }
   }
 
-  async function attachMeter() {
+  async function connectRealtime(attempt) {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const context = new (window.AudioContext || window.webkitAudioContext)();
-      const source = context.createMediaStreamSource(stream);
-      const analyser = context.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      audio = { context, analyser, stream };
-      emit('meter-ready');
-    } catch (error) {
-      emit('meter-unavailable', { message: error.message });
-    }
-  }
+      if (!support.webrtc) throw Object.assign(new Error('WEBRTC_UNSUPPORTED'), { code: 'unsupported' });
 
-  function level() {
-    if (!audio) return 0;
-    const data = new Uint8Array(audio.analyser.frequencyBinCount);
-    audio.analyser.getByteTimeDomainData(data);
-    let sum = 0;
-    for (const value of data) { const centered = (value - 128) / 128; sum += centered * centered; }
-    return Math.min(1, Math.sqrt(sum / data.length) * 4);
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+      if (attempt !== connectAttempt) {
+        localStream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      localStream.getAudioTracks().forEach((track) => { track.enabled = !muted; });
+      await attachMeter(localStream);
+
+      pc = new RTCPeerConnection();
+      remoteAudio = new Audio();
+      remoteAudio.autoplay = true;
+      remoteAudio.setAttribute('playsinline', '');
+      remoteAudio.style.display = 'none';
+      document.body.append(remoteAudio);
+
+      pc.ontrack = (event) => {
+        remoteAudio.srcObject = event.streams?.[0] ?? new MediaStream([event.track]);
+        remoteAudio.play().catch(() => {});
+      };
+
+      pc.onconnectionstatechange = () => {
+        const state = pc?.connectionState;
+        if (state === 'connected') {
+          active = true;
+          emit('listening');
+        }
+        if (['failed', 'closed'].includes(state)) cleanupPeer();
+      };
+
+      localStream.getAudioTracks().forEach((track) => pc.addTrack(track, localStream));
+
+      dc = pc.createDataChannel('oai-events');
+      dc.onopen = () => {
+        active = true;
+        updateRealtimeContext();
+        emit('listening');
+      };
+      dc.onmessage = (event) => {
+        try { handleRealtimeEvent(JSON.parse(event.data)); } catch { /* ignore malformed events */ }
+      };
+      dc.onerror = () => emit('error', { code: 'realtime', message: 'تعذر الاتصال بقناة أحداث المحادثة الحية.' });
+
+      const offer = await pc.createOffer({ offerToReceiveAudio: true });
+      await pc.setLocalDescription(offer);
+
+      const response = await fetch(gateway?.url || DEFAULT_REALTIME_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp' },
+        body: pc.localDescription?.sdp ?? offer.sdp
+      });
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(`REALTIME_SESSION_FAILED:${response.status}:${detail.slice(0, 240)}`);
+      }
+
+      const answerSdp = await response.text();
+      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+      active = true;
+      emit('listening');
+    } catch (error) {
+      cleanupPeer({ emitStopped: false });
+      const name = error?.name ?? '';
+      const denied = name === 'NotAllowedError' || name === 'SecurityError';
+      emit('error', {
+        code: denied ? 'not-allowed' : (error?.code ?? 'realtime'),
+        message: denied ? 'لم يُسمح باستخدام الميكروفون.' : (error?.message ?? String(error))
+      });
+      emit('stopped');
+    }
   }
 
   function start() {
-    if (!support.recognition) { emit('unsupported'); return false; }
-    if (active) return true;
-    active = true;
-    recognition = new Recognition();
-    recognition.lang = lang;
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    recognition.onstart = () => emit('listening');
-    recognition.onresult = (event) => {
-      let interim = '';
-      for (let index = event.resultIndex; index < event.results.length; index += 1) {
-        const item = event.results[index];
-        if (item.isFinal) {
-          const text = item[0].transcript.trim();
-          if (!text) continue;
-          transcript.push({ role: 'user', text, at: Date.now() });
-          emit('final', { text });
-          respond(text);
-        } else {
-          interim += item[0].transcript;
-        }
-      }
-      if (interim.trim()) { interrupt(); emit('interim', { text: interim.trim() }); }
-    };
-    recognition.onerror = (event) => {
-      emit('error', { code: event.error });
-      if (['not-allowed', 'service-not-allowed'].includes(event.error)) stop();
-    };
-    recognition.onend = () => {
-      if (!active) return;
-      clearTimeout(restartTimer);
-      restartTimer = setTimeout(() => { try { recognition.start(); } catch { /* already started */ } }, 250);
-    };
-    try { recognition.start(); } catch (error) { emit('error', { code: error.message }); }
-    attachMeter();
+    if (active || pc) return true;
+    if (!support.webrtc) {
+      emit('unsupported');
+      return false;
+    }
+    connectAttempt += 1;
+    emit('thinking');
+    void connectRealtime(connectAttempt);
     return true;
   }
 
   function stop() {
-    active = false;
-    clearTimeout(restartTimer);
-    try { recognition?.stop(); } catch { /* ignore */ }
-    recognition = null;
-    interrupt();
-    if (audio) { audio.stream.getTracks().forEach((track) => track.stop()); audio.context.close(); audio = null; }
-    emit('stopped');
+    connectAttempt += 1;
+    const hadSession = Boolean(active || pc || localStream);
+    cleanupPeer({ emitStopped: false });
+    if (hadSession) emit('stopped');
+  }
+
+  function interrupt() {
+    if (!active) return;
+    send({ type: 'response.cancel' });
+    speaking = false;
+    emit('interrupted');
+  }
+
+  function setMuted(value) {
+    muted = Boolean(value);
+    localStream?.getAudioTracks().forEach((track) => { track.enabled = !muted; });
+  }
+
+  function setGateway(value) {
+    if (value?.url) gateway = { url: String(value.url) };
+    else gateway = { url: DEFAULT_REALTIME_ENDPOINT };
+  }
+
+  function level() {
+    if (!audioMeter) return 0;
+    const data = new Uint8Array(audioMeter.analyser.frequencyBinCount);
+    audioMeter.analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (const value of data) {
+      const centered = (value - 128) / 128;
+      sum += centered * centered;
+    }
+    return Math.min(1, Math.sqrt(sum / data.length) * 4);
+  }
+
+  function speak(text) {
+    if (!text) return;
+    // في وضع Realtime الصوت يأتي مباشرة من WebRTC؛ هذه الدالة موجودة للتوافق.
+    if (active) return;
+    if (!support.synthesis) return;
+    const utterance = new SpeechSynthesisUtterance(String(text));
+    utterance.lang = lang;
+    utterance.onstart = () => { speaking = true; emit('speaking'); };
+    utterance.onend = () => { speaking = false; emit('idle'); };
+    speechSynthesis.speak(utterance);
+  }
+
+  function respond(text) {
+    if (active && dc?.readyState === 'open') {
+      send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: String(text) }] } });
+      send({ type: 'response.create', response: { modalities: ['audio', 'text'] } });
+      return;
+    }
+    const result = routeIntent(text, getContext?.() ?? {}, { ...api, stop });
+    emit('reply', { reply: result.reply, intent: result.intent });
+    if (result.view) api?.openView?.(result.view);
+    if (!result.silent) speak(result.reply);
   }
 
   return {
@@ -252,8 +411,8 @@ export function createVoiceAssistant({ getContext, api, onEvent = () => {}, lang
     respond,
     isActive: () => active,
     isSpeaking: () => speaking,
-    setMuted: (value) => { muted = Boolean(value); if (muted) interrupt(); },
-    setGateway: (value) => { gateway = value?.url ? value : null; },
+    setMuted,
+    setGateway,
     getGateway: () => gateway,
     transcript: () => transcript.slice()
   };
