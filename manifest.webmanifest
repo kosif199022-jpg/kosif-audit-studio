@@ -4,7 +4,7 @@
   "description": "نظام تشغيل عربي للمراجعة والتقارير المالية: مستندات، أدلة، مجلس مراجعين، تسويات، قوائم وتقارير قابلة للتتبع.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "./",
+  "start_url": "./continuous-review.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#100c16",
@@ -14,11 +14,8 @@
     { "src": "./icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "الحلقة المستمرة V5", "url": "./continuous-review.html?view=dashboard", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "استوديو الإيجنت", "url": "./?view=agent", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "خطة العمل", "url": "./?view=workflow", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "ميزان المراجعة", "url": "./?view=data", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "المخاطر", "url": "./?view=risks", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "سجل الأدلة", "url": "./?view=evidence", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+    { "name": "الحلقة المستمرة V5", "url": "./continuous-review.html", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "استوديو الإيجنت القديم", "url": "./?view=agent", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "ميزان المراجعة القديم", "url": "./?view=data", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
   ]
 }

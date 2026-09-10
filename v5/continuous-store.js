@@ -11,7 +11,8 @@ export const store = {
   tbRisks: [],
   recipePlan: buildReportPlan('ميزانية'),
   activeRequestId: null,
-  documentAnalyses: new Map()
+  documentAnalyses: new Map(),
+  remote: { mode:'local', status:'محلي', version:0, engagementId:null, accessToken:null }
 };
 export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const money = v => formatMoneyMinor(v ?? 0n, store.engagement.currency || 'SAR');
@@ -27,4 +28,11 @@ export function satisfiedRequirementIds(){
 }
 export function resetEngagement(engagement){
   store.engagement=engagement; store.analysis=null; store.materiality=null; store.tbRisks=[]; store.documentAnalyses.clear(); store.activeRequestId=null; store.recipePlan=buildReportPlan('ميزانية');
+}
+export function resetWorkspace(snapshot={}){
+  if(snapshot.engagement)store.engagement=snapshot.engagement;
+  store.analysis=snapshot.analysis||null; store.materiality=snapshot.materiality||null; store.tbRisks=snapshot.tbRisks||[];
+  store.documentAnalyses=new Map(snapshot.documentAnalyses||[]); store.activeRequestId=null;
+  store.recipePlan=buildReportPlan(snapshot.recipeId||'statement-of-financial-position');
+  derive();
 }

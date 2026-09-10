@@ -28,5 +28,14 @@ for(const file of ['styles.css','studio.css']){
  assert.equal((css.match(/\{/g)||[]).length,(css.match(/\}/g)||[]).length,`CSS braces: ${file}`);
 }
 const manifest=JSON.parse(readFileSync('manifest.webmanifest','utf8'));
-for(const shortcut of manifest.shortcuts){const view=new URL(shortcut.url,'https://example.test').searchParams.get('view');assert.ok(panels.has(view),`Manifest shortcut ${view}`);}
-console.log(`Static checks passed: ${panels.size} views, ${ids.length} IDs, ${paths.size} local assets and imports; all JavaScript syntax valid.`);
+for(const shortcut of manifest.shortcuts){
+ const url=new URL(shortcut.url,'https://example.test/');
+ const view=url.searchParams.get('view');
+ if(view){assert.ok(panels.has(view),`Manifest shortcut ${view}`);continue;}
+ const localPath=decodeURIComponent(url.pathname.replace(/^\//,''));
+ assert.ok(localPath&&existsSync(localPath),`Manifest shortcut asset ${localPath||'null'}`);
+}
+const startUrl=new URL(manifest.start_url,'https://example.test/');
+const startPath=decodeURIComponent(startUrl.pathname.replace(/^\//,''));
+if(startPath)assert.ok(existsSync(startPath),`Manifest start_url ${startPath}`);
+console.log(`Static checks passed: ${panels.size} legacy views, ${ids.length} IDs, ${paths.size} local assets and imports; all JavaScript syntax valid.`);
