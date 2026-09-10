@@ -49,6 +49,21 @@ test("Cloudflare static headers allow only the microphone capability needed by l
   assert.match(headers, /\/assets\/\*[\s\S]*immutable/);
 });
 
+test("PWA cache is offline-capable but never captures API or credentialed traffic", async () => {
+  const [packager, pwa] = await Promise.all([
+    read("scripts/prepare-cloudflare-build.mjs"),
+    read("src/intelligence/pwa.js"),
+  ]);
+  assert.match(packager, /url\.pathname\.startsWith\('\/api\/'\)/);
+  assert.match(packager, /request\.headers\.has\('authorization'\)/);
+  assert.match(packager, /request\.mode === 'navigate'/);
+  assert.match(packager, /caches\.match\('\/index\.html'\)/);
+  assert.match(packager, /STATIC_PREFIXES/);
+  assert.match(pwa, /kosif:pwa-update-ready/);
+  assert.match(pwa, /registration\.update\(\)/);
+  assert.match(pwa, /window\.isSecureContext/);
+});
+
 test("production build keeps repository and bundle quality gates enabled", async () => {
   const [pkg, vite] = await Promise.all([
     read("package.json"),
