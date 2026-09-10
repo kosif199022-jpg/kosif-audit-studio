@@ -6,6 +6,15 @@ const MAX_ATTACHMENT_TEXT = 6_000;
 
 const voiceError = (code, options = {}) => new VoiceError(code, AI_ERRORS[code], options);
 
+export function isIOSWebKit(navigatorObject = globalThis.navigator) {
+  if (!navigatorObject) return false;
+  const userAgent = String(navigatorObject.userAgent || '');
+  const platform = String(navigatorObject.platform || '');
+  return /iPhone|iPad|iPod/i.test(userAgent)
+    || /iP(hone|ad|od)/i.test(platform)
+    || (/Mac/i.test(platform) && Number(navigatorObject.maxTouchPoints || 0) > 1);
+}
+
 function mapMediaError(error) {
   switch (error?.name) {
     case 'NotAllowedError':
@@ -19,6 +28,44 @@ function mapMediaError(error) {
       return voiceError('mic_busy', { retriable: true });
     default:
       return new VoiceError('mic_failed', AI_ERRORS.mic_failed, { cause: error, retriable: true });
+  }
+}
+
+export function effectiveIceGatherTimeout(timeoutMs = 3_000, navigatorObject = globalThis.navigator) {
+  const base = Number.isFinite(Number(timeoutMs)) ? Math.max(1_000, Number(timeoutMs)) : 3_000;
+  return isIOSWebKit(navigatorObject) ? Math.max(base, 10_000) : base;
+}
+
+export async function requestMicrophoneStream(mediaDevices, navigatorObject = globalThis.navigator) {
+  if (!mediaDevices?.getUserMedia) throw voiceError('unsupported');
+  const ios = isIOSWebKit(navigatorObject);
+  const primaryConstraints = ios
+    ? { audio: true }
+    : {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
+        }
+      };
+  try {
+    const stream = await mediaDevices.getUserMedia(primaryConstraints);
+    stream?.getAudioTracks?.().forEach((track) => {
+      try { track.contentHint = 'speech'; } catch {}
+    });
+    return stream;
+  } catch (error) {
+    // WebKit occasionally rejects a dictionary that another browser accepts.
+    // Retry once with the broad audio constraint before translating the error.
+    if (ios && ['OverconstrainedError', 'TypeError', 'NotSupportedError'].includes(error?.name)) {
+      try {
+        return await mediaDevices.getUserMedia({ audio: true });
+      } catch (fallbackError) {
+        throw mapMediaError(fallbackError);
+      }
+    }
+    throw mapMediaError(error);
   }
 }
 
@@ -99,7 +146,9 @@ export function createRealtimeLiveClient({
   fetcher = nativeFetch,
   PeerConnection = globalThis.RTCPeerConnection,
   mediaDevices = globalThis.navigator?.mediaDevices,
+  navigatorObject = globalThis.navigator,
   AudioElement = globalThis.Audio,
+  AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext,
   MediaRecorderClass = globalThis.MediaRecorder,
   MediaStreamClass = globalThis.MediaStream,
   BlobClass = globalThis.Blob,
@@ -115,6 +164,8 @@ export function createRealtimeLiveClient({
   let localStream = null;
   let remoteStream = null;
   let audio = null;
+  let audioContext = null;
+  let remoteAudioSource = null;
   let controller = null;
   let generation = 0;
   let connectTimer = null;
@@ -124,6 +175,7 @@ export function createRealtimeLiveClient({
   const responseItems = new Map();
   const handledCalls = new Set();
   const completedTranscriptResponses = new Set();
+  const iosWebKit = isIOSWebKit(navigatorObject);
 
   function send(event) {
     if (channel?.readyState !== 'open') return false;
@@ -145,6 +197,7 @@ export function createRealtimeLiveClient({
     audio.muted = false;
     audio.setAttribute?.('playsinline', '');
     audio.setAttribute?.('webkit-playsinline', '');
+    audio.setAttribute?.('preload', 'auto');
     audio.setAttribute?.('aria-hidden', 'true');
     if (audio.style) {
       audio.style.position = 'fixed';
@@ -159,6 +212,92 @@ export function createRealtimeLiveClient({
       document.body.appendChild(audio);
     }
     return audio;
+  }
+
+  function ensureAudioContext() {
+    if (!iosWebKit || !AudioContextClass) return null;
+    if (audioContext && audioContext.state !== 'closed') return audioContext;
+    try {
+      audioContext = new AudioContextClass({ latencyHint: 'interactive' });
+    } catch {
+      try { audioContext = new AudioContextClass(); } catch { audioContext = null; }
+    }
+    return audioContext;
+  }
+
+  function primeIOSAudioOutput() {
+    if (!iosWebKit) return;
+    ensureAudioElement();
+    const context = ensureAudioContext();
+    if (!context) return;
+    // Safari requires the playback graph to be activated from the same user
+    // gesture that starts the call. A zero-gain oscillator primes that graph
+    // without producing an audible sound.
+    try { Promise.resolve(context.resume?.()).catch(() => {}); } catch {}
+    try {
+      const oscillator = context.createOscillator?.();
+      const gain = context.createGain?.();
+      if (oscillator && gain) {
+        gain.gain.value = 0;
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start();
+        oscillator.stop((context.currentTime || 0) + 0.03);
+      }
+    } catch {}
+  }
+
+  function playThroughElement(output) {
+    if (!output) return Promise.reject(new Error('audio_output_unavailable'));
+    output.muted = false;
+    try {
+      return Promise.resolve(output.play?.()).catch((error) => {
+        onAudioBlocked(output);
+        throw error;
+      });
+    } catch (error) {
+      onAudioBlocked(output);
+      return Promise.reject(error);
+    }
+  }
+
+  function attachRemoteAudio(remote) {
+    const output = ensureAudioElement();
+    if (output) output.srcObject = remote;
+    if (iosWebKit) {
+      const context = ensureAudioContext();
+      if (context?.createMediaStreamSource) {
+        try {
+          remoteAudioSource?.disconnect?.();
+          remoteAudioSource = context.createMediaStreamSource(remote);
+          remoteAudioSource.connect(context.destination);
+          if (output) output.muted = true;
+          Promise.resolve(context.resume?.()).then(() => {
+            if (context.state !== 'running' && output) return playThroughElement(output);
+          }).catch(() => {
+            if (output) playThroughElement(output).catch(() => {});
+          });
+          return;
+        } catch {
+          remoteAudioSource = null;
+        }
+      }
+    }
+    if (output) playThroughElement(output).catch(() => {});
+  }
+
+  async function resumeAudioOutput() {
+    const context = ensureAudioContext();
+    if (context) {
+      try {
+        await context.resume?.();
+        if (context.state === 'running' && remoteAudioSource) return true;
+      } catch {}
+    }
+    const output = ensureAudioElement();
+    if (!output) throw new Error('audio_output_unavailable');
+    await playThroughElement(output);
+    return true;
   }
 
   function emitRecordedReply(current, chunks, responseId, itemId, startedAt, mimeHint) {
@@ -267,6 +406,11 @@ export function createRealtimeLiveClient({
     });
     localStream = null;
     remoteStream = null;
+    remoteAudioSource?.disconnect?.();
+    remoteAudioSource = null;
+    const oldAudioContext = audioContext;
+    audioContext = null;
+    try { oldAudioContext?.close?.(); } catch {}
     if (audio) {
       try { audio.pause?.(); } catch {}
       audio.srcObject = null;
@@ -299,7 +443,10 @@ export function createRealtimeLiveClient({
       if (responseId) completedTranscriptResponses.add(responseId);
       onTranscript({ id: itemId || responseId, responseId, role: 'assistant', text: String(message.transcript || message.text || '').slice(0, 12_000), done: true });
     }
-    if (message.type === 'input_audio_buffer.speech_started') onStatus('connected', 'أستمع إليك…');
+    if (message.type === 'input_audio_buffer.speech_started') {
+      if (iosWebKit) resumeAudioOutput().catch(() => {});
+      onStatus('connected', 'أستمع إليك…');
+    }
     if (message.type === 'input_audio_buffer.speech_stopped') onStatus('connected', 'أجهّز الرد الصوتي والنصي…');
     if (message.type === 'response.done') {
       for (const outputItem of message.response?.output || []) {
@@ -351,37 +498,27 @@ export function createRealtimeLiveClient({
     disconnect(false);
     const active = ++generation;
     ensureAudioElement();
-    onStatus('connecting', 'جارٍ طلب الميكروفون وتجهيز المحادثة الحية…');
+    // This must execute before the first await while the tap/click still owns
+    // Safari's user activation.
+    primeIOSAudioOutput();
+    onStatus('connecting', iosWebKit ? 'جارٍ تهيئة ميكروفون وصوت iPhone…' : 'جارٍ طلب الميكروفون وتجهيز المحادثة الحية…');
 
     try {
-      let acquired;
-      try {
-        acquired = await mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            channelCount: 1
-          }
-        });
-      } catch (error) {
-        throw mapMediaError(error);
-      }
+      const acquired = await requestMicrophoneStream(mediaDevices, navigatorObject);
       if (active !== generation) {
         acquired.getTracks?.().forEach((track) => track.stop());
         return;
       }
       localStream = acquired;
+      if (iosWebKit) {
+        try { await ensureAudioContext()?.resume?.(); } catch {}
+      }
       peer = new PeerConnection();
       peer.ontrack = (event) => {
         const remote = event.streams?.[0] || (MediaStreamClass && event.track ? new MediaStreamClass([event.track]) : null);
         if (!remote) return;
         remoteStream = remote;
-        const output = ensureAudioElement();
-        if (output) {
-          output.srcObject = remote;
-          Promise.resolve(output.play?.()).catch(() => onAudioBlocked(output));
-        }
+        attachRemoteAudio(remote);
         if (pendingResponseId && !recorder) startReplyRecording(pendingResponseId);
       };
       localStream.getAudioTracks?.().forEach((track) => peer.addTrack(track, localStream));
@@ -391,6 +528,7 @@ export function createRealtimeLiveClient({
         if (active === generation) {
           clearTimeout(connectTimer);
           connectTimer = null;
+          if (iosWebKit) resumeAudioOutput().catch(() => {});
           onStatus('connected', 'المحادثة الحية متصلة؛ تحدث مباشرة وسأرد بالصوت ويظهر الرد مكتوبًا.');
         }
       };
@@ -404,6 +542,7 @@ export function createRealtimeLiveClient({
 
       peer.onconnectionstatechange = () => {
         if (active !== generation) return;
+        if (peer?.connectionState === 'connected' && iosWebKit) resumeAudioOutput().catch(() => {});
         if (['failed', 'closed', 'disconnected'].includes(peer?.connectionState)) {
           disconnect(false);
           onStatus('error', AI_ERRORS.disconnected);
@@ -416,11 +555,11 @@ export function createRealtimeLiveClient({
           disconnect(false);
           onStatus('error', AI_ERRORS.timeout);
         }
-      }, 35_000);
+      }, iosWebKit ? 50_000 : 35_000);
 
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
-      await waitForIceGathering(peer, iceGatherTimeoutMs);
+      await waitForIceGathering(peer, effectiveIceGatherTimeout(iceGatherTimeoutMs, navigatorObject));
       const localSdp = peer.localDescription?.sdp || offer.sdp;
       const result = await aiRequest('realtime', {
         sdp: localSdp,
@@ -429,7 +568,7 @@ export function createRealtimeLiveClient({
         consent: true,
         shareSummary: options.shareSummary === true,
         summary: options.shareSummary ? options.summary : {}
-      }, { fetcher, signal: controller.signal });
+      }, { fetcher, signal: controller.signal, timeoutMs: iosWebKit ? 40_000 : 20_000 });
       if (active !== generation) return;
       if (typeof result?.sdp !== 'string' || !result.sdp.startsWith('v=0')) throw voiceError('bad_answer');
       await peer.setRemoteDescription({ type: 'answer', sdp: result.sdp });
@@ -454,7 +593,7 @@ export function createRealtimeLiveClient({
       stopReplyRecording(activeResponseId);
     },
     playAudio() {
-      return ensureAudioElement()?.play?.();
+      return resumeAudioOutput();
     },
     sendText(value) {
       const text = String(value || '').trim().slice(0, 2_000);
