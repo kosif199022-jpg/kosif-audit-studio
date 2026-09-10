@@ -16,6 +16,19 @@ test("root render is protected by the KOSIF recovery boundary", async () => {
   assert.doesNotMatch(boundary, /OPENAI_API_KEY|provider\.key|engagement\s*=/);
 });
 
+test("full workspace and heavy visual CSS are deferred behind a fast boot shell", async () => {
+  const main = await read("src/main.jsx");
+  assert.match(main, /lazy\(async \(\) =>/);
+  assert.match(main, /import\("\.\/App\.jsx"\)/);
+  assert.match(main, /import\("\.\/styles\.css"\)/);
+  assert.match(main, /import\("\.\/design-v66\.css"\)/);
+  assert.match(main, /import\("\.\/space-cinematic\.css"\)/);
+  assert.match(main, /<Suspense fallback={<AppBootFallback \/>}>/);
+  assert.doesNotMatch(main, /^import "\.\/styles\.css";/m);
+  assert.doesNotMatch(main, /^import "\.\/design-v66\.css";/m);
+  assert.doesNotMatch(main, /^import "\.\/space-cinematic\.css";/m);
+});
+
 test("iPhone shell keeps RTL, safe-area, and standalone app metadata", async () => {
   const [html, manifest] = await Promise.all([
     read("index.html"),
