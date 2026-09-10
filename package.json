@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "quality": "node scripts/repository-health.mjs",
+    "quality:bundle": "node scripts/bundle-budget.mjs",
     "vendor:mp3": "node scripts/vendor-mp3-encoder.mjs",
-    "build": "npm run vendor:mp3 && vite build && node scripts/prepare-sites-build.mjs",
-    "build:ai": "npm run vendor:mp3 && vite build --config vite.ai-studio.config.mjs",
+    "build": "npm run quality && npm run vendor:mp3 && vite build && npm run quality:bundle && node scripts/prepare-sites-build.mjs",
+    "build:ai": "npm run quality && npm run vendor:mp3 && vite build --config vite.ai-studio.config.mjs",
     "db:guards": "node scripts/generate-d1-guards.mjs",
     "preview": "vite preview",
     "test": "npm run build && node --test tests/*.test.mjs",
