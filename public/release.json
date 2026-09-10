@@ -1,19 +1,29 @@
 {
-  "release": "2026-09-10-iphone-safari-realtime-v4",
-  "releasedAt": "2026-09-10T12:32:04+03:00",
-  "source": "kosif-audit-studio-main.zip",
+  "release": "2026-09-10-production-maintenance-v1",
+  "releasedAt": "2026-09-10T13:30:00+03:00",
+  "source": "kosif199022-jpg/kosif-audit-studio",
   "productionBranch": "codex/preserve-theme-cloudflare",
   "features": [
+    "repository-wide-quality-gate",
+    "client-secret-leak-prevention",
+    "runtime-dangerous-code-guard",
+    "production-bundle-budget",
+    "stable-vendor-code-splitting",
+    "root-react-error-recovery",
+    "iphone-safe-area-pwa-hardening",
+    "cloudflare-security-cache-headers",
+    "github-actions-v5-runtime",
     "realtime-webRTC-voice",
-    "voice-reply-plus-written-transcript",
+    "written-chat-and-safe-execution",
     "true-mp3-local-transcode",
-    "iphone-safari-webaudio-priming",
-    "iphone-safari-broad-microphone-constraint",
-    "iphone-safari-10s-ice-window",
-    "iphone-safari-50s-connect-window",
-    "iphone-mp3-share-download",
-    "six-live-chat-attachments",
-    "markdown-xml-evidence",
-    "production-push-ci"
-  ]
+    "six-live-chat-attachments"
+  ],
+  "verification": {
+    "sourceFilesScanned": 180,
+    "sourceKiBScanned": 2248,
+    "maintenanceWarnings": 0,
+    "testsPassed": 276,
+    "testsFailed": 0,
+    "mainEntryKiBApprox": 731
+  }
 }
