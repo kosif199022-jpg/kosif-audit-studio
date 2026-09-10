@@ -7,6 +7,7 @@ const CORE = [
   './v5/traceability.js', './v5/review-loop.js', './v5/document-client.js', './v5/document-intelligence.js',
   './v5/continuous-store.js', './v5/continuous-documents.js', './v5/continuous-council.js', './v5/continuous-reporting.js',
   './v5/state-codec.js', './v5/engagement-persistence.js', './v5/continuous-persistence.js', './v5/report-model.js',
+  './v5/completion-engine.js', './v5/report-approval.js', './v5/continuous-completion.js',
   './manifest.webmanifest', './icon.svg', './icon-maskable.svg'
 ];
 const scope = self.registration.scope;
