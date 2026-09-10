@@ -3,7 +3,7 @@ import { WORKSPACE_VIEWS, workspaceMetrics, badgeForWorkspace, workspaceViewFrom
 
 const $=s=>document.querySelector(s);let activeView='overview';
 const SELECTORS={
-  overview:['.hero','.now-panel','.journey','#workspaceOverviewStrip'],
+  overview:['.hero','.now-panel','.journey','#workspaceOverviewStrip','#dashboardCommandCenter'],
   documents:['#intakePanel','.request-panel'],
   issues:['#issueWorkspace'],
   council:['.council-panel','.request-panel'],
