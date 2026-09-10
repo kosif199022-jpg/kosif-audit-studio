@@ -1,4 +1,4 @@
-name: Deploy KOSIF Audit Studio to GitHub Pages
+name: Deploy KOSIF Audit Studio to Cloudflare Pages
 
 on:
   push:
@@ -8,36 +8,62 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  deployments: write
 
 concurrency:
-  group: pages
+  group: cloudflare-pages-production
   cancel-in-progress: true
 
 jobs:
   test-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Run engine and Moon tests
-        run: npm test
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
+
+      - name: Verify KOSIF
+        run: |
+          npm test
+          npm run check
+
+      - name: Prepare production static bundle
+        run: |
+          rm -rf dist-pages
+          mkdir -p dist-pages
+          rsync -a ./ dist-pages/ \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'node_modules' \
+            --exclude 'tests' \
+            --exclude 'scripts' \
+            --exclude 'cloudflare' \
+            --exclude 'dist-pages' \
+            --exclude 'package.json' \
+            --exclude 'package-lock.json' \
+            --exclude '*.md'
+          test -f dist-pages/index.html
+          test -f dist-pages/continuous-review.js
+          test -f dist-pages/sw.js
+
+      - name: Deploy to Cloudflare Pages
+        id: cloudflare
+        uses: cloudflare/wrangler-action@v4
         with:
-          enablement: true
-      - name: Upload static site
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: .
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 9ff3d8494afab356ecbf95a2a231a6b5
+          wranglerVersion: '4'
+          command: pages deploy dist-pages --project-name=kosif-audit-studio --branch=main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deployment URL
+        env:
+          DEPLOYMENT_URL: ${{ steps.cloudflare.outputs.deployment-url }}
+          DEPLOYMENT_ALIAS_URL: ${{ steps.cloudflare.outputs.pages-deployment-alias-url }}
+        run: |
+          echo "Cloudflare Pages deployment: ${DEPLOYMENT_URL}"
+          echo "Production alias: ${DEPLOYMENT_ALIAS_URL}"
