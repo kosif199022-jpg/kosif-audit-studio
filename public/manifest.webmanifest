@@ -1,11 +1,15 @@
 {
- "name":"KOSIF | مساحة المراجعة الذكية",
- "short_name":"KOSIF",
- "lang":"ar",
- "dir":"rtl",
- "start_url":"/",
- "scope":"/",
- "display":"standalone",
- "theme_color":"#7254d8",
- "background_color":"#f5f2ff"
+  "id": "/",
+  "name": "KOSIF | مساحة المراجعة الذكية",
+  "short_name": "KOSIF",
+  "description": "مساحة عربية لإدارة ملفات المراجعة والأدلة والمخاطر والتقارير المحكومة.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#070c20",
+  "background_color": "#070c20",
+  "categories": ["business", "finance", "productivity"]
 }
