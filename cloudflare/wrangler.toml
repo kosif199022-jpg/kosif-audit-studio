@@ -1,9 +1,19 @@
 name = "kosif-audit-realtime"
-main = "document-worker.js"
+main = "gateway-worker.js"
 compatibility_date = "2026-09-10"
 workers_dev = true
 
 [vars]
 ALLOWED_ORIGIN = "*"
+PERSISTENCE_ALLOWED_ORIGIN = "https://kosif-audit-studio.pages.dev,https://kosif-audit-studio.taunt-apron-speak.chatgpt.site"
 DOCUMENT_MODEL = "gpt-5.6-terra"
 MAX_DOCUMENT_BYTES = "20971520"
+
+# Wrangler 2026 automatic provisioning: omitting IDs/names lets Wrangler create
+# a D1 database and R2 bucket for these bindings on deploy. Existing production
+# resources can replace these entries with explicit IDs/names later.
+[[d1_databases]]
+binding = "KOSIF_DB"
+
+[[r2_buckets]]
+binding = "KOSIF_DOCUMENTS"
