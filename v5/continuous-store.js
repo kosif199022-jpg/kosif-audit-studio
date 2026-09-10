@@ -16,7 +16,7 @@ export const store = {
   selectedDocumentId: null,
   remote: { mode:'local', status:'محلي', version:0, engagementId:null, accessToken:null }
 };
-export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const money = v => formatMoneyMinor(v ?? 0n, store.engagement.currency || 'SAR');
 export const nextDocId = () => `DOC-${String(store.engagement.documents.length + 1).padStart(4,'0')}`;
 export const analyses = () => [...store.documentAnalyses.values()];
