@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Radio, Sparkles, Square, Volume2 } from "lucide-react";
 import { canUseVoiceCommands, parseVoiceCommand } from "../voice-commands.js";
+import { VoiceEnvironmentCheck } from "./VoiceEnvironmentCheck.jsx";
 import "../voice-console.css";
 
 const RealtimeVoice = lazy(() => import("./RealtimeVoice.jsx").then((module) => ({ default: module.RealtimeVoice })));
@@ -233,7 +234,10 @@ export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summa
           </div>
 
           {mode === "realtime" ? (
-            <Suspense fallback={<p>جارٍ تجهيز الصوت…</p>}><RealtimeVoice onView={onView} summary={voiceContext} /></Suspense>
+            <>
+              <VoiceEnvironmentCheck />
+              <Suspense fallback={<p>جارٍ تجهيز الصوت…</p>}><RealtimeVoice onView={onView} summary={voiceContext} /></Suspense>
+            </>
           ) : null}
 
           {mode === "chat" ? (
