@@ -3,45 +3,18 @@ import { Download, FileText, Image as ImageIcon, LoaderCircle, Mic, MicOff, Pape
 import { aiRequest } from '../realtime-client.js';
 import { createRealtimeLiveClient } from '../realtime-live-client.js';
 import { extractAuditDocument } from '../document-workbench.js';
+import { downloadAudioBlob, extensionFor } from '../audio-export.js';
 
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
-const DOCUMENT_PATTERN = /\.(pdf|docx|xlsx?|csv|tsv|txt|json)$/i;
-
-function isIOSDevice() {
-  if (typeof navigator === 'undefined') return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
-
-function audioExtension(mimeType = '') {
-  if (/mp4|m4a/i.test(mimeType)) return 'm4a';
-  if (/ogg/i.test(mimeType)) return 'ogg';
-  return 'webm';
-}
+const MAX_ATTACHMENTS_PER_PICK = 6;
+const DOCUMENT_PATTERN = /\.(pdf|docx|xlsx?|csv|tsv|txt|md|xml|json)$/i;
+const NO_LOCAL_FALLBACK = new Set(['consent_required', 'mic_denied', 'mic_missing', 'mic_busy', 'mic_failed']);
 
 async function saveAudioReply(reply) {
   if (!reply?.blob) return;
-  const extension = audioExtension(reply.mimeType || reply.blob.type);
+  const extension = extensionFor(reply.mimeType || reply.blob.type);
   const filename = `KOSIF-audio-${new Date(reply.createdAt || Date.now()).toISOString().replace(/[:.]/g, '-')}.${extension}`;
-  if (isIOSDevice() && typeof File === 'function' && navigator.share && navigator.canShare) {
-    const file = new File([reply.blob], filename, { type: reply.mimeType || reply.blob.type || 'audio/mp4' });
-    try {
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'رد KOSIF الصوتي' });
-        return;
-      }
-    } catch (error) {
-      if (error?.name === 'AbortError') return;
-    }
-  }
-  const url = URL.createObjectURL(reply.blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.rel = 'noopener';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 15_000);
+  await downloadAudioBlob(reply.blob, filename);
 }
 
 function readBlobAsDataUrl(blob) {
@@ -103,7 +76,7 @@ async function prepareImage(file) {
 }
 
 async function prepareDocument(file) {
-  if (!DOCUMENT_PATTERN.test(file.name || '')) throw new Error('استخدم PDF أو DOCX أو XLSX/XLS أو CSV/TSV/TXT/JSON، أو صورة.');
+  if (!DOCUMENT_PATTERN.test(file.name || '')) throw new Error('استخدم PDF أو DOCX أو XLSX/XLS أو CSV/TSV/TXT/MD/XML/JSON، أو صورة.');
   if (!file.size || file.size > MAX_ATTACHMENT_BYTES) throw new Error('المرفق يجب أن يكون أقل من 25MB.');
   const document = await extractAuditDocument(file, { maxPages: 12, store: async () => {} });
   const excerpts = document.snippets.slice(0, 4).map((item) => `[${item.locator || `ص ${item.page}`}]: ${item.text}`).join('\n');
@@ -111,7 +84,7 @@ async function prepareDocument(file) {
   return { kind: 'text', name: file.name, text: excerpts };
 }
 
-export function RealtimeVoice({ onView, summary = {} }) {
+export function RealtimeVoice({ onView, summary = {}, onFallback }) {
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('الاتصال الصوتي الخادمي جاهز؛ وافق على استخدام الميكروفون ثم ابدأ.');
   const [ready, setReady] = useState(false);
@@ -124,13 +97,16 @@ export function RealtimeVoice({ onView, summary = {} }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [deviceHint, setDeviceHint] = useState('');
+  const [fallbackReason, setFallbackReason] = useState('');
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentStatus, setAttachmentStatus] = useState('');
   const [sentAttachments, setSentAttachments] = useState([]);
   const client = useRef(null);
   const attachmentInput = useRef(null);
   const viewRef = useRef(onView);
+  const fallbackRef = useRef(onFallback);
   viewRef.current = onView;
+  fallbackRef.current = onFallback;
   const active = status === 'connecting' || status === 'connected';
 
   useEffect(() => {
@@ -141,10 +117,14 @@ export function RealtimeVoice({ onView, summary = {} }) {
       const realtime = realtimeResult.status === 'fulfilled' ? realtimeResult.value : null;
       const configured = registry?.providers?.some((provider) => provider.id === 'openai' && provider.configured) || realtime?.serverConfigured === true;
       setReady(configured);
-      setMessage(configured ? 'اتصال OpenAI الحي مُعد؛ وافق على استخدام الميكروفون ثم ابدأ.' : 'الاتصال الصوتي الخادمي غير متاح مؤقتًا. حاول مرة أخرى لاحقًا.');
+      setMessage(configured ? 'اتصال OpenAI الحي مُعد؛ وافق على استخدام الميكروفون ثم ابدأ.' : 'الاتصال الصوتي الخادمي غير متاح مؤقتًا؛ يمكنك استخدام الوضع المحلي الاحتياطي.');
+      setFallbackReason(configured ? '' : 'خدمة OpenAI الحية غير مهيأة الآن.');
       if (realtime?.model && /^gpt-realtime/i.test(realtime.model)) setModel(realtime.model);
     }).catch((error) => {
-      if (live) setMessage(error.message);
+      if (!live) return;
+      setReady(false);
+      setMessage(error.message);
+      setFallbackReason(error.message);
     });
 
     client.current = createRealtimeLiveClient({
@@ -153,7 +133,12 @@ export function RealtimeVoice({ onView, summary = {} }) {
         if (!live) return;
         setStatus(state);
         setMessage(label);
-        if (state !== 'error') setDeviceHint('');
+        if (state !== 'error') {
+          setDeviceHint('');
+          setFallbackReason('');
+        } else {
+          setFallbackReason(label);
+        }
       },
       onAudioBlocked: () => { if (live) setBlocked(true); },
       onTranscript: (item) => {
@@ -185,13 +170,17 @@ export function RealtimeVoice({ onView, summary = {} }) {
     setMuted(false);
     setBlocked(false);
     setDeviceHint('');
+    setFallbackReason('');
     setAttachmentStatus('');
     setSentAttachments([]);
     setMessages([]);
     try {
       await client.current.connect({ model, voice, consent, shareSummary, summary });
-    } catch {
-      // The realtime client already published a safe Arabic status.
+    } catch (error) {
+      const code = error?.code || 'connect_failed';
+      if (!NO_LOCAL_FALLBACK.has(code) && fallbackRef.current) {
+        fallbackRef.current(error?.message || 'تعذر تشغيل المحادثة الحية.');
+      }
     }
   }
 
@@ -212,7 +201,7 @@ export function RealtimeVoice({ onView, summary = {} }) {
   }
 
   async function addAttachments(event) {
-    const files = [...(event.target.files || [])].slice(0, 4);
+    const files = [...(event.target.files || [])].slice(0, MAX_ATTACHMENTS_PER_PICK);
     event.target.value = '';
     if (!files.length) return;
     if (status !== 'connected') {
@@ -232,7 +221,7 @@ export function RealtimeVoice({ onView, summary = {} }) {
     }
     try {
       if (prepared.length && client.current.sendAttachments(prepared)) {
-        setSentAttachments((current) => [...current, ...prepared.map((item) => ({ name: item.name, kind: item.kind }))].slice(-12));
+        setSentAttachments((current) => [...current, ...prepared.map((item) => ({ name: item.name, kind: item.kind }))].slice(-18));
         setAttachmentStatus(`تم إرسال ${prepared.length} مرفق للمحادثة${rejected.length ? `، وتعذر ${rejected.length}` : ''}.`);
       } else if (!prepared.length) {
         setAttachmentStatus(rejected[0] || 'لم يُرسل أي مرفق.');
@@ -245,6 +234,7 @@ export function RealtimeVoice({ onView, summary = {} }) {
   }
 
   const microphoneError = status === 'error' && /ميكروفون|المتصفح|HTTPS/.test(message);
+  const canFallback = typeof onFallback === 'function' && !active && (Boolean(fallbackReason) || !ready);
 
   return (
     <div className="realtime-voice">
@@ -254,6 +244,7 @@ export function RealtimeVoice({ onView, summary = {} }) {
           <button type="button" className="button button-outline" onClick={inspectMicrophone}>فحص الميكروفون</button>
           {microphoneError ? <small>على iPhone افتح الرابط في Safari مباشرة ثم اختر «السماح» للميكروفون. إذا منع Safari تشغيل الرد تلقائيًا سيظهر زر «تفعيل سماع الرد».</small> : null}
           {deviceHint ? <small role="status">{deviceHint}</small> : null}
+          {canFallback ? <button type="button" className="button button-outline" onClick={() => fallbackRef.current?.(fallbackReason || message)}>استخدام الوضع المحلي الاحتياطي</button> : null}
         </div>
       ) : null}
       {!active ? (
@@ -283,11 +274,11 @@ export function RealtimeVoice({ onView, summary = {} }) {
       {blocked ? <button className="button button-outline" onClick={() => Promise.resolve(client.current.playAudio()).then(() => setBlocked(false)).catch(() => {})}>تفعيل سماع الرد على iPhone</button> : null}
       {status === 'connected' ? (
         <div className="voice-attachment-tools">
-          <input ref={attachmentInput} className="sr-only" type="file" multiple accept="image/*,.pdf,.docx,.xlsx,.xls,.csv,.tsv,.txt,.json" onChange={addAttachments} />
+          <input ref={attachmentInput} className="sr-only" type="file" multiple accept="image/*,.pdf,.docx,.xlsx,.xls,.csv,.tsv,.txt,.md,.xml,.json" onChange={addAttachments} />
           <button type="button" className="button button-outline" disabled={attachmentBusy} onClick={() => attachmentInput.current?.click()}>
             {attachmentBusy ? <LoaderCircle className="spin" size={16} /> : <Paperclip size={16} />} {attachmentBusy ? 'تجهيز المرفق…' : 'إضافة مرفق'}
           </button>
-          <small>يدعم الصور وPDF وDOCX وExcel وCSV/TXT/JSON. المستندات يُستخرج نص محدود منها محليًا قبل الإرسال.</small>
+          <small>حتى 6 مرفقات في المرة: صور وPDF وDOCX وExcel وCSV/TXT/MD/XML/JSON. المستندات يُستخرج نص محدود منها محليًا قبل الإرسال.</small>
         </div>
       ) : null}
       {attachmentStatus ? <small className="voice-attachment-status" role="status">{attachmentStatus}</small> : null}
