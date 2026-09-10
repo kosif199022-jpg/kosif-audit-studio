@@ -16,10 +16,16 @@ test("expanded commands reach high-value KOSIF workspaces", () => {
   assert.equal(parseVoiceCommand("افتح مركز النتائج").view, "results");
   assert.equal(parseVoiceCommand("روح مختبر المستندات").view, "document-lab");
   assert.equal(parseVoiceCommand("افتح مساحة عمل المراجع").view, "reviewer-workspace");
-  assert.equal(parseVoiceCommand("أريد التحليلات").view, "analytics");
+  assert.equal(parseVoiceCommand("اعرض التحليلات").view, "analytics");
   assert.equal(parseVoiceCommand("افتح استوديو الذكاء").view, "intelligence");
   assert.equal(parseVoiceCommand("افتح اتصالات الذكاء").view, "ai-connections");
   assert.equal(viewLabel("council"), "مجلس المراجعين الذكي");
+});
+
+test("audit questions are not mistaken for local navigation commands", () => {
+  assert.equal(parseVoiceCommand("ما المعيار المناسب للإيراد؟").type, "unknown");
+  assert.equal(parseVoiceCommand("كم عدد الحسابات في الملف؟").type, "unknown");
+  assert.equal(parseVoiceCommand("المعايير").view, "standards");
 });
 
 test("voice commands expose space and local report actions", () => {
