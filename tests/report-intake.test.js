@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createEngagement } from '../v5/engagement-machine.js';
+import { buildReportPlan } from '../v5/report-recipes.js';
+import { syncReportRecipeRequests, linkDocumentToRecipeRequests, reportIntakeMetrics, matchesDocument } from '../v5/report-intake.js';
+import { recordCouncilRound } from '../v5/review-loop.js';
+
+test('confirming a report recipe creates governed requests only for missing inputs',()=>{const e=createEngagement({id:'ENG-P'});const plan=buildReportPlan('ميزانية',{documentTypes:['trial-balance']});const result=syncReportRecipeRequests(e,plan,{at:'2026-09-10T00:00:00Z'});assert.equal(result.created.length,1);assert.equal(result.created[0].requirementId,'COA');assert.equal(result.created[0].origin,'report-recipe');assert.deepEqual(result.created[0].acceptanceCriteria.map(x=>x.id),['document-received']);assert.equal(e.requests.length,0)});
+
+test('switching report recipes supersedes still-open recipe requests without deleting history',()=>{let e=createEngagement({id:'ENG-P'}),first=syncReportRecipeRequests(e,buildReportPlan('ميزانية')).engagement;assert.equal(first.requests.some(r=>r.status==='requested'),true);const second=syncReportRecipeRequests(first,buildReportPlan('تقرير مراجعة')).engagement;assert.ok(second.requests.some(r=>r.origin==='report-recipe'&&r.recipeId==='statement-of-financial-position'&&r.status==='superseded'));assert.ok(second.requests.some(r=>r.recipeId==='audit-report'&&r.status==='requested'))});
+
+test('matching document receipt makes recipe request partial, not satisfied, until council review',()=>{let e=createEngagement({id:'ENG-P'});e=syncReportRecipeRequests(e,buildReportPlan('ميزانية')).engagement;const tb={id:'DOC-1',name:'trial_balance.csv',type:'trial-balance',sha256:'abc'};let linked=linkDocumentToRecipeRequests(e,tb,{at:'2026-09-10T00:01:00Z'});e=linked.engagement;const req=e.requests.find(r=>r.requirementId==='TB');assert.equal(linked.evidence.length,1);assert.equal(req.status,'partial');assert.equal(req.coverage,100);assert.equal(linked.evidence[0].reviewStatus,'received');const round=recordCouncilRound(e,{positions:[],conflicts:[],verdict:'needs-evidence',verdictText:'تمت مراجعة المدخل'},{recordedAt:'2026-09-10T00:02:00Z'}).engagement;assert.equal(round.requests.find(r=>r.requirementId==='TB').status,'satisfied')});
+
+test('filename hints match specialized report inputs without treating arbitrary files as support',()=>{const request={requirementId:'PPE',acceptedDocumentTypes:['fixed-assets-register']};assert.equal(matchesDocument(request,{name:'سجل الأصول الثابتة 2026.xlsx',type:'spreadsheet'}),true);assert.equal(matchesDocument(request,{name:'random.xlsx',type:'spreadsheet'}),false)});
+
+test('report intake metrics distinguish open partial satisfied and superseded requests',()=>{const e=createEngagement({id:'ENG-P'});e.requests=[{origin:'report-recipe',recipeId:'x',status:'requested'},{origin:'report-recipe',recipeId:'x',status:'partial'},{origin:'report-recipe',recipeId:'x',status:'satisfied'},{origin:'report-recipe',recipeId:'x',status:'superseded'}];const m=reportIntakeMetrics(e,'x');assert.deepEqual(m,{total:4,open:2,received:1,satisfied:1,superseded:1})});
