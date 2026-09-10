@@ -15,7 +15,7 @@ const titleMap = {
 const uniq = values => [...new Set((values || []).filter(Boolean))];
 const openIssue = i => ['open','investigating','management-response','challenged'].includes(i.status);
 
-function baseSection(id, engagement) { return { id, title:titleMap[id] || id, status:'draft', paragraphs:[], facts:[], tables:[], sourceIds:[], humanReviewRequired:false, unavailableReason:null, engagementId:engagement.id }; }
+function baseSection(id, engagement) { return { id, title:titleMap[id] || id, status:'draft', paragraphs:[], facts:[], tables:[], sourceIds:[], humanReviewRequired:false, unavailableReason:null, engagementId:engagement.id, review:null, reviewHistory:[] }; }
 function addSources(section, values) { section.sourceIds = uniq([...section.sourceIds, ...(values || [])]); return section; }
 
 function buildSection(id, ctx) {
@@ -33,7 +33,7 @@ function buildSection(id, ctx) {
       s.humanReviewRequired=true; s.status='human-required'; s.paragraphs.push('لا يصدر KOSIF رأيًا نهائيًا بصورة آلية. هذا القسم محجوز لصياغة واعتماد المراجع البشري بعد استيفاء بوابات الإكمال.');
       addSources(s, latest?.id ? [latest.id] : []); break;
     case 'basis-for-opinion':
-      s.humanReviewRequired=true; s.paragraphs.push(`بوابات الجاهزية الحالية: ${ctx.readiness.score}%، مع ${ctx.readiness.blockers.length} مانعًا حرجًا.`); addSources(s, engagement.evidence.map(e=>e.id)); break;
+      s.humanReviewRequired=true; s.status='human-required'; s.paragraphs.push(`بوابات الجاهزية الحالية: ${ctx.readiness.score}%، مع ${ctx.readiness.blockers.length} مانعًا حرجًا.`); addSources(s, engagement.evidence.map(e=>e.id)); break;
     case 'basis-of-preparation':
       s.paragraphs.push(`أُعد هذا المخرج وفق إطار ${engagement.framework} من بيانات الارتباط والتسويات المقبولة فقط، مع بقاء بيانات المصدر الأصلية غير معدلة.`); addSources(s, engagement.documents.map(d=>d.id)); break;
     case 'materiality':
@@ -43,13 +43,15 @@ function buildSection(id, ctx) {
       s.facts.push({label:'المستندات',value:engagement.documents.length},{label:'تحليلات المستند',value:documentMetrics?.documentsAnalyzed ?? 0},{label:'Claims',value:documentMetrics?.claims ?? 0},{label:'إشارات الخطر',value:documentMetrics?.risks ?? 0}); addSources(s, engagement.documents.map(d=>d.id)); break;
     case 'key-audit-matters': {
       const high = engagement.issues.filter(i=>['critical','high'].includes(i.severity));
-      if (!high.length) { s.status='unavailable'; s.unavailableReason='لا توجد مرشحات KAM موثقة في الحالة الحالية.'; break; }
-      s.humanReviewRequired=true; s.tables.push({headers:['المسألة','الخطورة','الحالة'],rows:high.slice(0,12).map(i=>[i.title,i.severity,i.status])}); addSources(s, high.map(i=>i.id)); break;
+      s.humanReviewRequired=true; s.status='human-required';
+      if (!high.length) s.paragraphs.push('لا توجد مرشحات KAM آلية عالية/حرجة في الحالة الحالية. يظل تحديد وجود أو عدم وجود KAM قرارًا بشريًا موثقًا.');
+      else { s.tables.push({headers:['المسألة','الخطورة','الحالة'],rows:high.slice(0,12).map(i=>[i.title,i.severity,i.status])}); addSources(s, high.map(i=>i.id)); }
+      break;
     }
     case 'going-concern':
-      s.humanReviewRequired=true; s.paragraphs.push('يتطلب استنتاج الاستمرارية تقييمًا مخصصًا للأدلة والتوقعات والتمويل والأحداث اللاحقة؛ لا يُستنتج من غياب تنبيه آلي.'); break;
+      s.humanReviewRequired=true; s.status='human-required'; s.paragraphs.push('يتطلب استنتاج الاستمرارية تقييمًا مخصصًا للأدلة والتوقعات والتمويل والأحداث اللاحقة؛ لا يُستنتج من غياب تنبيه آلي.'); break;
     case 'other-information':
-      s.paragraphs.push('يعرض هذا القسم أي تعارضات موثقة بين السرد والمعلومات المالية عند توفرها. لا توجد نتيجة آلية نهائية في غياب أدلة مخصصة.'); break;
+      s.humanReviewRequired=true; s.status='human-required'; s.paragraphs.push('يعرض هذا القسم أي تعارضات موثقة بين السرد والمعلومات المالية عند توفرها. الاستنتاج النهائي يتطلب مراجعة بشرية للمعلومات الأخرى ذات الصلة.'); break;
     case 'responsibilities':
       s.status='human-required'; s.humanReviewRequired=true; s.paragraphs.push('تُراجع الصياغة القانونية/المهنية النهائية لمسؤوليات الإدارة والمراجع وفق نوع الارتباط والجهة التنظيمية قبل الإصدار.'); break;
     case 'council-summary':
@@ -60,7 +62,7 @@ function buildSection(id, ctx) {
       s.facts.push({label:'إجمالي الأدلة',value:engagement.evidence.length},{label:'طلبات مفتوحة',value:req.open},{label:'طلبات مستوفاة',value:req.satisfied});
       s.tables.push({headers:['الطلب','الأولوية','الحالة','التغطية'],rows:(engagement.requests||[]).map(r=>[r.title,r.priority,r.status,`${r.coverage||0}%`])}); addSources(s,engagement.evidence.map(e=>e.id)); break;
     case 'adjustments': case 'adjustment-summary':
-      s.tables.push({headers:['القيد','النوع','الحالة','السبب'],rows:(engagement.adjustments||[]).map(a=>[a.id,a.type,a.status,a.rationale])}); addSources(s,(engagement.adjustments||[]).map(a=>a.id)); if(pending.length)s.humanReviewRequired=true; break;
+      s.tables.push({headers:['القيد','النوع','الحالة','السبب'],rows:(engagement.adjustments||[]).map(a=>[a.id,a.type,a.status,a.rationale])}); addSources(s,(engagement.adjustments||[]).map(a=>a.id)); if(pending.length){s.humanReviewRequired=true;s.status='human-required'} break;
     case 'statement-of-financial-position':
       if (!statements?.sfp) { s.status='unavailable'; s.unavailableReason='لا يوجد ميزان مراجعة منظم لبناء قائمة المركز المالي.'; break; }
       s.tables.push({headers:['البند','القيمة'],rows:[['الأصول المتداولة',statements.sfp.currentAssets.total],['الأصول غير المتداولة',statements.sfp.nonCurrentAssets.total],['إجمالي الأصول',statements.sfp.totalAssets],['الالتزامات المتداولة',statements.sfp.currentLiabilities.total],['الالتزامات غير المتداولة',statements.sfp.nonCurrentLiabilities.total],['حقوق الملكية',statements.sfp.equity.total]]}); addSources(s,accepted.map(a=>a.id)); break;
@@ -83,8 +85,9 @@ function buildSection(id, ctx) {
 
 export function reportQuality(model) {
   const unavailable=model.sections.filter(s=>s.status==='unavailable'), human=model.sections.filter(s=>s.humanReviewRequired), orphaned=(model.traceabilityMetrics?.isolated||[]).length;
-  const checks={readiness:model.readiness.ready,noUnavailableRequiredSections:unavailable.length===0,traceabilityHealthy:orphaned===0,humanReviewCompleted:false};
-  return {checks,readyForIssue:Object.values(checks).every(Boolean),unavailableSections:unavailable.map(s=>s.id),humanReviewSections:human.map(s=>s.id),orphaned};
+  const humanReviewCompleted=human.every(s=>s.review?.decision==='approved');
+  const checks={readiness:Boolean(model.readiness?.ready),noUnavailableRequiredSections:unavailable.length===0,traceabilityHealthy:orphaned===0,humanReviewCompleted};
+  return {checks,readyForIssue:Object.values(checks).every(Boolean),readiness:checks.readiness,noUnavailableRequiredSections:checks.noUnavailableRequiredSections,traceabilityHealthy:checks.traceabilityHealthy,humanReviewCompleted,unavailableSections:unavailable.map(s=>s.id),humanReviewSections:human.map(s=>s.id),orphaned};
 }
 
 export function buildProfessionalReportModel({ engagement, recipe, statements=null, materiality=null, documentMetrics=null, traceabilityMetrics=null, createdAt=new Date().toISOString() }={}) {
