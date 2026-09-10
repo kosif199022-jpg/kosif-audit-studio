@@ -16,7 +16,7 @@ export const store = {
   selectedDocumentId: null,
   remote: { mode:'local', status:'محلي', version:0, engagementId:null, accessToken:null }
 };
-export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 export const money = v => formatMoneyMinor(v ?? 0n, store.engagement.currency || 'SAR');
 export const nextDocId = () => `DOC-${String(store.engagement.documents.length + 1).padStart(4,'0')}`;
 export const analyses = () => [...store.documentAnalyses.values()];
@@ -24,8 +24,9 @@ export const categories = () => store.analysis ? [...new Set(store.analysis.rows
 export const docTypes = () => [...new Set(store.engagement.documents.map(d => d.type))];
 export function derive(){ store.engagement.stage = deriveEngagementStage(store.engagement); return store.engagement.stage; }
 export function satisfiedRequirementIds(){
-  const map={'trial-balance':['TB'],'chart-of-accounts':['COA'],'bank-statement':['BANK'],aging:['AR'],inventory:['INV','INVLIST'],lease:['LEASE'],'financial-statements':['FS','PYFS'],'general-ledger':['GL'],journal:['GL'],controls:['CONTROL']}, out=new Set;
+  const map={'trial-balance':['TB'],'chart-of-accounts':['COA'],'bank-statement':['BANK'],aging:['AR'],inventory:['INV','INVLIST'],lease:['LEASE'],'financial-statements':['FS','PYFS'],'general-ledger':['GL'],journal:['GL'],'controls-document':['CONTROL'],'fixed-assets-register':['PPE'],'loan-document':['DEBT'],'tax-document':['TAX'],'inventory-count':['COUNT'],'purchase-support':['COST']}, out=new Set;
   for(const type of docTypes()) for(const id of map[type] || []) out.add(id);
+  for(const request of store.engagement.requests||[])if(request.origin==='report-recipe'&&['received','partial','satisfied'].includes(request.status)&&request.requirementId)out.add(request.requirementId);
   return [...out];
 }
 export function clearSessionFiles(){store.sessionFiles.clear();store.selectedDocumentId=null}
