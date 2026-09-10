@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createEngagement } from '../v5/engagement-machine.js';
+import { cashFlowReadiness, normalizeCashMovement } from '../v5/cash-flow-engine.js';
+import { recordCashFlowVersion, latestCashFlowVersion } from '../v5/cash-flow-workflow.js';
+import { REPORT_RECIPES } from '../v5/report-recipes.js';
+import { buildProfessionalReportModel } from '../v5/report-model.js';
+import { attachDisclosureSection } from '../v5/report-disclosures.js';
+import { reportSourceFingerprint, reportIsStale } from '../v5/report-source.js';
+import { matchesDocument } from '../v5/report-intake.js';
+import { minorToInput } from '../v5/continuous-cash-flow.js';
+
+function engagement(){const e=createEngagement({id:'ENG-CF',entity:'شركة اختبار',engagementType:'preparation'});e.documents.push({id:'DOC-OPEN',name:'opening-bank.pdf',sha256:'a',version:1,status:'classified'},{id:'DOC-CLOSE',name:'closing-bank.pdf',sha256:'b',version:1,status:'classified'},{id:'DOC-MOVE',name:'cash-flow-support.xlsx',sha256:'c',version:1,status:'classified'});return e}
+function input(){return{openingCashMinor:100000n,closingCashMinor:140000n,openingSourceIds:['DOC-OPEN'],closingSourceIds:['DOC-CLOSE'],movements:[{id:'CFM-1',label:'تحصيلات تشغيلية',section:'operating',direction:'inflow',amountMinor:50000n,sourceIds:['DOC-MOVE']},{id:'CFM-2',label:'شراء أصل',section:'investing',direction:'outflow',amountMinor:20000n,sourceIds:['DOC-MOVE']},{id:'CFM-3',label:'تمويل',section:'financing',direction:'inflow',amountMinor:10000n,sourceIds:['DOC-MOVE']}]}}
+
+test('cash flow engine accepts integer minor units only and validates section/direction',()=>{assert.equal(cashFlowReadiness({...input(),openingCashMinor:'100.5'}).ready,false);assert.throws(()=>normalizeCashMovement({section:'other',direction:'inflow',amountMinor:'100',sourceIds:['DOC-1']}),/section/);assert.throws(()=>normalizeCashMovement({section:'operating',direction:'sideways',amountMinor:'100',sourceIds:['DOC-1']}),/direction/)});
+
+test('reconciled source-backed movements produce exact operating investing financing totals',()=>{const r=cashFlowReadiness(input());assert.equal(r.ready,true);assert.equal(r.statement.totals.operating,50000n);assert.equal(r.statement.totals.investing,-20000n);assert.equal(r.statement.totals.financing,10000n);assert.equal(r.statement.netChangeMinor,40000n);assert.equal(r.statement.calculatedClosingMinor,140000n);assert.equal(r.statement.reconciliationDeltaMinor,0n)});
+
+test('missing sources or a one-minor-unit reconciliation difference blocks cash flow readiness',()=>{let r=cashFlowReadiness({...input(),openingSourceIds:[]});assert.equal(r.ready,false);assert.ok(r.blockers.some(b=>b.type==='opening-source'));r=cashFlowReadiness({...input(),closingCashMinor:139999n});assert.equal(r.ready,false);assert.ok(r.blockers.some(b=>b.type==='reconciliation'))});
+
+test('cash flow approval is human-only, rejects unknown source IDs, and versions immutably',()=>{const e=engagement();assert.throws(()=>recordCashFlowVersion(e,input(),{actor:'KOSIF',actorType:'ai',rationale:'auto'}),/human/);const unknown=input();unknown.movements=unknown.movements.map((m,i)=>i===0?{...m,sourceIds:['DOC-UNKNOWN']}:m);assert.throws(()=>recordCashFlowVersion(e,unknown,{actor:'Reviewer',actorType:'human',rationale:'reviewed'}),/Unknown cash flow source IDs/);const first=recordCashFlowVersion(e,input(),{actor:'Reviewer',actorType:'human',rationale:'تمت مطابقة التدفقات'},{at:'2026-09-10T10:00:00Z'});assert.equal(e.cashFlowVersions,undefined);assert.equal(first.version.id,'CFV-001');const second=recordCashFlowVersion(first.engagement,input(),{actor:'Manager',actorType:'human',rationale:'إعادة اعتماد بعد المراجعة'},{at:'2026-09-10T11:00:00Z'});assert.equal(second.version.id,'CFV-002');assert.equal(second.version.previousVersionId,'CFV-001');assert.equal(latestCashFlowVersion(second.engagement).actor,'Manager')});
+
+test('full financial report keeps cash flow unavailable until an approved reconciled version exists',()=>{let e=engagement();let report=buildProfessionalReportModel({engagement:e,recipe:REPORT_RECIPES['full-financial-statements'],traceabilityMetrics:{nodes:1,edges:0,isolated:[]},documentMetrics:{documentsAnalyzed:0,claims:0,risks:0}});report=attachDisclosureSection(report,{rows:[],engagement:e});let section=report.sections.find(s=>s.id==='cash-flows');assert.equal(section.status,'unavailable');e=recordCashFlowVersion(e,input(),{actor:'Reviewer',actorType:'human',rationale:'مصادر متصالحة'}).engagement;report=buildProfessionalReportModel({engagement:e,recipe:REPORT_RECIPES['full-financial-statements'],traceabilityMetrics:{nodes:1,edges:0,isolated:[]},documentMetrics:{documentsAnalyzed:0,claims:0,risks:0}});report=attachDisclosureSection(report,{rows:[],engagement:e});section=report.sections.find(s=>s.id==='cash-flows');assert.equal(section.status,'human-required');assert.equal(section.cashFlowVersionId,'CFV-001');assert.equal(section.facts.find(f=>f.label==='فرق التسوية').value,0n);assert.ok(section.sourceIds.includes('DOC-MOVE'))});
+
+test('approving a cash flow version changes report fingerprint and makes the old draft stale',()=>{let e=engagement();const report={sourceFingerprint:reportSourceFingerprint(e)};assert.equal(reportIsStale(report,e),false);e=recordCashFlowVersion(e,input(),{actor:'Reviewer',actorType:'human',rationale:'اعتماد'}).engagement;assert.equal(reportIsStale(report,e),true)});
+
+test('cash flow filename hint can satisfy the CFS intake family without matching arbitrary files',()=>{const request={requirementId:'CFS',acceptedDocumentTypes:['cash-flow-support']};assert.equal(matchesDocument(request,{type:'spreadsheet',name:'جدول التدفقات النقدية 2026.xlsx'}),true);assert.equal(matchesDocument(request,{type:'spreadsheet',name:'ملاحظات عامة.xlsx'}),false)});
+
+test('cash flow input formatting preserves very large BigInt values without Number conversion',()=>{assert.equal(minorToInput(900719925474099312345n),'9007199254740993123.45');assert.equal(minorToInput(-123n),'-1.23')});

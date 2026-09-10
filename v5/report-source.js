@@ -12,6 +12,10 @@ export function reportSourceVector(engagement={}){
   for(const r of [...(engagement.councilRounds||[])].sort((a,b)=>s(a.id).localeCompare(s(b.id))))rows.push(row('RND',r.id,r.number,r.status,r.recordedAt,list(r.evidenceIds),list(r.issueIds)));
   for(const a of [...(engagement.adjustments||[])].sort((x,y)=>s(x.id).localeCompare(s(y.id))))rows.push(row('ADJ',a.id,a.status,a.version,a.debitMinor,a.creditMinor,a.decision?.decision,a.decision?.decidedAt));
   for(const d of [...(engagement.disclosureReviews||[])].sort((a,b)=>s(a.id).localeCompare(s(b.id))))rows.push(row('DSR',d.id,d.topicId,d.status,d.actor,d.at,d.previousReviewId,list(d.sourceIds)));
+  for(const v of [...(engagement.cashFlowVersions||[])].sort((a,b)=>s(a.id).localeCompare(s(b.id)))){
+    rows.push(row('CFV',v.id,v.version,v.status,v.actor,v.at,v.previousVersionId,v.statement?.openingCashMinor,v.statement?.netChangeMinor,v.statement?.closingCashMinor,list(v.sourceIds)));
+    for(const m of [...(v.statement?.movements||[])].sort((a,b)=>s(a.id).localeCompare(s(b.id))))rows.push(row('CFM',`${v.id}:${m.id}`,m.section,m.direction,m.amountMinor,list(m.sourceIds)));
+  }
   return rows.join('|');
 }
 export function reportSourceFingerprint(engagement={}){return fnv1a64(reportSourceVector(engagement))}
