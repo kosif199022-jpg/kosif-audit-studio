@@ -2,11 +2,22 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 const ROOT = process.cwd();
-const SOURCE_ROOTS = ["src", "worker", "scripts", "db"];
-const SCANNED_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".ts", ".css", ".sql", ".html", ".json"]);
+const SOURCE_ROOTS = ["src", "worker", "scripts", "db", "drizzle", "tests", ".github"];
+const SCANNED_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".ts", ".css", ".sql", ".html", ".json", ".py", ".yml", ".yaml"]);
 const CLIENT_PREFIXES = ["src/", "public/"];
 const APP_SOFT_LIMIT = 145_000;
 const APP_HARD_LIMIT = 160_000;
+const ROOT_CODE_FILES = [
+  "ai-council.js",
+  "audit-copilot.js",
+  "audit-room.js",
+  "drizzle.config.ts",
+  "vite.config.mjs",
+  "vite.ai-studio.config.mjs",
+  "index.html",
+  "package.json",
+  "public/manifest.webmanifest",
+];
 
 const failures = [];
 const warnings = [];
@@ -45,7 +56,7 @@ function addWarning(file, message) {
 
 function inspectText(relative, text, bytes) {
   const isClient = CLIENT_PREFIXES.some((prefix) => relative.startsWith(prefix)) || relative === "index.html";
-  const isRuntime = relative.startsWith("src/") || relative.startsWith("worker/");
+  const isRuntime = relative.startsWith("src/") || relative.startsWith("worker/") || ["ai-council.js", "audit-copilot.js", "audit-room.js"].includes(relative);
 
   if (/\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/.test(text)) {
     addFailure(relative, "يحتوي على قيمة تبدو كمفتاح API حقيقي.");
@@ -76,9 +87,7 @@ function inspectText(relative, text, bytes) {
 
 const files = [
   ...(await Promise.all(SOURCE_ROOTS.map(walk))).flat(),
-  path.join(ROOT, "index.html"),
-  path.join(ROOT, "package.json"),
-  path.join(ROOT, "public", "manifest.webmanifest"),
+  ...ROOT_CODE_FILES.map((file) => path.join(ROOT, file)),
 ].filter((value, index, all) => all.indexOf(value) === index);
 
 for (const file of files) {
@@ -91,9 +100,10 @@ for (const file of files) {
   if (!fileStat.isFile() || !SCANNED_EXTENSIONS.has(path.extname(file).toLowerCase())) continue;
   const relative = normalizedPath(file);
   const text = await readFile(file, "utf8");
+  const bytes = Buffer.byteLength(text);
   scannedFiles += 1;
-  scannedBytes += Buffer.byteLength(text);
-  inspectText(relative, text, Buffer.byteLength(text));
+  scannedBytes += bytes;
+  inspectText(relative, text, bytes);
 }
 
 const indexHtml = await readFile(path.join(ROOT, "index.html"), "utf8");
@@ -104,7 +114,7 @@ if (!/viewport-fit=cover/i.test(indexHtml)) {
   addFailure("index.html", "تهيئة iPhone Safe Area مفقودة: viewport-fit=cover.");
 }
 
-console.log(`Repository health: scanned ${scannedFiles} files (${Math.round(scannedBytes / 1024)} KiB).`);
+console.log(`Repository health: scanned ${scannedFiles} executable/config files (${Math.round(scannedBytes / 1024)} KiB).`);
 for (const warning of warnings) console.warn(`WARN ${warning}`);
 if (failures.length) {
   for (const failure of failures) console.error(`FAIL ${failure}`);
