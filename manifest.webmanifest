@@ -4,7 +4,7 @@
   "description": "نظام تشغيل عربي للمراجعة والتقارير المالية: مستندات، أدلة، مجلس مراجعين، تسويات، قوائم وتقارير قابلة للتتبع.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "./continuous-review.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#100c16",
@@ -14,8 +14,8 @@
     { "src": "./icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "الحلقة المستمرة V5", "url": "./continuous-review.html", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "استوديو الإيجنت القديم", "url": "./?view=agent", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "ميزان المراجعة القديم", "url": "./?view=data", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+    { "name": "KOSIF V5", "url": "./", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "واجهة KOSIF 4 القديمة", "url": "./legacy.html", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "استوديو الإيجنت القديم", "url": "./legacy.html?view=agent", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
   ]
 }

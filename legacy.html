@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#211830">
+  <meta name="description" content="KOSIF Audit Studio — منصة عربية احترافية لتحليل ميزان المراجعة، تقييم المخاطر، ربط المعايير، إدارة الأدلة وإعداد ملف المراجعة.">
+  <title>KOSIF 4 — Audit Intelligence Studio</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./studio.css">
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">انتقل إلى المحتوى</a>
+
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M6 17V9a4 4 0 0 1 4-4h6M10 19h8a2 2 0 0 0 2-2v-4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.1 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.1a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 3h.01"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z"/><path d="M8 7h8M8 11h6"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 13h6M9 17h6M9 9h2"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 14h4l2 3h4l2-3h4"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2"/><circle cx="17" cy="7" r="2"/><path d="M16 13h1a4 4 0 0 1 4 4v2"/></symbol>
+    <symbol id="i-report" viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M9 15v2m3-5v5m3-8v8M8 7h8"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 20h14"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7v5l-4 2v-7z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/></symbol>
+    <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m14 13-4 4M3 21h8M6 13l5-5m1 1 4-4m-8 6 3 3 5-5-3-3"/></symbol>
+    <symbol id="i-command" viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/></symbol>
+    <symbol id="i-mic-off" viewBox="0 0 24 24"><path d="M9 9v3a3 3 0 0 0 5 2.2M15 9.3V6a3 3 0 0 0-6 0M5 11a7 7 0 0 0 10.6 6M19 11a7 7 0 0 1-1 3.6M12 18v3m-4 0h8M3 3l18 18"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></symbol>
+  </svg>
+
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar" id="sidebar" aria-label="التنقل الرئيسي">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">K</div>
+        <div>
+          <strong>KOSIF</strong>
+          <span>Intelligence Studio <b class="brand-version">4.0</b></span>
+        </div>
+      </div>
+
+      <nav class="nav-list" id="mainNav">
+        <span class="nav-group">القيادة</span>
+        <button class="nav-item active" data-view="dashboard"><svg><use href="#i-grid"/></svg><span>مركز القيادة</span></button>
+        <span class="nav-group">التخطيط والبيانات</span>
+        <button class="nav-item" data-view="data"><svg><use href="#i-upload"/></svg><span>البيانات والميزان</span></button>
+        <button class="nav-item" data-view="planning"><svg><use href="#i-target"/></svg><span>التخطيط والأهمية</span></button>
+        <span class="nav-group">التنفيذ</span>
+        <button class="nav-item" data-view="risks"><svg><use href="#i-alert"/></svg><span>المخاطر والنتائج</span><span class="nav-badge" id="riskBadge">0</span></button>
+        <button class="nav-item" data-view="journal"><svg><use href="#i-route"/></svg><span>فحص قيود اليومية</span><span class="nav-badge" id="journalBadge">0</span></button>
+        <button class="nav-item" data-view="analytics"><svg><use href="#i-chart"/></svg><span>التحليلات المالية</span><span class="nav-badge" id="analyticsBadge">0</span></button>
+        <button class="nav-item" data-view="workpapers"><svg><use href="#i-file"/></svg><span>أوراق العمل</span></button>
+        <button class="nav-item" data-view="pbc"><svg><use href="#i-inbox"/></svg><span>طلبات المستندات</span></button>
+        <button class="nav-item" data-view="evidence"><svg><use href="#i-link"/></svg><span>سجل الأدلة</span><span class="nav-badge" id="evidenceBadge">0</span></button>
+        <span class="nav-group">الإكمال</span>
+        <button class="nav-item" data-view="opinion"><svg><use href="#i-gavel"/></svg><span>التحريفات والرأي</span><span class="nav-badge" id="opinionBadge">—</span></button>
+        <button class="nav-item" data-view="standards"><svg><use href="#i-book"/></svg><span>المعايير والمصادر</span></button>
+        <button class="nav-item" data-view="rounds"><svg><use href="#i-route"/></svg><span>الجولات العشر</span></button>
+        <button class="nav-item" data-view="council"><svg><use href="#i-users"/></svg><span>مجلس المراجعين</span></button>
+        <button class="nav-item" data-view="reports"><svg><use href="#i-report"/></svg><span>التقارير والتصدير</span></button>
+        <button class="nav-item" data-view="knowledge"><svg><use href="#i-play"/></svg><span>مسارات المعرفة</span></button>
+      </nav>
+
+      <div class="sidebar-status">
+        <div class="status-dot"></div>
+        <div>
+          <strong>المحرك الحتمي</strong>
+          <span>نشط — الاعتماد البشري إلزامي</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <button class="icon-button mobile-only" id="menuButton" aria-label="فتح القائمة"><svg><use href="#i-menu"/></svg></button>
+        <div class="topbar-context">
+          <span class="eyebrow">مساحة الارتباط</span>
+          <strong id="topbarTitle">شركة الأفق التجريبية — مراجعة 2026</strong>
+        </div>
+        <div class="topbar-actions">
+          <label class="global-search" aria-label="بحث سريع">
+            <svg><use href="#i-search"/></svg>
+            <input id="globalSearch" type="search" placeholder="ابحث عن معيار أو حساب أو خطر…" autocomplete="off">
+          </label>
+          <button class="icon-button" id="voiceTopButton" aria-label="المحادثة الصوتية المباشرة (V)" title="محادثة صوتية مباشرة — V"><svg><use href="#i-mic"/></svg></button>
+          <button class="icon-button" id="paletteButton" aria-label="لوحة الأوامر (Ctrl+K)" title="لوحة الأوامر — Ctrl+K"><svg><use href="#i-command"/></svg></button>
+          <button class="icon-button" id="themeButton" aria-label="تبديل المظهر"><svg><use href="#i-moon"/></svg></button>
+          <div class="avatar" title="المراجع المسؤول">مق</div>
+        </div>
+      </header>
+
+      <main id="mainContent" class="main-content" tabindex="-1">
+        <section class="view active" id="view-dashboard" data-view-panel="dashboard" aria-labelledby="dashboardTitle">
+          <div class="hero-card command-hero">
+            <div class="hero-copy">
+              <div class="command-heading-row"><span class="hero-kicker">THE BIG PICTURE / الصورة الكاملة</span><span class="command-stage" id="dashboardStageChip">تهيئة الارتباط</span></div>
+              <h1 id="dashboardTitle">كل دليل يصنع<br><em>صورة أوضح.</em></h1>
+              <p id="dashboardNextAction">ابدأ بتحميل ميزان المراجعة. سيحدد المركز بعد ذلك العائق المهني والخطوة التالية دون تجاوز قرار المراجع.</p>
+              <div class="hero-actions">
+                <button class="button primary" id="nextActionButton" data-go="data"><svg><use href="#i-route"/></svg><span id="nextActionLabel">تحميل الميزان</span></button>
+                <button class="button secondary" id="heroDemoButton"><svg><use href="#i-grid"/></svg>تحميل 5000 حساب تجريبي</button>
+              </div>
+              <div class="command-authority"><span><svg><use href="#i-check"/></svg>تحليل حتمي</span><span><svg><use href="#i-link"/></svg>مصدر قبل الاستنتاج</span><span><svg><use href="#i-shield"/></svg>الاعتماد للبشر</span></div>
+            </div>
+            <div class="hero-visual" aria-label="مؤشر جاهزية الارتباط">
+              <div class="readiness-ring" id="readinessRing" style="--progress: 0deg">
+                <div><strong id="readinessValue">0%</strong><span>جاهزية</span></div>
+              </div>
+              <div class="hero-mini-metrics">
+                <div><span>الرصيد</span><strong id="heroBalanceState">بانتظار البيانات</strong></div>
+                <div><span>الأدلة الفعلية</span><strong id="heroCoverage">0%</strong></div>
+                <div><span>قيود معلّمة</span><strong id="heroJournalState">0</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="metric-grid" id="dashboardMetrics">
+            <article class="metric-card"><span class="metric-label">الحسابات</span><strong id="metricAccounts">0</strong><small>سجل في ميزان المراجعة</small></article>
+            <article class="metric-card"><span class="metric-label">المخاطر المفتوحة</span><strong id="metricRisks">0</strong><small id="metricHighRisks">0 مرتفعة أو حرجة</small></article>
+            <article class="metric-card"><span class="metric-label">أوراق العمل</span><strong id="metricWorkpapers">0</strong><small id="metricCompletedWp">0 مكتملة</small></article>
+            <article class="metric-card"><span class="metric-label">فجوات الأدلة</span><strong id="metricEvidenceGaps">0</strong><small id="metricEvidenceHealth">مخاطر بلا دليل مستلم</small></article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="panel span-2 command-gates-panel">
+              <div class="panel-header"><div><span class="eyebrow">Governed Workflow</span><h2>بوابات دورة المراجعة</h2></div><span class="status-chip neutral" id="dashboardGateSummary">0 / 0</span></div>
+              <div class="dashboard-gate-rail" id="dashboardGateRail"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-header"><div><span class="eyebrow">الأولوية</span><h2>أعلى المخاطر</h2></div><button class="text-button" data-go="risks">فتح السجل</button></div>
+              <div class="compact-list" id="dashboardRiskList"><div class="empty-state compact">حمّل الميزان لتظهر الإشارات.</div></div>
+            </article>
+            <article class="panel">
+              <div class="panel-header"><div><span class="eyebrow">العوائق الحالية</span><h2>ما يمنع الإكمال؟</h2></div></div>
+              <div class="blocker-list" id="dashboardBlockers"><div class="empty-state compact">سيظهر العائق التالي هنا.</div></div>
+            </article>
+            <article class="panel span-2">
+              <div class="panel-header"><div><span class="eyebrow">الجولات العشر</span><h2>تقدم ملف الارتباط</h2></div><button class="text-button" data-go="rounds">عرض التفاصيل</button></div>
+              <div class="round-strip" id="dashboardRounds"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-data" data-view-panel="data" aria-labelledby="dataTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">المدخلات الحتمية</span><h1 id="dataTitle">البيانات وميزان المراجعة</h1><p>CSV أو Excel، مع تعرف تلقائي على الأعمدة وتصنيف الحسابات وربطها بالمعايير والتأكيدات.</p></div>
+            <div class="heading-actions">
+              <button class="button secondary" id="downloadTemplateButton"><svg><use href="#i-download"/></svg>قالب CSV</button>
+              <button class="button primary" id="loadDemoButton"><svg><use href="#i-grid"/></svg>5000 حساب تجريبي</button>
+            </div>
+          </div>
+
+          <div class="upload-layout">
+            <article class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="رفع ملف ميزان المراجعة">
+              <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" hidden>
+              <div class="drop-icon"><svg><use href="#i-upload"/></svg></div>
+              <h2>اسحب ملف الميزان هنا</h2>
+              <p>أو اضغط للاختيار. CSV يعمل محليًا بالكامل، وExcel يُقرأ عبر المكتبة المرفقة عند توافرها.</p>
+              <span>الحد المقترح: 10,000 حساب</span>
+            </article>
+            <article class="panel data-health">
+              <div class="panel-header"><div><span class="eyebrow">سلامة البيانات</span><h2>فحص الاستيراد</h2></div><span class="status-chip neutral" id="balanceChip">بانتظار ملف</span></div>
+              <dl class="definition-list">
+                <div><dt>إجمالي المدين</dt><dd id="totalDebit">—</dd></div>
+                <div><dt>إجمالي الدائن</dt><dd id="totalCredit">—</dd></div>
+                <div><dt>الفرق</dt><dd id="imbalanceValue">—</dd></div>
+                <div><dt>مشكلات الصفوف</dt><dd id="rowIssuesCount">0</dd></div>
+              </dl>
+              <button class="button full" id="analyzeButton" disabled><svg><use href="#i-target"/></svg>تشغيل التحليل وإعادة التقييم</button>
+            </article>
+          </div>
+
+          <article class="panel table-panel">
+            <div class="panel-header table-toolbar">
+              <div><span class="eyebrow">معاينة</span><h2>الحسابات المصنفة</h2></div>
+              <div class="toolbar-controls">
+                <label class="inline-search"><svg><use href="#i-search"/></svg><input id="accountSearch" type="search" placeholder="بحث في الحسابات"></label>
+                <button class="button ghost" id="exportTbButton"><svg><use href="#i-download"/></svg>CSV</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>الكود</th><th>الحساب</th><th>التصنيف</th><th>مدين</th><th>دائن</th><th>المعايير</th></tr></thead>
+                <tbody id="accountsTableBody"><tr><td colspan="6"><div class="empty-state">لا توجد بيانات مستوردة بعد.</div></td></tr></tbody>
+              </table>
+            </div>
+            <div class="table-footer"><span id="accountTableSummary">0 حساب</span><div class="pagination"><button id="prevAccounts" class="icon-button small" aria-label="السابق">‹</button><span id="accountPage">1 / 1</span><button id="nextAccounts" class="icon-button small" aria-label="التالي">›</button></div></div>
+          </article>
+        </section>
+
+        <section class="view" id="view-planning" data-view-panel="planning" aria-labelledby="planningTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 300 / ISA 320</span><h1 id="planningTitle">التخطيط والأهمية النسبية</h1><p>حساب حتمي مع مبررات ظاهرة، ثم معاينة قابلة لإعادة التنفيذ بالبذرة نفسها.</p></div>
+          </div>
+          <div class="two-column">
+            <article class="panel">
+              <div class="panel-header"><div><span class="eyebrow">المدخلات</span><h2>حساب الأهمية</h2></div></div>
+              <form id="materialityForm" class="form-grid">
+                <label><span>أساس القياس</span><select id="benchmark"><option value="revenue">الإيرادات</option><option value="profit">الربح قبل الضريبة</option><option value="assets">إجمالي الأصول</option><option value="equity">حقوق الملكية</option><option value="expenses">المصروفات</option></select></label>
+                <label><span>قيمة الأساس</span><input id="benchmarkAmount" inputmode="decimal" placeholder="مثال: 125000000" required></label>
+                <label><span>مخاطر الارتباط</span><select id="engagementRisk"><option value="low">منخفضة</option><option value="medium" selected>متوسطة</option><option value="high">مرتفعة</option></select></label>
+                <label><span>نسبة مخصصة (اختياري)</span><input id="customRate" inputmode="decimal" placeholder="0.01 = 1%"></label>
+                <label><span>أهمية الأداء</span><input id="performanceRate" type="number" min="0.3" max="0.95" step="0.05" value="0.70"></label>
+                <label><span>حد التحريف التافه</span><input id="trivialRate" type="number" min="0.01" max="0.10" step="0.01" value="0.05"></label>
+                <button class="button primary full-width" type="submit"><svg><use href="#i-target"/></svg>احسب وسجّل</button>
+              </form>
+            </article>
+            <article class="panel materiality-output">
+              <div class="panel-header"><div><span class="eyebrow">النتيجة</span><h2>مستويات النطاق</h2></div><span class="status-chip neutral" id="materialityStatus">غير محددة</span></div>
+              <div class="materiality-stack">
+                <div class="materiality-row primary-result"><span>الأهمية الإجمالية</span><strong id="overallMateriality">—</strong></div>
+                <div class="materiality-row"><span>أهمية الأداء</span><strong id="performanceMateriality">—</strong></div>
+                <div class="materiality-row"><span>حد التافه بوضوح</span><strong id="trivialMateriality">—</strong></div>
+              </div>
+              <p class="rationale" id="materialityRationale">لم يُجر الحساب بعد.</p>
+              <div class="human-gate"><svg><use href="#i-shield"/></svg><span>الحساب أداة تخطيط؛ اعتماد الأساس والنسبة مسؤولية المراجع المسؤول.</span></div>
+              <div class="revision-history"><div class="panel-header"><div><span class="eyebrow">Version History</span><h2>إصدارات الأهمية</h2></div><span class="status-chip neutral" id="materialityRevisionCount">0 إصدار</span></div><div class="compact-list" id="materialityRevisionHistory"><div class="empty-state compact">لا توجد إصدارات مسجلة.</div></div></div>
+            </article>
+          </div>
+
+          <article class="panel">
+            <div class="panel-header"><div><span class="eyebrow">ISA 530</span><h2>تصميم المعاينة</h2></div><span class="status-chip neutral" id="sampleStatus">لا توجد عينة</span></div>
+            <div class="sample-controls">
+              <label><span>الطريقة</span><select id="sampleMethod"><option value="risk">موجهة بالمخاطر</option><option value="random">عشوائية</option><option value="systematic">منهجية</option><option value="mus">وحدات نقدية MUS</option></select></label>
+              <label><span>الحجم</span><input id="sampleSize" type="number" min="1" max="500" value="25"></label>
+              <label><span>البذرة</span><input id="sampleSeed" type="number" value="380019"></label>
+              <button class="button secondary" id="generateSampleButton"><svg><use href="#i-filter"/></svg>توليد العينة</button>
+              <button class="button ghost" id="exportSampleButton" disabled><svg><use href="#i-download"/></svg>تصدير</button>
+            </div>
+            <div class="table-wrap compact-table"><table><thead><tr><th>#</th><th>الكود</th><th>الحساب</th><th>الرصيد</th><th>التصنيف</th></tr></thead><tbody id="sampleTableBody"><tr><td colspan="5"><div class="empty-state compact">حدّد البيانات ثم أنشئ عينة.</div></td></tr></tbody></table></div>
+          </article>
+        </section>
+
+        <section class="view" id="view-rounds" data-view-panel="rounds" aria-labelledby="roundsTitle">
+          <div class="page-heading"><div><span class="eyebrow">ملف ارتباط منضبط</span><h1 id="roundsTitle">الجولات العشر</h1><p>لا تتحول علامة الجاهزية إلى اعتماد. كل جولة لها بوابة ومعيار ومستندات مرتبطة.</p></div></div>
+          <div class="rounds-timeline" id="roundsTimeline"></div>
+        </section>
+
+        <section class="view" id="view-risks" data-view-panel="risks" aria-labelledby="risksTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 315 / ISA 330 / ISA 450</span><h1 id="risksTitle">المخاطر والنتائج</h1><p>إشارات آلية قابلة للتفسير، ثم تقييم وإجراء ودليل وقرار بشري.</p></div>
+            <div class="heading-actions"><button class="button secondary" id="addFindingButton"><svg><use href="#i-plus"/></svg>إضافة نتيجة مهنية</button></div>
+          </div>
+          <div class="filter-bar">
+            <label class="inline-search wide"><svg><use href="#i-search"/></svg><input id="riskSearch" type="search" placeholder="ابحث في المخاطر والحسابات"></label>
+            <label><span class="sr-only">درجة الخطورة</span><select id="riskSeverityFilter"><option value="all">كل الدرجات</option><option value="critical">حرجة</option><option value="high">مرتفعة</option><option value="medium">متوسطة</option><option value="low">منخفضة</option></select></label>
+            <label><span class="sr-only">الحالة</span><select id="riskStatusFilter"><option value="all">كل الحالات</option><option value="open">مفتوحة</option><option value="addressed">تمت الاستجابة</option><option value="accepted">مقبولة مهنيًا</option></select></label>
+          </div>
+          <div class="risk-layout">
+            <div class="risk-list" id="riskList"><div class="empty-state">شغّل تحليل الميزان لتوليد إشارات المخاطر.</div></div>
+            <aside class="panel risk-detail" id="riskDetail"><div class="empty-state compact">اختر خطرًا لعرض الربط المعياري والإجراء والدليل.</div></aside>
+          </div>
+          <article class="panel findings-panel">
+            <div class="panel-header"><div><span class="eyebrow">ISA 450</span><h2>سجل النتائج والتحريفات</h2></div><span class="status-chip neutral" id="findingCountChip">0 نتيجة</span></div>
+            <div class="table-wrap"><table><thead><tr><th>النتيجة</th><th>الخطورة</th><th>المبلغ</th><th>الحالة</th><th>المرجع</th><th></th></tr></thead><tbody id="findingsTableBody"><tr><td colspan="6"><div class="empty-state compact">لا توجد نتائج مسجلة.</div></td></tr></tbody></table></div>
+          </article>
+        </section>
+
+        <section class="view" id="view-journal" data-view-panel="journal" aria-labelledby="journalTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 240 / ISA 315</span><h1 id="journalTitle">فحص قيود اليومية</h1><p>اختبارات حتمية للقيود اليدوية، قيود الإقفال، العطلات، المبالغ المستديرة والمستخدمين قليلي الظهور، مع سبب ظاهر لكل إشارة.</p></div>
+            <div class="heading-actions"><button class="button secondary" id="downloadJournalTemplateButton"><svg><use href="#i-download"/></svg>قالب CSV</button><button class="button primary" id="loadJournalDemoButton"><svg><use href="#i-grid"/></svg>بيانات تجريبية</button></div>
+          </div>
+          <div class="two-column journal-intake">
+            <article class="panel">
+              <div class="panel-header"><div><span class="eyebrow">المدخلات</span><h2>حمّل أو الصق سجل القيود</h2></div><span class="status-chip neutral" id="journalSourceChip">لا يوجد مصدر</span></div>
+              <div class="journal-controls">
+                <label><span>نهاية الفترة</span><input id="journalPeriodEnd" type="date" value="2026-12-31"></label>
+                <label><span>نافذة الإقفال بالأيام</span><input id="journalWindowDays" type="number" min="0" max="31" value="5"></label>
+              </div>
+              <label class="file-button" for="journalFileInput"><svg><use href="#i-upload"/></svg><span>اختيار CSV أو Excel</span></label>
+              <input id="journalFileInput" type="file" accept=".csv,.xlsx,.xls" hidden>
+              <label class="textarea-label"><span>أو الصق CSV هنا</span><textarea id="journalPaste" rows="6" placeholder="رقم القيد,تاريخ القيد,المستخدم,المصدر,المبلغ,البيان"></textarea></label>
+              <button class="button primary full" id="runJournalReviewButton"><svg><use href="#i-target"/></svg>تشغيل الفحص</button>
+            </article>
+            <article class="panel journal-summary-panel">
+              <div class="panel-header"><div><span class="eyebrow">نتيجة الفحص</span><h2>طابور المراجعة</h2></div><span class="status-chip neutral" id="journalReviewStatus">لم يُنفذ</span></div>
+              <div class="journal-metric-grid">
+                <div><span>إجمالي القيود</span><strong id="journalMetricTotal">0</strong></div>
+                <div><span>معلّمة</span><strong id="journalMetricFlagged">0</strong></div>
+                <div><span>مرتفعة/حرجة</span><strong id="journalMetricHigh">0</strong></div>
+                <div><span>تنتظر المراجعة</span><strong id="journalMetricPending">0</strong></div>
+              </div>
+              <div class="human-gate"><svg><use href="#i-shield"/></svg><span>هذه إشارات لا تثبت الاحتيال. يلزم فحص المستند والتفويض والغرض التجاري قبل الاستنتاج.</span></div>
+            </article>
+          </div>
+          <article class="panel table-panel">
+            <div class="panel-header table-toolbar"><div><span class="eyebrow">Review Queue</span><h2>القيود ذات الأولوية</h2></div><select id="journalRiskFilter" aria-label="تصفية قيود اليومية"><option value="flagged">المعلّمة فقط</option><option value="all">كل القيود</option><option value="critical">الحرجة</option><option value="high">المرتفعة</option><option value="pending">بانتظار المراجعة</option></select></div>
+            <div class="table-wrap"><table><thead><tr><th>القيد والتاريخ</th><th>المستخدم</th><th>المبلغ</th><th>الدرجة</th><th>أسباب الإشارة</th><th>المراجعة</th></tr></thead><tbody id="journalTableBody"><tr><td colspan="6"><div class="empty-state">حمّل سجل القيود وشغّل الفحص.</div></td></tr></tbody></table></div>
+          </article>
+        </section>
+
+        <section class="view" id="view-standards" data-view-panel="standards" aria-labelledby="standardsTitle">
+          <div class="page-heading"><div><span class="eyebrow">محرك معرفة بإصدارات</span><h1 id="standardsTitle">المعايير والمصادر الفنية</h1><p>بطاقات تطبيقية مرتبطة بالمصدر والإصدار والسريان والاختصاص. الملخص لا يستبدل النص الرسمي المعتمد.</p></div></div>
+          <div class="framework-grid" id="frameworkGrid"></div>
+          <article class="panel source-registry-panel"><div class="panel-header"><div><span class="eyebrow">Source Registry</span><h2>سجل الإصدارات والمراجع</h2></div><span class="status-chip success">مرخّص ببيانات وصفية</span></div><div class="source-registry" id="standardSourceGrid"></div></article>
+          <article class="panel standards-watch-panel"><div class="panel-header"><div><span class="eyebrow">SOCPA 2025</span><h2>رادار السريان والتحديثات</h2></div><span class="status-chip warning">تحقق قبل الاعتماد</span></div><div class="standards-watch-list" id="standardsWatchList"></div></article>
+          <div class="filter-bar standards-filter">
+            <label class="inline-search wide"><svg><use href="#i-search"/></svg><input id="standardSearch" type="search" placeholder="مثال: IFRS 15، الإيراد، المصادقات…"></label>
+            <select id="frameworkFilter" aria-label="تصفية الإطار"><option value="all">كل الأطر</option><option value="IFRS">IFRS / IAS</option><option value="IFRS SME">IFRS للمنشآت الصغيرة والمتوسطة</option><option value="ISA">ISA</option><option value="ISQM">ISQM</option></select>
+          </div>
+          <div class="standards-grid" id="standardsGrid"></div>
+        </section>
+
+        <section class="view" id="view-workpapers" data-view-panel="workpapers" aria-labelledby="workpapersTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 230</span><h1 id="workpapersTitle">أوراق العمل ورسم الأدلة</h1><p>برنامج مراجعة مولّد من المخاطر، مع مالك وحالة وروابط للأدلة والنتائج.</p></div>
+            <div class="heading-actions"><button class="button primary" id="generateWorkpapersButton"><svg><use href="#i-file"/></svg>توليد برنامج من المخاطر</button></div>
+          </div>
+          <div class="coverage-strip">
+            <div><span>المخاطر المغطاة بإجراء</span><strong id="procedureCoverage">0%</strong></div>
+            <div><span>المخاطر ذات دليل مستلم</span><strong id="evidenceCoverage">0%</strong></div>
+            <div><span>النتائج المرتبطة بورقة</span><strong id="findingCoverage">0%</strong></div>
+          </div>
+          <div class="workpaper-board" id="workpaperBoard"><div class="empty-state">لا توجد أوراق عمل. أنشئها من المخاطر أو أضف نتيجة مهنية.</div></div>
+        </section>
+
+        <section class="view" id="view-pbc" data-view-panel="pbc" aria-labelledby="pbcTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">Prepared by Client</span><h1 id="pbcTitle">طلبات المستندات والأدلة</h1><p>سجل قابل للتتبع للحالة والمالك والاستحقاق والمخاطر المرتبطة.</p></div>
+            <div class="heading-actions"><button class="button secondary" id="seedPbcButton"><svg><use href="#i-inbox"/></svg>إضافة القائمة الأساسية</button><button class="button primary" id="addPbcButton"><svg><use href="#i-plus"/></svg>طلب جديد</button></div>
+          </div>
+          <div class="pbc-summary" id="pbcSummary"></div>
+          <div class="pbc-board" id="pbcBoard"><div class="empty-state">لم تُنشأ طلبات مستندات بعد.</div></div>
+        </section>
+
+        <section class="view" id="view-evidence" data-view-panel="evidence" aria-labelledby="evidenceTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 500 / Provenance</span><h1 id="evidenceTitle">سجل الأدلة ومستكشف التتبّع</h1><p>سجل للأدلة المستلمة يوضح المصدر والبصمة وحالة المراجعة والارتباط بالخطر وورقة العمل.</p></div>
+            <div class="heading-actions"><button class="button primary" id="addEvidenceButton"><svg><use href="#i-plus"/></svg>تسجيل دليل</button></div>
+          </div>
+          <div class="coverage-strip evidence-summary">
+            <div><span>الأدلة المسجلة</span><strong id="evidenceMetricTotal">0</strong></div>
+            <div><span>تمت مراجعتها</span><strong id="evidenceMetricReviewed">0</strong></div>
+            <div><span>متوسط الجودة</span><strong id="evidenceMetricQuality">0%</strong></div>
+            <div><span>غير مرتبطة</span><strong id="evidenceMetricOrphan">0</strong></div>
+          </div>
+          <div class="evidence-layout">
+            <article class="panel evidence-explorer"><div class="panel-header"><div><span class="eyebrow">Evidence Explorer</span><h2>مسارات الإثبات</h2></div><span class="status-chip neutral" id="evidencePathStatus">0 مسار</span></div><div class="evidence-path-list" id="evidencePathList"><div class="empty-state">تظهر المسارات بعد توليد المخاطر وتسجيل الأدلة.</div></div></article>
+            <article class="panel table-panel evidence-table-panel"><div class="panel-header"><div><span class="eyebrow">Evidence Register</span><h2>الأدلة المسجلة</h2></div></div><div class="table-wrap"><table><thead><tr><th>الدليل</th><th>المصدر</th><th>الروابط</th><th>الجودة</th><th>الحالة</th><th></th></tr></thead><tbody id="evidenceTableBody"><tr><td colspan="6"><div class="empty-state compact">لا توجد أدلة مسجلة.</div></td></tr></tbody></table></div></article>
+          </div>
+        </section>
+
+        <section class="view" id="view-council" data-view-panel="council" aria-labelledby="councilTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">Moon Council — اعتراض ومراجعة لا تصويت</span><h1 id="councilTitle">مجلس المراجعين المحكوم</h1><p>تسعة مقاعد بعقود أدوار صريحة تقرأ مخرجات المحرك الحتمي والتحليلات فقط. كل مقعد يعلن موقفًا بسنده وطلباته، والمجلس يكشف التعارض بين المقاعد ويرفعه كحالة نزاع لا تُحسم إلا بقرار بشري مسجل.</p></div>
+            <div class="heading-actions"><button class="button ghost" id="councilContractsButton"><svg><use href="#i-shield"/></svg>عقود المقاعد</button><button class="button primary" id="runCouncilButton"><svg><use href="#i-users"/></svg>عقد جلسة المجلس</button></div>
+          </div>
+          <div class="human-gate prominent"><svg><use href="#i-shield"/></svg><div><strong>قاعدة السلطة</strong><span>المجلس يوصي ويعترض ويطلب أدلة. لا يعتمد، لا يصدر رأيًا، لا يفتح بوابة، ولا يستدعي نموذجًا خارجيًا. حسم النزاع يُسجل باسم المراجع في سلسلة الأحداث.</span></div></div>
+          <div class="council-overview" id="councilOverview"><div class="empty-state">اعقد جلسة بعد تحميل الميزان وتحديد الأهمية النسبية.</div></div>
+          <div class="council-conflicts" id="councilConflicts"></div>
+          <div class="council-grid" id="councilGrid"></div>
+          <div class="council-duo">
+            <article class="panel"><div class="panel-header"><div><span class="eyebrow">طلبات المجلس</span><h2>ما يطلبه المقاعد قبل الإكمال</h2></div></div><div id="councilAsks" class="ask-list"><div class="empty-state compact">لا طلبات بعد.</div></div></article>
+            <article class="panel council-history"><div class="panel-header"><div><span class="eyebrow">السجل</span><h2>الجلسات السابقة</h2></div></div><div id="councilHistory" class="compact-list"><div class="empty-state compact">لا توجد جلسات محفوظة.</div></div></article>
+          </div>
+          <dialog class="modal" id="councilContractsDialog"><div class="modal-header"><div><span class="eyebrow">حدود السلطة</span><h2>عقود مقاعد المجلس</h2></div><button type="button" class="icon-button" data-close-dialog="councilContractsDialog" aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></div><div class="modal-body"><div class="contract-grid" id="contractGrid"></div></div></dialog>
+        </section>
+
+        <section class="view" id="view-reports" data-view-panel="reports" aria-labelledby="reportsTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">إكمال وتسليم</span><h1 id="reportsTitle">التقارير والتصدير</h1><p>ملخص تنفيذي ورسم أدلة وحزمة ارتباط قابلة للنقل دون مفاتيح أو أسرار.</p></div>
+            <div class="heading-actions"><button class="button ghost" id="archiveSnapshotButton" disabled><svg><use href="#i-shield"/></svg>لقطة أرشيف</button><button class="button secondary" id="exportJsonButton"><svg><use href="#i-download"/></svg>حزمة JSON</button><button class="button primary" id="printReportButton"><svg><use href="#i-print"/></svg>طباعة / PDF</button></div>
+          </div>
+          <div class="report-gates" id="reportGates"></div>
+          <article class="panel audit-trail-panel"><div class="panel-header"><div><span class="eyebrow">Append-only Audit Trail</span><h2>سجل الأحداث وسلامة السلسلة</h2></div><span class="status-chip neutral" id="auditTrailStatus">غير مفحوص</span></div><div class="audit-event-list" id="auditEventList"></div></article>
+          <article class="report-document" id="reportDocument">
+            <header class="report-cover">
+              <div class="report-brand">KOSIF <span>Audit Studio</span></div>
+              <div><span>مسودة تقرير ارتباط</span><h2 id="reportEntity">شركة الأفق التجريبية</h2><p id="reportPeriod">للسنة المنتهية في 31 ديسمبر 2026</p></div>
+              <div class="report-status" id="reportStatus">مسودة — غير معتمدة</div>
+            </header>
+            <div class="report-body">
+              <section><h3>الملخص التنفيذي</h3><div class="report-kpis" id="reportKpis"></div><p id="reportExecutiveText">لم تُحلل بيانات بعد.</p></section>
+              <section><h3>المخاطر الرئيسية</h3><div id="reportRisks"><p class="muted">لا توجد بيانات.</p></div></section>
+              <section><h3>النتائج والتحريفات</h3><div id="reportFindings"><p class="muted">لا توجد نتائج.</p></div></section>
+              <section><h3>القوائم المشتقة والتحليلات</h3><div class="report-kpis" id="reportAnalytics"></div></section>
+              <section><h3>مجلس المراجعين — المواقف غير المتفق عليها</h3><div id="reportCouncil"></div></section>
+              <section><h3>مسودة الرأي وموقف المراجع</h3><div id="reportOpinion"></div></section>
+              <section><h3>سلامة التتبّع</h3><div class="report-provenance" id="reportProvenance"></div></section>
+              <section><h3>حدود واستخدام التقرير</h3><p>هذا المستند مسودة دعم قرار ناتجة من بيانات الارتباط المسجلة. لا يمثل رأي مراجعة ولا يغني عن النصوص الرسمية أو الحكم المهني أو مراجعة الجودة والاعتماد البشري.</p></section>
+            </div>
+          </article>
+        </section>
+
+        <section class="view" id="view-analytics" data-view-panel="analytics" aria-labelledby="analyticsTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 520 / ISA 570 / بنفورد</span><h1 id="analyticsTitle">التحليلات المالية والقوائم المشتقة</h1><p>قوائم مالية تُبنى حتميًا من الميزان المصنف، نسب بمعادلة ظاهرة، اختبار بنفورد للرقم الأول، ومؤشرات الاستمرارية. مؤشرات تحليلية لا استنتاجات.</p></div>
+            <div class="heading-actions"><button class="button secondary" id="exportStatementsButton"><svg><use href="#i-download"/></svg>تصدير القوائم CSV</button></div>
+          </div>
+          <div class="analytics-empty empty-state" id="analyticsEmpty">حمّل ميزان المراجعة لتُبنى القوائم والنسب.</div>
+          <div class="analytics-layout" id="analyticsLayout" hidden>
+            <div class="equation-strip" id="equationStrip"></div>
+            <div class="statements-grid">
+              <article class="panel statement-panel"><div class="panel-header"><div><span class="eyebrow">IAS 1</span><h2>قائمة المركز المالي</h2></div><span class="status-chip neutral" id="sfpChip"></span></div><div class="statement-body" id="sfpBody"></div></article>
+              <article class="panel statement-panel"><div class="panel-header"><div><span class="eyebrow">IAS 1 / IFRS 15</span><h2>قائمة الربح أو الخسارة</h2></div><span class="status-chip neutral" id="plChip"></span></div><div class="statement-body" id="plBody"></div></article>
+            </div>
+            <article class="panel"><div class="panel-header"><div><span class="eyebrow">إجراءات تحليلية</span><h2>النسب المالية</h2></div><span class="muted small">كل نسبة تُظهر معادلتها؛ الحكم اتجاهي ويحتاج مقارنة بالسنة السابقة والقطاع</span></div><div class="ratio-grid" id="ratioGrid"></div></article>
+            <div class="analytics-duo">
+              <article class="panel"><div class="panel-header"><div><span class="eyebrow">قانون بنفورد — الرقم الأول</span><h2>توزيع الأرقام الأولى للأرصدة</h2></div><span class="status-chip neutral" id="benfordChip"></span></div><div class="benford-chart" id="benfordChart"></div><p class="muted small" id="benfordNote"></p></article>
+              <article class="panel"><div class="panel-header"><div><span class="eyebrow">ISA 570.A3</span><h2>مؤشرات الاستمرارية</h2></div><span class="status-chip neutral" id="goingConcernChip"></span></div><div class="indicator-list" id="goingConcernList"></div></article>
+            </div>
+            <article class="panel saudi-panel"><div class="panel-header"><div><span class="eyebrow">حزمة السعودية — ZATCA</span><h2>معقولية ضريبة القيمة المضافة وتقدير الوعاء الزكوي</h2></div></div><div class="saudi-grid" id="saudiGrid"></div></article>
+          </div>
+        </section>
+
+        <section class="view" id="view-opinion" data-view-panel="opinion" aria-labelledby="opinionTitle">
+          <div class="page-heading">
+            <div><span class="eyebrow">ISA 450 / ISA 700 / ISA 705 / ISA 570</span><h1 id="opinionTitle">تجميع التحريفات ومسودة الرأي</h1><p>شجرة قرار حتمية تحوّل التحريفات غير المصححة وقيود النطاق وحالة الاستمرارية إلى مسودة رأي. المخرج توصية، والرأي يصدره المراجع باسمه.</p></div>
+          </div>
+          <div class="opinion-layout">
+            <article class="panel span-2"><div class="panel-header"><div><span class="eyebrow">ISA 450</span><h2>جدول التحريفات مقابل الأهمية النسبية</h2></div><span class="status-chip neutral" id="misstatementChip">—</span></div>
+              <div class="misstatement-meter" id="misstatementMeter"></div>
+              <div class="misstatement-buckets" id="misstatementBuckets"></div>
+              <div class="table-wrap"><table><thead><tr><th>النتيجة</th><th>التصنيف</th><th>المبلغ</th><th>الحالة</th></tr></thead><tbody id="misstatementTableBody"></tbody></table></div>
+            </article>
+            <article class="panel"><div class="panel-header"><div><span class="eyebrow">مدخلات الحكم المهني</span><h2>عوامل يقررها المراجع</h2></div></div>
+              <form class="form-grid single" id="opinionForm">
+                <label><span>قيد على النطاق (ISA 705.6)</span><select id="opinionScope"><option value="none">لا يوجد</option><option value="material">جوهري غير منتشر</option><option value="pervasive">جوهري ومنتشر</option></select></label>
+                <label><span>حالة الاستمرارية (ISA 570)</span><select id="opinionGoingConcern"><option value="none">لا عدم تأكد جوهري</option><option value="adequate-disclosure">عدم تأكد جوهري مع إفصاح كافٍ</option><option value="inadequate-disclosure">عدم تأكد جوهري وإفصاح غير كافٍ</option><option value="unable-to-conclude">تعذر الاستنتاج</option></select></label>
+                <label class="checkbox"><input type="checkbox" id="opinionPervasive"><span>التحريفات الجوهرية منتشرة الأثر (ISA 705.5أ)</span></label>
+              </form>
+              <p class="muted small">تُسجل هذه المدخلات في سجل الأحداث وتُبطل الاعتماد السابق عند تغييرها.</p>
+            </article>
+            <article class="panel opinion-card" id="opinionCard"><div class="panel-header"><div><span class="eyebrow">مسودة الرأي — تنتظر قرارًا بشريًا</span><h2 id="opinionLabel">—</h2></div><span class="status-chip neutral" id="opinionStandard"></span></div>
+              <ul class="opinion-basis" id="opinionBasis"></ul>
+              <div class="opinion-tree" id="opinionTree"></div>
+              <div class="opinion-decision" id="opinionDecision"></div>
+              <div class="hero-actions"><button class="button primary" id="opinionAcceptButton"><svg><use href="#i-check"/></svg>أعتمد المسودة كموقف مبدئي</button><button class="button ghost" id="opinionRejectButton"><svg><use href="#i-x"/></svg>أرفض المسودة وأسجل السبب</button></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-knowledge" data-view-panel="knowledge" aria-labelledby="knowledgeTitle">
+          <div class="page-heading"><div><span class="eyebrow">من الفيديو إلى قدرة عملية</span><h1 id="knowledgeTitle">مسارات المعرفة المدمجة</h1><p>فُهرست القوائم والفيديوهات كمحاور معرفة مرتبطة بوحدات التطبيق؛ وليست أرشيفًا أو روابط مشاهدة فقط.</p></div></div>
+          <div class="knowledge-summary">
+            <article><strong id="knowledgeCount">0</strong><span>مصدرًا مفهرسًا</span></article>
+            <article><strong>7</strong><span>طبقات تطبيق: محفز → معيار → حكم → إجراء → دليل → نتيجة → تقرير</span></article>
+            <article><strong>Human-in-the-loop</strong><span>التعليم والتحليل لا يتحولان إلى قرار سلطة</span></article>
+          </div>
+          <div class="knowledge-grid" id="knowledgeGrid"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+  <dialog class="modal" id="standardModal">
+    <div class="modal-header"><div><span class="eyebrow" id="standardModalFramework">IFRS</span><h2 id="standardModalTitle">تفاصيل المعيار</h2></div><button class="icon-button" data-close-dialog="standardModal" aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></div>
+    <div class="modal-body" id="standardModalBody"></div>
+  </dialog>
+
+  <dialog class="modal" id="findingModal">
+    <form method="dialog" id="findingForm">
+      <div class="modal-header"><div><span class="eyebrow">ISA 450</span><h2>تسجيل نتيجة أو تحريف</h2></div><button class="icon-button" value="cancel" aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></div>
+      <div class="modal-body form-grid">
+        <label class="full-width"><span>عنوان النتيجة</span><input id="findingTitle" required maxlength="160" placeholder="مثال: مخصص خسائر ائتمانية أقل من التقدير المستقل"></label>
+        <label><span>الخطورة</span><select id="findingSeverity"><option value="low">منخفضة</option><option value="medium" selected>متوسطة</option><option value="high">مرتفعة</option><option value="critical">حرجة</option></select></label>
+        <label><span>المبلغ</span><input id="findingAmount" inputmode="decimal" value="0"></label>
+        <label><span>المرجع</span><input id="findingReference" placeholder="IFRS 9 / ISA 540"></label>
+        <label><span>الحالة</span><select id="findingStatus"><option value="open">مفتوحة</option><option value="management-response">رد الإدارة</option><option value="adjusted">تم التصحيح</option><option value="passed">غير مصححة ومقيّمة</option><option value="closed">مغلقة</option></select></label>
+        <label class="full-width"><span>الوصف والاستنتاج</span><textarea id="findingDescription" rows="5" required placeholder="صف الشرط والمعيار والسبب والأثر والتوصية ودليل الاستنتاج."></textarea></label>
+      </div>
+      <div class="modal-footer"><button class="button ghost" value="cancel">إلغاء</button><button class="button primary" id="saveFindingButton" value="default">حفظ النتيجة</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="pbcModal">
+    <form method="dialog" id="pbcForm">
+      <div class="modal-header"><div><span class="eyebrow">طلب دليل</span><h2>إضافة طلب مستند</h2></div><button class="icon-button" value="cancel" aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></div>
+      <div class="modal-body form-grid">
+        <label class="full-width"><span>المستند أو الدليل</span><input id="pbcTitleInput" required maxlength="180"></label>
+        <label><span>المالك</span><input id="pbcOwnerInput" required placeholder="المالية / القانونية"></label>
+        <label><span>تاريخ الاستحقاق</span><input id="pbcDueInput" type="date" required></label>
+        <label><span>الأولوية</span><select id="pbcPriorityInput"><option value="low">منخفضة</option><option value="medium">متوسطة</option><option value="high">مرتفعة</option><option value="critical">حرجة</option></select></label>
+        <label><span>الحالة</span><select id="pbcStatusInput"><option value="requested">مطلوب</option><option value="received">مستلم</option><option value="reviewed">تمت مراجعته</option><option value="rejected">غير كافٍ</option></select></label>
+      </div>
+      <div class="modal-footer"><button class="button ghost" value="cancel">إلغاء</button><button class="button primary" id="savePbcButton" value="default">حفظ الطلب</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="evidenceModal">
+    <form method="dialog" id="evidenceForm">
+      <div class="modal-header"><div><span class="eyebrow">ISA 500</span><h2>تسجيل دليل مراجعة</h2></div><button class="icon-button" value="cancel" aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></div>
+      <div class="modal-body form-grid">
+        <label class="full-width"><span>عنوان الدليل</span><input id="evidenceTitleInput" required maxlength="180" placeholder="مثال: مصادقة البنك المستلمة مباشرة"></label>
+        <label><span>نوع المصدر</span><select id="evidenceSourceTypeInput"><option value="external">خارجي مستقل</option><option value="internal">نظام داخلي</option><option value="management">الإدارة</option></select></label>
+        <label><span>تاريخ المستند</span><input id="evidenceDateInput" type="date" required></label>
+        <label><span>الحالة</span><select id="evidenceStatusInput"><option value="received">مستلم</option><option value="reviewed">تمت مراجعته</option><option value="rejected">غير كافٍ</option></select></label>
+        <label><span>الخطر المرتبط</span><select id="evidenceRiskInput"><option value="">بدون ربط</option></select></label>
+        <label><span>ورقة العمل</span><select id="evidenceWorkpaperInput"><option value="">بدون ربط</option></select></label>
+        <label class="full-width file-input-label"><span>ملف الدليل (تُحفظ بياناته وبصمته فقط)</span><input id="evidenceFileInput" type="file"></label>
+        <label class="check-label full-width"><input id="evidenceDirectInput" type="checkbox"><span>تم الحصول على الدليل مباشرة من المصدر</span></label>
+      </div>
+      <div class="modal-footer"><button class="button ghost" value="cancel">إلغاء</button><button class="button primary" id="saveEvidenceButton" value="default">حفظ الدليل</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./app.js"></script>
+  <button class="voice-fab" id="voiceFab" aria-label="بدء المحادثة الصوتية المباشرة" title="محادثة صوتية مباشرة (V)"><svg><use href="#i-mic"/></svg><span class="voice-fab-ring"></span></button>
+  <aside class="voice-panel" id="voicePanel" hidden aria-label="المحادثة الصوتية المباشرة">
+    <header class="voice-head">
+      <div class="voice-orb" id="voiceOrb" data-state="idle"><span></span><span></span><span></span></div>
+      <div class="voice-title"><strong>KOSIF Live</strong><span id="voiceStateLabel">جاهز</span></div>
+      <div class="voice-head-actions">
+        <button type="button" class="icon-button" id="voiceMuteButton" aria-label="كتم صوت المساعد" title="كتم صوت المساعد"><svg><use href="#i-sun"/></svg></button>
+        <button type="button" class="icon-button" id="voiceSettingsButton" aria-label="إعدادات الصوت" title="إعدادات"><svg><use href="#i-filter"/></svg></button>
+        <button type="button" class="icon-button" id="voiceCloseButton" aria-label="إغلاق"><svg><use href="#i-x"/></svg></button>
+      </div>
+    </header>
+    <div class="voice-settings" id="voiceSettings" hidden>
+      <label><span>بوابة خادمية اختيارية (KOSIF AI Gateway)</span><input id="voiceGatewayUrl" type="url" placeholder="https://gateway.example.com/v1/voice" dir="ltr"></label>
+      <p class="muted small">بلا بوابة يعمل المساعد محليًا بموجّه نوايا حتمي. مع بوابة يُرسل النص وسياق مختصر للملف فقط؛ المفاتيح تبقى على الخادم. التعرف على الكلام يمرّ عبر خدمة المتصفح نفسه.</p>
+    </div>
+    <canvas class="voice-wave" id="voiceWave" width="600" height="72" aria-hidden="true"></canvas>
+    <div class="voice-transcript" id="voiceTranscript"><div class="voice-hint">قل «مساعدة» لسماع ما أستطيع فعله، أو «افتح التحليلات»، أو «ما هي الأهمية النسبية». يمكنك مقاطعتي في أي وقت بالكلام.</div></div>
+    <div class="voice-interim" id="voiceInterim"></div>
+    <footer class="voice-foot">
+      <button type="button" class="button primary" id="voiceToggleButton"><svg><use href="#i-mic"/></svg><span>ابدأ الاستماع</span></button>
+      <div class="voice-chips" id="voiceChips"><button type="button" data-say="ما هي الأهمية النسبية">الأهمية</button><button type="button" data-say="أعلى المخاطر">أعلى المخاطر</button><button type="button" data-say="القوائم المالية">القوائم</button><button type="button" data-say="مسودة الرأي">الرأي</button><button type="button" data-say="أين وصلنا">أين وصلنا؟</button></div>
+    </footer>
+  </aside>
+  <dialog class="modal palette" id="paletteDialog" aria-label="لوحة الأوامر">
+    <div class="palette-box">
+      <label class="palette-input"><svg><use href="#i-search"/></svg><input id="paletteInput" type="search" placeholder="انتقل إلى شاشة أو نفّذ إجراءً… (Ctrl+K)" autocomplete="off"><kbd>Esc</kbd></label>
+      <div class="palette-list" id="paletteList" role="listbox"></div>
+      <div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> تنقل</span><span><kbd>Enter</kbd> تنفيذ</span><span><kbd>G</kbd> ثم حرف الشاشة للقفز السريع</span></div>
+    </div>
+  </dialog>
+</body>
+</html>
