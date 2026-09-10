@@ -11,7 +11,8 @@ const NAME_HINTS={
   BANK:/bank|بنك/i,
   AR:/aging|receivable|اعمار|أعمار|عملاء/i,
   INV:/inventory|stock|مخزون/i,
-  LEASE:/lease|rent|ايجار|إيجار/i
+  LEASE:/lease|rent|ايجار|إيجار/i,
+  CFS:/cash\s*flow|cashflow|cash movement|تدفقات(?:\s+ال)?نقد|حركات(?:\s+ال)?نقد|حركه(?:\s+ال)?نقد|حركة(?:\s+ال)?نقد/i
 };
 function nextId(requests=[]){const max=requests.reduce((n,r)=>{const m=String(r.id??'').match(/^REQ-(\d+)$/);return m?Math.max(n,Number(m[1])):n},0);return`REQ-${String(max+1).padStart(4,'0')}`}
 function requirementKey(recipeId,requirementId){return`${recipeId}:${requirementId}`}
