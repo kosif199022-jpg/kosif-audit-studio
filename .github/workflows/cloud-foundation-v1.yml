@@ -3,6 +3,7 @@ name: Cloud Foundation v1 CI
 on:
   push:
     branches:
+      - codex/preserve-theme-cloudflare
       - codex/cloud-foundation-v1
       - codex/cloudflare-access-auth-v1
       - codex/react-cloud-autosave-v1
