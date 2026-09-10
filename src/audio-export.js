@@ -5,9 +5,9 @@
 const EXTENSIONS = [
   [/mp4|m4a|aac/i, 'm4a'],
   [/mpeg|mp3/i, 'mp3'],
-  [/ogg|opus/i, 'ogg'],
-  [/wav/i, 'wav'],
   [/webm/i, 'webm'],
+  [/ogg/i, 'ogg'],
+  [/wav/i, 'wav'],
 ];
 
 export function extensionFor(mimeType = '') {
