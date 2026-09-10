@@ -4,6 +4,7 @@ import { initCouncil, renderCouncil, renderRequests } from './v5/continuous-coun
 import { initIssues, renderIssues } from './v5/continuous-issues.js';
 import { initCoverage, renderCoverage } from './v5/continuous-coverage.js';
 import { initStatements, renderStatements } from './v5/continuous-statements.js';
+import { initStatementLineage, renderStatementLineage } from './v5/continuous-statement-lineage.js';
 import { initReporting, renderNow, renderRecipe, renderCandidates, renderAdjustments, renderTrace, renderReport } from './v5/continuous-reporting.js';
 import { initReportIntake, reconcileReportIntake, renderReportIntake } from './v5/continuous-report-intake.js';
 import { initCashFlow, renderCashFlow } from './v5/continuous-cash-flow.js';
@@ -15,8 +16,8 @@ import { initTraceInspector, renderTraceInspector } from './v5/continuous-trace-
 import { initPersistence } from './v5/continuous-persistence.js';
 
 const $=s=>document.querySelector(s);let persistence=null;
-for(const href of ['./freshness-specialists.css','./issue-workspace.css','./council-insights.css','./statement-comparison.css','./report-intake.css','./cash-flow-workspace.css','./equity-workspace.css','./disclosure-workspace.css','./report-publication.css','./trace-inspector.css'])if(!document.querySelector(`link[href="${href}"]`)){const link=document.createElement('link');link.rel='stylesheet';link.href=href;document.head.append(link)}
-function renderAll(options={}){reconcileReportIntake();derive();renderNow();renderAnalysisMetrics();renderDocuments();renderRecipe();renderReportIntake();renderCouncil();renderRequests();renderIssues();renderCoverage();renderCandidates();renderAdjustments();renderStatements();renderCashFlow();renderEquity();renderDisclosures();renderTrace();if(store.engagement.reports.length)renderReport();renderPublication();renderTraceInspector();renderCompletion();if(options.persist!==false)persistence?.schedule()}
-initDocuments({renderAll});initCouncil({renderAll});initIssues({renderAll});initCoverage({renderAll});initStatements();initReporting({renderAll});initReportIntake({renderAll});initCashFlow({renderAll});initEquity({renderAll});initDisclosures({renderAll});initPublication();initTraceInspector();initCompletion({renderAll});persistence=initPersistence({renderAll});
+for(const href of ['./freshness-specialists.css','./issue-workspace.css','./council-insights.css','./statement-comparison.css','./statement-lineage.css','./report-intake.css','./cash-flow-workspace.css','./equity-workspace.css','./disclosure-workspace.css','./report-publication.css','./trace-inspector.css'])if(!document.querySelector(`link[href="${href}"]`)){const link=document.createElement('link');link.rel='stylesheet';link.href=href;document.head.append(link)}
+function renderAll(options={}){reconcileReportIntake();derive();renderNow();renderAnalysisMetrics();renderDocuments();renderRecipe();renderReportIntake();renderCouncil();renderRequests();renderIssues();renderCoverage();renderCandidates();renderAdjustments();renderStatements();renderStatementLineage();renderCashFlow();renderEquity();renderDisclosures();renderTrace();if(store.engagement.reports.length)renderReport();renderPublication();renderTraceInspector();renderCompletion();if(options.persist!==false)persistence?.schedule()}
+initDocuments({renderAll});initCouncil({renderAll});initIssues({renderAll});initCoverage({renderAll});initStatements();initStatementLineage();initReporting({renderAll});initReportIntake({renderAll});initCashFlow({renderAll});initEquity({renderAll});initDisclosures({renderAll});initPublication();initTraceInspector();initCompletion({renderAll});persistence=initPersistence({renderAll});
 $('#reviewDocumentCard').onclick=()=>$('#documentInput').click();
 await persistence.hydrate();renderAll({persist:false});testGateway();
