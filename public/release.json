@@ -1,12 +1,14 @@
 {
-  "release": "2026-09-10-voice-attachment-v2",
-  "releasedAt": "2026-09-10T12:03:22+03:00",
+  "release": "2026-09-10-voice-mp3-v3",
+  "releasedAt": "2026-09-10T12:21:31+03:00",
   "source": "kosif-audit-studio-main.zip",
   "productionBranch": "codex/preserve-theme-cloudflare",
   "features": [
     "realtime-webRTC-voice",
+    "voice-reply-plus-written-transcript",
+    "true-mp3-local-transcode",
     "safari-iphone-local-fallback",
-    "iphone-audio-share-download",
+    "iphone-mp3-share-download",
     "six-live-chat-attachments",
     "markdown-xml-evidence",
     "production-push-ci"
