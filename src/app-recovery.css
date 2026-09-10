@@ -1,0 +1,25 @@
+.app-fatal-recovery {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  color: #f7f5ff;
+  background: radial-gradient(circle at 50% 20%, rgb(111 76 255 / 22%), transparent 38%), #070c20;
+}
+
+.app-fatal-recovery > section {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: clamp(22px, 5vw, 34px);
+  background: rgb(12 19 49 / 88%);
+  border: 1px solid rgb(215 171 61 / 38%);
+  border-radius: 22px;
+  box-shadow: 0 28px 80px rgb(0 0 0 / 38%);
+}
+
+.app-fatal-recovery h1,
+.app-fatal-recovery p { margin: 0; }
+.app-fatal-recovery h1 { margin-block: 4px 8px; font-size: clamp(1.35rem, 4vw, 2rem); }
+.app-fatal-recovery p { line-height: 1.8; color: #d8d4ef; }
+.app-fatal-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; color: #ffd66b; background: rgb(215 171 61 / 12%); border: 1px solid rgb(215 171 61 / 28%); }
