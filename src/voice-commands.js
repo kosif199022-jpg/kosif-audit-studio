@@ -66,6 +66,15 @@ const VIEW_COMMANDS = [
   { view: "overview", terms: ["لوحه القياده", "اللوحه الرئيسيه", "الرئيسيه", "نظره عامه"] },
 ];
 
+const NAVIGATION_INTENT = /(^|\s)(افتح|اعرض|اذهب|روح|انتقل|وديني|وريني|ارني)(\s|$)/;
+
+function findViewCommand(text) {
+  return VIEW_COMMANDS.find(({ terms }) => terms.some((term) => {
+    const normalizedTerm = normalizeVoiceText(term);
+    return text === normalizedTerm || (NAVIGATION_INTENT.test(text) && text.includes(normalizedTerm));
+  }));
+}
+
 export function parseVoiceCommand(value = "") {
   const text = normalizeVoiceText(value);
   if (!text) return { type: "unknown", text, reply: "لم يصل أمر واضح." };
@@ -79,7 +88,7 @@ export function parseVoiceCommand(value = "") {
   if (/(استمع|اقرا|اقرأ|قراءه|صوت)/.test(text) && /(الملخص|الحاله|الارتباط)/.test(text)) {
     return { type: "speak-summary", text, reply: "سأقرأ ملخص الارتباط بصوت الجهاز." };
   }
-  const match = VIEW_COMMANDS.find(({ terms }) => terms.some((term) => text.includes(normalizeVoiceText(term))));
+  const match = findViewCommand(text);
   if (match) return { type: "view", view: match.view, text, reply: `تم فتح ${viewLabel(match.view)}.` };
   return { type: "unknown", text, reply: "يمكنني فتح أي مساحة في KOSIF أو إرسال السؤال إلى الشات الذكي للتحليل." };
 }
