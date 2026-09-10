@@ -24,7 +24,7 @@ export const categories = () => store.analysis ? [...new Set(store.analysis.rows
 export const docTypes = () => [...new Set(store.engagement.documents.map(d => d.type))];
 export function derive(){ store.engagement.stage = deriveEngagementStage(store.engagement); return store.engagement.stage; }
 export function satisfiedRequirementIds(){
-  const map={'trial-balance':['TB'],'chart-of-accounts':['COA'],'bank-statement':['BANK'],aging:['AR'],inventory:['INV','INVLIST'],lease:['LEASE'],'financial-statements':['FS','PYFS'],'general-ledger':['GL'],journal:['GL'],'controls-document':['CONTROL'],'fixed-assets-register':['PPE'],'loan-document':['DEBT'],'tax-document':['TAX'],'inventory-count':['COUNT'],'purchase-support':['COST'],'cash-flow-support':['CFS']}, out=new Set;
+  const map={'trial-balance':['TB'],'chart-of-accounts':['COA'],'bank-statement':['BANK'],aging:['AR'],inventory:['INV','INVLIST'],lease:['LEASE'],'financial-statements':['FS','PYFS'],'general-ledger':['GL'],journal:['GL'],'controls-document':['CONTROL'],'fixed-assets-register':['PPE'],'loan-document':['DEBT'],'tax-document':['TAX'],'inventory-count':['COUNT'],'purchase-support':['COST'],'cash-flow-support':['CFS'],'equity-movement-support':['EQS']}, out=new Set;
   for(const type of docTypes()) for(const id of map[type] || []) out.add(id);
   for(const request of store.engagement.requests||[])if(request.origin==='report-recipe'&&['received','partial','satisfied'].includes(request.status)&&request.requirementId)out.add(request.requirementId);
   return [...out];
