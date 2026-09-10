@@ -12,6 +12,8 @@ export const store = {
   recipePlan: buildReportPlan('ميزانية'),
   activeRequestId: null,
   documentAnalyses: new Map(),
+  sessionFiles: new Map(),
+  selectedDocumentId: null,
   remote: { mode:'local', status:'محلي', version:0, engagementId:null, accessToken:null }
 };
 export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -26,13 +28,14 @@ export function satisfiedRequirementIds(){
   for(const type of docTypes()) for(const id of map[type] || []) out.add(id);
   return [...out];
 }
+export function clearSessionFiles(){store.sessionFiles.clear();store.selectedDocumentId=null}
 export function resetEngagement(engagement){
-  store.engagement=engagement; store.analysis=null; store.materiality=null; store.tbRisks=[]; store.documentAnalyses.clear(); store.activeRequestId=null; store.recipePlan=buildReportPlan('ميزانية');
+  store.engagement=engagement; store.analysis=null; store.materiality=null; store.tbRisks=[]; store.documentAnalyses.clear(); store.activeRequestId=null; store.recipePlan=buildReportPlan('ميزانية'); clearSessionFiles();
 }
 export function resetWorkspace(snapshot={}){
   if(snapshot.engagement)store.engagement=snapshot.engagement;
   store.analysis=snapshot.analysis||null; store.materiality=snapshot.materiality||null; store.tbRisks=snapshot.tbRisks||[];
-  store.documentAnalyses=new Map(snapshot.documentAnalyses||[]); store.activeRequestId=null;
+  store.documentAnalyses=new Map(snapshot.documentAnalyses||[]); store.activeRequestId=null; store.selectedDocumentId=null; store.sessionFiles.clear();
   store.recipePlan=buildReportPlan(snapshot.recipeId||'statement-of-financial-position');
   derive();
 }
