@@ -4,6 +4,7 @@ import { canUseVoiceCommands, parseVoiceCommand } from "../voice-commands.js";
 import "../voice-console.css";
 
 const RealtimeVoice = lazy(() => import("./RealtimeVoice.jsx").then((module) => ({ default: module.RealtimeVoice })));
+const TextCommandChat = lazy(() => import("./TextCommandChat.jsx").then((module) => ({ default: module.TextCommandChat })));
 
 function localArabicVoice() {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
@@ -152,8 +153,6 @@ export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summa
       }
       const recognition = new Recognition();
       recognition.lang = "ar-SA";
-      // Safari/iOS عادةً ينهي جلسة التعرف عند الوقفة؛ نعيد إنشاء جلسة قصيرة
-      // بدل الاعتماد على continuous الذي لا يعمل بثبات على WebKit.
       recognition.continuous = false;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
@@ -204,17 +203,6 @@ export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summa
     listenOnce();
   }, [onToast, runCommand, scheduleLocalListen, stopLocalListening]);
 
-  const useLocalFallback = useCallback((reason = "") => {
-    stopLocalListening(false);
-    stopSpeaking(false);
-    setMode("local");
-    const label = reason
-      ? `تعذر اتصال OpenAI الحي (${reason}). انتقلت إلى الوضع المحلي الاحتياطي؛ اضغط «ابدأ الاستماع المستمر».`
-      : "انتقلت إلى الوضع المحلي الاحتياطي؛ اضغط «ابدأ الاستماع المستمر».";
-    setStatus(label);
-    onToast?.("تم تحويل مركز الصوت إلى الوضع المحلي الاحتياطي.");
-  }, [onToast, stopLocalListening, stopSpeaking]);
-
   useEffect(() => () => {
     keepListeningRef.current = false;
     clearTimeout(restartTimerRef.current);
@@ -222,32 +210,51 @@ export function VoiceConsole({ onView, onToggleSpace, spaceLocked = false, summa
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
+  const switchMode = (nextMode) => {
+    stopLocalListening(false);
+    stopSpeaking(false);
+    setMode(nextMode);
+  };
+
   return (
     <div className={`voice-console ${open ? "is-open" : ""}`}>
-      <button type="button" className={`voice-console-trigger ${loopActive ? "is-listening" : ""}`} aria-expanded={open} onClick={() => setOpen((value) => !value)} title="التحدث المباشر والقراءة الصوتية">
+      <button type="button" className={`voice-console-trigger ${loopActive ? "is-listening" : ""}`} aria-expanded={open} onClick={() => setOpen((value) => !value)} title="المحادثة الصوتية والشات الكتابي">
         {loopActive ? <Radio size={17} aria-hidden="true" /> : <Mic size={17} aria-hidden="true" />}
-        <span>صوت مباشر</span>
+        <span>محادثة KOSIF</span>
         <i aria-hidden="true" />
       </button>
       {open ? (
-        <section className="voice-console-panel" aria-label="مركز الصوت">
-          <header><span><Sparkles size={16} aria-hidden="true" /> مركز الصوت</span><button type="button" className="voice-close" onClick={() => { setOpen(false); stopLocalListening(false); stopSpeaking(false); }}>إغلاق</button></header>
-          <div className="voice-mode-tabs"><button type="button" aria-pressed={mode === "realtime"} onClick={() => { stopLocalListening(false); stopSpeaking(false); setMode("realtime"); }}>محادثة OpenAI حية</button><button type="button" aria-pressed={mode === "local"} onClick={() => setMode("local")}>أوامر وقراءة المتصفح</button></div>
-          {mode === "realtime" ? <Suspense fallback={<p>جارٍ تجهيز الصوت…</p>}><RealtimeVoice onView={onView} summary={voiceContext} onFallback={useLocalFallback} /></Suspense> : <>
-          <p className="voice-console-status" aria-live="polite">{status}</p>
-          <div className="voice-console-actions">
-            <button type="button" className={`button ${loopActive ? "button-gold" : "button-dark"}`} onClick={startListening}>
-              {loopActive ? <MicOff size={17} aria-hidden="true" /> : <Mic size={17} aria-hidden="true" />}
-              {loopActive ? "إيقاف الاستماع المستمر" : "ابدأ الاستماع المستمر"}
-            </button>
-            <button type="button" className="button button-outline" onClick={() => speak(reportText || summaryText)} disabled={speaking}>
-              <Volume2 size={17} aria-hidden="true" /> تقرير صوتي
-            </button>
-            {speaking ? <button type="button" className="button button-outline" onClick={() => stopSpeaking(true)}><Square size={16} aria-hidden="true" /> إيقاف</button> : null}
+        <section className="voice-console-panel" aria-label="مركز محادثة KOSIF">
+          <header><span><Sparkles size={16} aria-hidden="true" /> مركز المحادثة</span><button type="button" className="voice-close" onClick={() => { setOpen(false); stopLocalListening(false); stopSpeaking(false); }}>إغلاق</button></header>
+          <div className="voice-mode-tabs">
+            <button type="button" aria-pressed={mode === "realtime"} onClick={() => switchMode("realtime")}>محادثة صوتية حية</button>
+            <button type="button" aria-pressed={mode === "chat"} onClick={() => switchMode("chat")}>شات وتنفيذ</button>
+            <button type="button" aria-pressed={mode === "local"} onClick={() => switchMode("local")}>أدوات محلية</button>
           </div>
-          <div className="voice-console-transcript"><span>{listening ? "أسمعك الآن" : loopActive ? "الاستماع المستمر مفعّل" : "آخر أمر"}</span><strong>{transcript || "قل: افتح التقرير أو شغّل تقريرًا صوتيًا"}</strong></div>
-          <small className="voice-console-disclosure">الوضع المحلي لا يرسل ملفات الارتباط إلى KOSIF. على iPhone يعيد التطبيق تشغيل جلسة التعرف بعد الوقفات القصيرة لأن Safari قد ينهي الإملاء عند الصمت؛ القراءة تستخدم صوتًا محليًا متاحًا على الجهاز.</small>
-          </>}
+
+          {mode === "realtime" ? (
+            <Suspense fallback={<p>جارٍ تجهيز الصوت…</p>}><RealtimeVoice onView={onView} summary={voiceContext} /></Suspense>
+          ) : null}
+
+          {mode === "chat" ? (
+            <Suspense fallback={<p>جارٍ تجهيز الشات…</p>}><TextCommandChat onView={onView} summary={voiceContext} /></Suspense>
+          ) : null}
+
+          {mode === "local" ? <>
+            <p className="voice-console-status" aria-live="polite">{status}</p>
+            <div className="voice-console-actions">
+              <button type="button" className={`button ${loopActive ? "button-gold" : "button-dark"}`} onClick={startListening}>
+                {loopActive ? <MicOff size={17} aria-hidden="true" /> : <Mic size={17} aria-hidden="true" />}
+                {loopActive ? "إيقاف الاستماع المستمر" : "ابدأ الاستماع المستمر"}
+              </button>
+              <button type="button" className="button button-outline" onClick={() => speak(reportText || summaryText)} disabled={speaking}>
+                <Volume2 size={17} aria-hidden="true" /> تقرير صوتي
+              </button>
+              {speaking ? <button type="button" className="button button-outline" onClick={() => stopSpeaking(true)}><Square size={16} aria-hidden="true" /> إيقاف</button> : null}
+            </div>
+            <div className="voice-console-transcript"><span>{listening ? "أسمعك الآن" : loopActive ? "الاستماع المستمر مفعّل" : "آخر أمر"}</span><strong>{transcript || "قل: افتح التقرير أو شغّل تقريرًا صوتيًا"}</strong></div>
+            <small className="voice-console-disclosure">هذه الأدوات محلية واختيارية فقط. لن يتم تحويلك إليها تلقائيًا إذا فشل اتصال OpenAI الحي.</small>
+          </> : null}
         </section>
       ) : null}
     </div>
