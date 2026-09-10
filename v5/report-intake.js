@@ -2,7 +2,7 @@
 import { refreshEvidenceRequests } from './evidence-requests.js';
 const OPEN=new Set(['draft','requested','received','under-review','partial']);
 const NAME_HINTS={
-  PPE:/fixed|asset|ppe|اصول ثابت|أصول ثابت|اهلاك|إهلاك/i,
+  PPE:/fixed|asset|ppe|اصول(?:\s+ال)?ثابت|أصول(?:\s+ال)?ثابت|اهلاك|إهلاك/i,
   DEBT:/loan|borrow|finance|قرض|تمويل|تسهيل/i,
   TAX:/tax|vat|zakat|ضريب|زكا/i,
   CONTROL:/control|process|policy|procedure|رقاب|عمليه|عملية|سياس|اجراء|إجراء/i,
