@@ -56,8 +56,6 @@ export async function requestMicrophoneStream(mediaDevices, navigatorObject = gl
     });
     return stream;
   } catch (error) {
-    // WebKit occasionally rejects a dictionary that another browser accepts.
-    // Retry once with the broad audio constraint before translating the error.
     if (ios && ['OverconstrainedError', 'TypeError', 'NotSupportedError'].includes(error?.name)) {
       try {
         return await mediaDevices.getUserMedia({ audio: true });
@@ -90,8 +88,6 @@ function waitForIceGathering(peer, timeoutMs = 3_000) {
 
 export function preferredRecorderMime(MediaRecorderClass) {
   if (!MediaRecorderClass) return '';
-  // Chromium records WebM/Opus more reliably than fragmented MP4. Safari does
-  // not report WebM support and naturally falls through to MP4/AAC.
   const candidates = [
     'audio/webm;codecs=opus',
     'audio/webm',
@@ -104,7 +100,11 @@ export function preferredRecorderMime(MediaRecorderClass) {
 }
 
 function cleanAttachmentName(value) {
-  return String(value || 'مرفق').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120) || 'مرفق';
+  return String(value || 'مرفق')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120) || 'مرفق';
 }
 
 function attachmentContent(items) {
@@ -115,7 +115,12 @@ function attachmentContent(items) {
   const names = [];
   for (const item of Array.isArray(items) ? items.slice(0, 4) : []) {
     const name = cleanAttachmentName(item?.name);
-    if (item?.kind === 'image' && typeof item.dataUrl === 'string' && /^data:image\/(?:jpeg|png|webp);base64,/i.test(item.dataUrl) && item.dataUrl.length <= MAX_DATA_CHANNEL_IMAGE_CHARS) {
+    if (
+      item?.kind === 'image'
+      && typeof item.dataUrl === 'string'
+      && /^data:image\/(?:jpeg|png|webp);base64,/i.test(item.dataUrl)
+      && item.dataUrl.length <= MAX_DATA_CHANNEL_IMAGE_CHARS
+    ) {
       names.push(name);
       content.push({ type: 'input_text', text: `صورة مرفقة: ${name}` });
       content.push({ type: 'input_image', image_url: item.dataUrl, detail: 'auto' });
@@ -123,7 +128,10 @@ function attachmentContent(items) {
     }
     if (item?.kind === 'text' && typeof item.text === 'string' && item.text.trim()) {
       names.push(name);
-      content.push({ type: 'input_text', text: `مرفق نصي مستخرج محليًا: ${name}\n${item.text.trim().slice(0, MAX_ATTACHMENT_TEXT)}` });
+      content.push({
+        type: 'input_text',
+        text: `مرفق نصي مستخرج محليًا: ${name}\n${item.text.trim().slice(0, MAX_ATTACHMENT_TEXT)}`
+      });
     }
   }
   return names.length ? { content, names } : null;
@@ -134,7 +142,8 @@ export function responseTranscript(response) {
   for (const item of response?.output || []) {
     if (item?.type !== 'message') continue;
     for (const part of item.content || []) {
-      const value = typeof part?.transcript === 'string' ? part.transcript
+      const value = typeof part?.transcript === 'string'
+        ? part.transcript
         : typeof part?.text === 'string' ? part.text : '';
       if (value.trim()) texts.push(value.trim());
     }
@@ -148,7 +157,6 @@ export function createRealtimeLiveClient({
   mediaDevices = globalThis.navigator?.mediaDevices,
   navigatorObject = globalThis.navigator,
   AudioElement = globalThis.Audio,
-  AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext,
   MediaRecorderClass = globalThis.MediaRecorder,
   MediaStreamClass = globalThis.MediaStream,
   BlobClass = globalThis.Blob,
@@ -164,14 +172,14 @@ export function createRealtimeLiveClient({
   let localStream = null;
   let remoteStream = null;
   let audio = null;
-  let audioContext = null;
-  let remoteAudioSource = null;
   let controller = null;
   let generation = 0;
   let connectTimer = null;
   let recorder = null;
   let activeResponseId = null;
   let pendingResponseId = null;
+  let nativePlaybackStarted = false;
+  let playRetryTimer = null;
   const responseItems = new Map();
   const handledCalls = new Set();
   const completedTranscriptResponses = new Set();
@@ -190,114 +198,115 @@ export function createRealtimeLiveClient({
 
   function ensureAudioElement() {
     if (audio || !AudioElement) return audio;
-    audio = new AudioElement();
-    audio.autoplay = true;
-    audio.playsInline = true;
-    audio.controls = false;
-    audio.muted = false;
-    audio.setAttribute?.('playsinline', '');
-    audio.setAttribute?.('webkit-playsinline', '');
-    audio.setAttribute?.('preload', 'auto');
-    audio.setAttribute?.('aria-hidden', 'true');
-    if (audio.style) {
-      audio.style.position = 'fixed';
-      audio.style.inlineSize = '1px';
-      audio.style.blockSize = '1px';
-      audio.style.opacity = '0';
-      audio.style.pointerEvents = 'none';
-      audio.style.insetInlineStart = '0';
-      audio.style.insetBlockEnd = '0';
+    const output = new AudioElement();
+    output.autoplay = true;
+    output.playsInline = true;
+    output.controls = false;
+    output.muted = false;
+    output.defaultMuted = false;
+    try { output.volume = 1; } catch {}
+    output.setAttribute?.('autoplay', '');
+    output.setAttribute?.('playsinline', '');
+    output.setAttribute?.('webkit-playsinline', '');
+    output.setAttribute?.('preload', 'auto');
+    output.setAttribute?.('aria-hidden', 'true');
+    if (output.style) {
+      // Do not use display:none: WebKit can suspend hidden media playback.
+      output.style.position = 'fixed';
+      output.style.inlineSize = '2px';
+      output.style.blockSize = '2px';
+      output.style.opacity = '0.001';
+      output.style.pointerEvents = 'none';
+      output.style.insetInlineStart = '0';
+      output.style.insetBlockEnd = '0';
+      output.style.zIndex = '-1';
     }
-    if (typeof document !== 'undefined' && document.body && typeof Element !== 'undefined' && audio instanceof Element) {
-      document.body.appendChild(audio);
+    if (
+      typeof document !== 'undefined'
+      && document.body
+      && typeof Element !== 'undefined'
+      && output instanceof Element
+    ) {
+      document.body.appendChild(output);
     }
+    audio = output;
     return audio;
   }
 
-  function ensureAudioContext() {
-    if (!iosWebKit || !AudioContextClass) return null;
-    if (audioContext && audioContext.state !== 'closed') return audioContext;
-    try {
-      audioContext = new AudioContextClass({ latencyHint: 'interactive' });
-    } catch {
-      try { audioContext = new AudioContextClass(); } catch { audioContext = null; }
-    }
-    return audioContext;
-  }
-
-  function primeIOSAudioOutput() {
-    if (!iosWebKit) return;
-    ensureAudioElement();
-    const context = ensureAudioContext();
-    if (!context) return;
-    // Safari requires the playback graph to be activated from the same user
-    // gesture that starts the call. A zero-gain oscillator primes that graph
-    // without producing an audible sound.
-    try { Promise.resolve(context.resume?.()).catch(() => {}); } catch {}
-    try {
-      const oscillator = context.createOscillator?.();
-      const gain = context.createGain?.();
-      if (oscillator && gain) {
-        gain.gain.value = 0;
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start();
-        oscillator.stop((context.currentTime || 0) + 0.03);
-      }
-    } catch {}
-  }
-
-  function playThroughElement(output) {
-    if (!output) return Promise.reject(new Error('audio_output_unavailable'));
-    output.muted = false;
-    try {
-      return Promise.resolve(output.play?.()).catch((error) => {
-        onAudioBlocked(output);
-        throw error;
-      });
-    } catch (error) {
-      onAudioBlocked(output);
-      return Promise.reject(error);
-    }
-  }
-
-  function attachRemoteAudio(remote) {
+  async function attemptNativePlayback({ reportBlocked = true } = {}) {
     const output = ensureAudioElement();
-    if (output) output.srcObject = remote;
-    if (iosWebKit) {
-      const context = ensureAudioContext();
-      if (context?.createMediaStreamSource) {
-        try {
-          remoteAudioSource?.disconnect?.();
-          remoteAudioSource = context.createMediaStreamSource(remote);
-          remoteAudioSource.connect(context.destination);
-          if (output) output.muted = true;
-          Promise.resolve(context.resume?.()).then(() => {
-            if (context.state !== 'running' && output) return playThroughElement(output);
-          }).catch(() => {
-            if (output) playThroughElement(output).catch(() => {});
-          });
-          return;
-        } catch {
-          remoteAudioSource = null;
-        }
-      }
+    if (!output || !output.srcObject) throw new Error('audio_output_unavailable');
+    output.muted = false;
+    output.defaultMuted = false;
+    try { output.volume = 1; } catch {}
+    try {
+      const playResult = output.play?.();
+      if (playResult?.then) await playResult;
+      nativePlaybackStarted = true;
+      return true;
+    } catch (error) {
+      nativePlaybackStarted = false;
+      if (reportBlocked) onAudioBlocked(output, error);
+      throw error;
     }
-    if (output) playThroughElement(output).catch(() => {});
+  }
+
+  function scheduleNativePlaybackRetry(delay = 180) {
+    clearTimeout(playRetryTimer);
+    playRetryTimer = setTimeout(() => {
+      if (!audio?.srcObject || nativePlaybackStarted) return;
+      attemptNativePlayback({ reportBlocked: false }).catch(() => {});
+    }, delay);
+  }
+
+  function attachRemoteAudio(remote, track = null) {
+    remoteStream = remote;
+    const output = ensureAudioElement();
+    if (!output) return;
+    nativePlaybackStarted = false;
+    output.srcObject = remote;
+    output.muted = false;
+    output.defaultMuted = false;
+    try { output.volume = 1; } catch {}
+
+    const playNow = () => {
+      attemptNativePlayback({ reportBlocked: true }).catch(() => {
+        scheduleNativePlaybackRetry(250);
+      });
+    };
+
+    output.onloadedmetadata = playNow;
+    output.oncanplay = playNow;
+    output.onplaying = () => {
+      nativePlaybackStarted = true;
+      clearTimeout(playRetryTimer);
+    };
+    output.onpause = () => {
+      if (remoteStream?.active) {
+        nativePlaybackStarted = false;
+        scheduleNativePlaybackRetry(120);
+      }
+    };
+    if (track) {
+      try {
+        track.onunmute = playNow;
+        track.onended = () => {
+          nativePlaybackStarted = false;
+        };
+      } catch {}
+    }
+
+    // Safari permits autoplay for remote WebRTC audio while the page is
+    // capturing the microphone. Calling play immediately and again after
+    // metadata/unmute covers both the fast and delayed iPhone paths.
+    playNow();
   }
 
   async function resumeAudioOutput() {
-    const context = ensureAudioContext();
-    if (context) {
-      try {
-        await context.resume?.();
-        if (context.state === 'running' && remoteAudioSource) return true;
-      } catch {}
-    }
     const output = ensureAudioElement();
     if (!output) throw new Error('audio_output_unavailable');
-    await playThroughElement(output);
-    return true;
+    if (remoteStream && output.srcObject !== remoteStream) output.srcObject = remoteStream;
+    return attemptNativePlayback({ reportBlocked: true });
   }
 
   function emitRecordedReply(current, chunks, responseId, itemId, startedAt, mimeHint) {
@@ -340,7 +349,14 @@ export function createRealtimeLiveClient({
     };
     current.onstop = () => {
       if (recorder === current) recorder = null;
-      emitRecordedReply(current, chunks, recordingResponseId, responseItems.get(recordingResponseId) || recordingItemId, startedAt, mimeType);
+      emitRecordedReply(
+        current,
+        chunks,
+        recordingResponseId,
+        responseItems.get(recordingResponseId) || recordingItemId,
+        startedAt,
+        mimeType
+      );
     };
     try {
       current.start(250);
@@ -355,13 +371,12 @@ export function createRealtimeLiveClient({
     const current = recorder;
     if (!current) {
       if (pendingResponseId === responseId) pendingResponseId = null;
+      if (activeResponseId === responseId) activeResponseId = null;
       return;
     }
     recorder = null;
     try { current.requestData?.(); } catch {}
-    try {
-      if (current.state !== 'inactive') current.stop();
-    } catch {}
+    try { if (current.state !== 'inactive') current.stop(); } catch {}
     if (activeResponseId === responseId) activeResponseId = null;
   }
 
@@ -370,12 +385,11 @@ export function createRealtimeLiveClient({
     activeResponseId = null;
     const current = recorder;
     recorder = null;
-    if (current) {
-      current.ondataavailable = null;
-      current.onstop = null;
-      current.onerror = null;
-      try { if (current.state !== 'inactive') current.stop(); } catch {}
-    }
+    if (!current) return;
+    current.ondataavailable = null;
+    current.onstop = null;
+    current.onerror = null;
+    try { if (current.state !== 'inactive') current.stop(); } catch {}
   }
 
   function disconnect(notify = true) {
@@ -383,7 +397,9 @@ export function createRealtimeLiveClient({
     controller?.abort();
     controller = null;
     clearTimeout(connectTimer);
+    clearTimeout(playRetryTimer);
     connectTimer = null;
+    playRetryTimer = null;
     cleanupRecorder();
 
     const oldChannel = channel;
@@ -406,12 +422,12 @@ export function createRealtimeLiveClient({
     });
     localStream = null;
     remoteStream = null;
-    remoteAudioSource?.disconnect?.();
-    remoteAudioSource = null;
-    const oldAudioContext = audioContext;
-    audioContext = null;
-    try { oldAudioContext?.close?.(); } catch {}
+    nativePlaybackStarted = false;
     if (audio) {
+      audio.onloadedmetadata = null;
+      audio.oncanplay = null;
+      audio.onplaying = null;
+      audio.onpause = null;
       try { audio.pause?.(); } catch {}
       audio.srcObject = null;
       audio.remove?.();
@@ -423,34 +439,63 @@ export function createRealtimeLiveClient({
     if (notify) onStatus('idle', 'انتهت المحادثة وأُغلق الميكروفون.');
   }
 
-  function handleMessage(event, active) {
-    if (active !== generation || typeof event.data !== 'string' || event.data.length > 350_000) return;
+  function handleMessage(event, activeGeneration) {
+    if (
+      activeGeneration !== generation
+      || typeof event.data !== 'string'
+      || event.data.length > 350_000
+    ) return;
     let message;
     try { message = JSON.parse(event.data); } catch { return; }
     const responseId = message.response_id || message.response?.id || null;
     const itemId = message.item_id || null;
     if (responseId && itemId) responseItems.set(responseId, itemId);
 
-    if (message.type === 'response.created') startReplyRecording(responseId);
+    if (message.type === 'response.created') {
+      startReplyRecording(responseId);
+      if (iosWebKit) scheduleNativePlaybackRetry(80);
+    }
     if (message.type === 'conversation.item.input_audio_transcription.completed') {
-      onTranscript({ id: message.item_id, role: 'user', text: String(message.transcript || '').slice(0, 8_000), done: true });
+      onTranscript({
+        id: message.item_id,
+        role: 'user',
+        text: String(message.transcript || '').slice(0, 8_000),
+        done: true
+      });
     }
     if (['response.output_audio_transcript.delta', 'response.output_text.delta'].includes(message.type)) {
       if (responseId && !recorder) startReplyRecording(responseId);
-      onTranscript({ id: itemId || responseId, responseId, role: 'assistant', text: String(message.delta || ''), done: false });
+      if (iosWebKit && !nativePlaybackStarted) scheduleNativePlaybackRetry(30);
+      onTranscript({
+        id: itemId || responseId,
+        responseId,
+        role: 'assistant',
+        text: String(message.delta || ''),
+        done: false
+      });
     }
     if (['response.output_audio_transcript.done', 'response.output_text.done'].includes(message.type)) {
       if (responseId) completedTranscriptResponses.add(responseId);
-      onTranscript({ id: itemId || responseId, responseId, role: 'assistant', text: String(message.transcript || message.text || '').slice(0, 12_000), done: true });
+      onTranscript({
+        id: itemId || responseId,
+        responseId,
+        role: 'assistant',
+        text: String(message.transcript || message.text || '').slice(0, 12_000),
+        done: true
+      });
     }
     if (message.type === 'input_audio_buffer.speech_started') {
-      if (iosWebKit) resumeAudioOutput().catch(() => {});
       onStatus('connected', 'أستمع إليك…');
     }
-    if (message.type === 'input_audio_buffer.speech_stopped') onStatus('connected', 'أجهّز الرد الصوتي والنصي…');
+    if (message.type === 'input_audio_buffer.speech_stopped') {
+      onStatus('connected', 'أجهّز الرد الصوتي والنصي…');
+      if (iosWebKit) scheduleNativePlaybackRetry(80);
+    }
     if (message.type === 'response.done') {
       for (const outputItem of message.response?.output || []) {
-        if (responseId && outputItem?.id && outputItem.type === 'message') responseItems.set(responseId, outputItem.id);
+        if (responseId && outputItem?.id && outputItem.type === 'message') {
+          responseItems.set(responseId, outputItem.id);
+        }
       }
       if (responseId && !completedTranscriptResponses.has(responseId)) {
         const fallbackText = responseTranscript(message.response);
@@ -468,81 +513,95 @@ export function createRealtimeLiveClient({
       stopReplyRecording(responseId || activeResponseId);
       let called = false;
       for (const item of message.response?.output || []) {
-        if (item.type !== 'function_call' || typeof item.call_id !== 'string' || item.call_id.length > 128 || handledCalls.has(item.call_id)) continue;
+        if (
+          item.type !== 'function_call'
+          || typeof item.call_id !== 'string'
+          || item.call_id.length > 128
+          || handledCalls.has(item.call_id)
+        ) continue;
         handledCalls.add(item.call_id);
-        if (handledCalls.size > 1000) {
+        if (handledCalls.size > 1_000) {
           disconnect();
           return;
         }
         send({
           type: 'conversation.item.create',
-          item: { type: 'function_call_output', call_id: item.call_id, output: JSON.stringify(executeVoiceTool(item, onView)) }
+          item: {
+            type: 'function_call_output',
+            call_id: item.call_id,
+            output: JSON.stringify(executeVoiceTool(item, onView))
+          }
         });
         called = true;
       }
       if (called) send({ type: 'response.create' });
       else onStatus('connected', 'المحادثة متصلة؛ تحدث وسأرد صوتيًا ويظهر الرد مكتوبًا هنا.');
     }
-    if (message.type === 'error') onStatus('connected', 'تعذر إكمال الرد؛ أعد السؤال أو أنهِ الاتصال.');
+    if (message.type === 'error') {
+      onStatus('connected', 'تعذر إكمال الرد؛ أعد السؤال أو أنهِ الاتصال.');
+    }
   }
 
   async function connect(options = {}) {
-    const preflightCode = options.consent !== true ? 'consent_required'
-      : globalThis.isSecureContext === false ? 'insecure_context'
-        : !PeerConnection || !mediaDevices?.getUserMedia || !AudioElement ? 'unsupported' : null;
+    const preflightCode = options.consent !== true
+      ? 'consent_required'
+      : globalThis.isSecureContext === false
+        ? 'insecure_context'
+        : !PeerConnection || !mediaDevices?.getUserMedia || !AudioElement
+          ? 'unsupported'
+          : null;
     if (preflightCode) {
       onStatus('error', AI_ERRORS[preflightCode]);
       throw voiceError(preflightCode);
     }
 
     disconnect(false);
-    const active = ++generation;
+    const activeGeneration = ++generation;
     ensureAudioElement();
-    // This must execute before the first await while the tap/click still owns
-    // Safari's user activation.
-    primeIOSAudioOutput();
-    onStatus('connecting', iosWebKit ? 'جارٍ تهيئة ميكروفون وصوت iPhone…' : 'جارٍ طلب الميكروفون وتجهيز المحادثة الحية…');
+    onStatus(
+      'connecting',
+      iosWebKit
+        ? 'جارٍ تهيئة ميكروفون وصوت iPhone…'
+        : 'جارٍ طلب الميكروفون وتجهيز المحادثة الحية…'
+    );
 
     try {
       const acquired = await requestMicrophoneStream(mediaDevices, navigatorObject);
-      if (active !== generation) {
+      if (activeGeneration !== generation) {
         acquired.getTracks?.().forEach((track) => track.stop());
         return;
       }
       localStream = acquired;
-      if (iosWebKit) {
-        try { await ensureAudioContext()?.resume?.(); } catch {}
-      }
       peer = new PeerConnection();
       peer.ontrack = (event) => {
-        const remote = event.streams?.[0] || (MediaStreamClass && event.track ? new MediaStreamClass([event.track]) : null);
+        const track = event.track || null;
+        const remote = event.streams?.[0]
+          || (MediaStreamClass && track ? new MediaStreamClass([track]) : null);
         if (!remote) return;
-        remoteStream = remote;
-        attachRemoteAudio(remote);
+        attachRemoteAudio(remote, track);
         if (pendingResponseId && !recorder) startReplyRecording(pendingResponseId);
       };
       localStream.getAudioTracks?.().forEach((track) => peer.addTrack(track, localStream));
 
       channel = peer.createDataChannel('oai-events');
       channel.onopen = () => {
-        if (active === generation) {
-          clearTimeout(connectTimer);
-          connectTimer = null;
-          if (iosWebKit) resumeAudioOutput().catch(() => {});
-          onStatus('connected', 'المحادثة الحية متصلة؛ تحدث مباشرة وسأرد بالصوت ويظهر الرد مكتوبًا.');
-        }
+        if (activeGeneration !== generation) return;
+        clearTimeout(connectTimer);
+        connectTimer = null;
+        if (remoteStream) scheduleNativePlaybackRetry(0);
+        onStatus('connected', 'المحادثة الحية متصلة؛ تحدث مباشرة وسأرد بالصوت ويظهر الرد مكتوبًا.');
       };
       channel.onclose = () => {
-        if (active === generation) disconnect();
+        if (activeGeneration === generation) disconnect();
       };
       channel.onerror = () => {
-        if (active === generation) onStatus('error', AI_ERRORS.connect_failed);
+        if (activeGeneration === generation) onStatus('error', AI_ERRORS.connect_failed);
       };
-      channel.onmessage = (event) => handleMessage(event, active);
+      channel.onmessage = (event) => handleMessage(event, activeGeneration);
 
       peer.onconnectionstatechange = () => {
-        if (active !== generation) return;
-        if (peer?.connectionState === 'connected' && iosWebKit) resumeAudioOutput().catch(() => {});
+        if (activeGeneration !== generation) return;
+        if (peer?.connectionState === 'connected' && remoteStream) scheduleNativePlaybackRetry(0);
         if (['failed', 'closed', 'disconnected'].includes(peer?.connectionState)) {
           disconnect(false);
           onStatus('error', AI_ERRORS.disconnected);
@@ -551,7 +610,7 @@ export function createRealtimeLiveClient({
 
       controller = new AbortController();
       connectTimer = setTimeout(() => {
-        if (active === generation) {
+        if (activeGeneration === generation) {
           disconnect(false);
           onStatus('error', AI_ERRORS.timeout);
         }
@@ -559,7 +618,10 @@ export function createRealtimeLiveClient({
 
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
-      await waitForIceGathering(peer, effectiveIceGatherTimeout(iceGatherTimeoutMs, navigatorObject));
+      await waitForIceGathering(
+        peer,
+        effectiveIceGatherTimeout(iceGatherTimeoutMs, navigatorObject)
+      );
       const localSdp = peer.localDescription?.sdp || offer.sdp;
       const result = await aiRequest('realtime', {
         sdp: localSdp,
@@ -568,14 +630,23 @@ export function createRealtimeLiveClient({
         consent: true,
         shareSummary: options.shareSummary === true,
         summary: options.shareSummary ? options.summary : {}
-      }, { fetcher, signal: controller.signal, timeoutMs: iosWebKit ? 40_000 : 20_000 });
-      if (active !== generation) return;
-      if (typeof result?.sdp !== 'string' || !result.sdp.startsWith('v=0')) throw voiceError('bad_answer');
+      }, {
+        fetcher,
+        signal: controller.signal,
+        timeoutMs: iosWebKit ? 40_000 : 20_000
+      });
+      if (activeGeneration !== generation) return;
+      if (typeof result?.sdp !== 'string' || !result.sdp.startsWith('v=0')) {
+        throw voiceError('bad_answer');
+      }
       await peer.setRemoteDescription({ type: 'answer', sdp: result.sdp });
+      if (remoteStream) scheduleNativePlaybackRetry(0);
     } catch (error) {
-      if (active !== generation) return;
+      if (activeGeneration !== generation) return;
       disconnect(false);
-      const message = error instanceof VoiceError ? error.message : (error?.message || AI_ERRORS.connect_failed);
+      const message = error instanceof VoiceError
+        ? error.message
+        : (error?.message || AI_ERRORS.connect_failed);
       onStatus('error', message);
       throw error;
     }
@@ -585,7 +656,9 @@ export function createRealtimeLiveClient({
     connect,
     disconnect,
     setMuted(value) {
-      localStream?.getAudioTracks?.().forEach((track) => { track.enabled = !value; });
+      localStream?.getAudioTracks?.().forEach((track) => {
+        track.enabled = !value;
+      });
     },
     interrupt() {
       send({ type: 'response.cancel' });
@@ -598,7 +671,14 @@ export function createRealtimeLiveClient({
     sendText(value) {
       const text = String(value || '').trim().slice(0, 2_000);
       if (!text || channel?.readyState !== 'open') return false;
-      send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } });
+      send({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text }]
+        }
+      });
       send({ type: 'response.create' });
       const id = globalThis.crypto?.randomUUID?.() || `typed-${Date.now()}`;
       onTranscript({ id, role: 'user', text, done: true });
@@ -608,10 +688,19 @@ export function createRealtimeLiveClient({
       if (channel?.readyState !== 'open') return false;
       const prepared = attachmentContent(items);
       if (!prepared) return false;
-      if (!send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: prepared.content } })) return false;
+      if (!send({
+        type: 'conversation.item.create',
+        item: { type: 'message', role: 'user', content: prepared.content }
+      })) return false;
       send({ type: 'response.create' });
       const id = globalThis.crypto?.randomUUID?.() || `attachment-${Date.now()}`;
-      onTranscript({ id, role: 'user', text: `أرفقت: ${prepared.names.join('، ')}`, done: true, attachments: prepared.names });
+      onTranscript({
+        id,
+        role: 'user',
+        text: `أرفقت: ${prepared.names.join('، ')}`,
+        done: true,
+        attachments: prepared.names
+      });
       return true;
     },
     canRecordReplies() {
