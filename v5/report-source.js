@@ -11,6 +11,7 @@ export function reportSourceVector(engagement={}){
   for(const r of [...(engagement.requests||[])].sort((a,b)=>s(a.id).localeCompare(s(b.id))))rows.push(row('REQ',r.id,r.status,r.priority,r.coverage,list(r.evidenceIds),list(r.roundIds)));
   for(const r of [...(engagement.councilRounds||[])].sort((a,b)=>s(a.id).localeCompare(s(b.id))))rows.push(row('RND',r.id,r.number,r.status,r.recordedAt,list(r.evidenceIds),list(r.issueIds)));
   for(const a of [...(engagement.adjustments||[])].sort((x,y)=>s(x.id).localeCompare(s(y.id))))rows.push(row('ADJ',a.id,a.status,a.version,a.debitMinor,a.creditMinor,a.decision?.decision,a.decision?.decidedAt));
+  for(const d of [...(engagement.disclosureReviews||[])].sort((a,b)=>s(a.id).localeCompare(s(b.id))))rows.push(row('DSR',d.id,d.topicId,d.status,d.actor,d.at,d.previousReviewId,list(d.sourceIds)));
   return rows.join('|');
 }
 export function reportSourceFingerprint(engagement={}){return fnv1a64(reportSourceVector(engagement))}
