@@ -3,19 +3,12 @@ import { Download, FileText, Image as ImageIcon, LoaderCircle, Mic, MicOff, Pape
 import { aiRequest } from '../realtime-client.js';
 import { createRealtimeLiveClient } from '../realtime-live-client.js';
 import { extractAuditDocument } from '../document-workbench.js';
-import { downloadAudioBlob, extensionFor } from '../audio-export.js';
+import { saveAudioReplyAsMp3 } from '../mp3-export.js';
 
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const MAX_ATTACHMENTS_PER_PICK = 6;
 const DOCUMENT_PATTERN = /\.(pdf|docx|xlsx?|csv|tsv|txt|md|xml|json)$/i;
 const NO_LOCAL_FALLBACK = new Set(['consent_required', 'mic_denied', 'mic_missing', 'mic_busy', 'mic_failed']);
-
-async function saveAudioReply(reply) {
-  if (!reply?.blob) return;
-  const extension = extensionFor(reply.mimeType || reply.blob.type);
-  const filename = `KOSIF-audio-${new Date(reply.createdAt || Date.now()).toISOString().replace(/[:.]/g, '-')}.${extension}`;
-  await downloadAudioBlob(reply.blob, filename);
-}
 
 function readBlobAsDataUrl(blob) {
   return new Promise((resolve, reject) => {
@@ -101,6 +94,8 @@ export function RealtimeVoice({ onView, summary = {}, onFallback }) {
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentStatus, setAttachmentStatus] = useState('');
   const [sentAttachments, setSentAttachments] = useState([]);
+  const [mp3BusyId, setMp3BusyId] = useState('');
+  const [mp3Status, setMp3Status] = useState('');
   const client = useRef(null);
   const attachmentInput = useRef(null);
   const viewRef = useRef(onView);
@@ -172,6 +167,7 @@ export function RealtimeVoice({ onView, summary = {}, onFallback }) {
     setDeviceHint('');
     setFallbackReason('');
     setAttachmentStatus('');
+    setMp3Status('');
     setSentAttachments([]);
     setMessages([]);
     try {
@@ -233,12 +229,28 @@ export function RealtimeVoice({ onView, summary = {}, onFallback }) {
     }
   }
 
+  async function downloadMp3(item) {
+    if (!item?.audio?.blob || mp3BusyId) return;
+    setMp3BusyId(item.id || item.responseId || 'audio');
+    setMp3Status('جارٍ تحويل الرد إلى MP3 حقيقي…');
+    try {
+      await saveAudioReplyAsMp3(item.audio);
+      setMp3Status('تم تجهيز ملف MP3 وحفظه/مشاركته من جهازك.');
+    } catch (error) {
+      console.warn('KOSIF MP3 export failed', error);
+      setMp3Status('تعذر تحويل هذا التسجيل إلى MP3. أعد الرد الصوتي ثم جرّب التنزيل مجددًا.');
+    } finally {
+      setMp3BusyId('');
+    }
+  }
+
   const microphoneError = status === 'error' && /ميكروفون|المتصفح|HTTPS/.test(message);
   const canFallback = typeof onFallback === 'function' && !active && (Boolean(fallbackReason) || !ready);
 
   return (
     <div className="realtime-voice">
       <p className="voice-console-status" role="status">{message}</p>
+      <small className="voice-live-contract">وضع المحادثة: تتحدث بالصوت ← يرد KOSIF بالصوت ويعرض نفس الرد مكتوبًا. الردود المسجلة قابلة للتنزيل بصيغة MP3.</small>
       {!active ? (
         <div className="voice-device-help">
           <button type="button" className="button button-outline" onClick={inspectMicrophone}>فحص الميكروفون</button>
@@ -285,11 +297,23 @@ export function RealtimeVoice({ onView, summary = {}, onFallback }) {
       {sentAttachments.length ? <div className="voice-attachments" aria-label="المرفقات المرسلة">{sentAttachments.map((item, index) => <span key={`${item.name}-${index}`}>{item.kind === 'image' ? <ImageIcon size={13} /> : <FileText size={13} />}<bdi>{item.name}</bdi></span>)}</div> : null}
       {messages.length > 0 ? (
         <div className="voice-dialogue" role="log" aria-label="نص المحادثة الحية">
-          {messages.map((item) => <p key={item.id}><strong>{item.role === 'user' ? 'أنت' : 'KOSIF AI'}</strong><span>{item.text}</span>{item.audio ? <button type="button" className="voice-audio-download" onClick={() => saveAudioReply(item.audio)}><Download size={14} /> حفظ/تنزيل الرد الصوتي</button> : null}</p>)}
+          {messages.map((item) => (
+            <p key={item.id}>
+              <strong>{item.role === 'user' ? 'أنت' : 'KOSIF AI'}</strong>
+              <span>{item.text}</span>
+              {item.role === 'assistant' && item.audio ? (
+                <button type="button" className="voice-audio-download" disabled={Boolean(mp3BusyId)} onClick={() => downloadMp3(item)}>
+                  {mp3BusyId === item.id ? <LoaderCircle className="spin" size={14} /> : <Download size={14} />}
+                  {mp3BusyId === item.id ? 'تحويل إلى MP3…' : 'تنزيل MP3'}
+                </button>
+              ) : null}
+            </p>
+          ))}
         </div>
       ) : null}
+      {mp3Status ? <small className="voice-attachment-status" role="status">{mp3Status}</small> : null}
       {status === 'connected' ? <form className="voice-text-form" onSubmit={(event) => { event.preventDefault(); if (client.current.sendText(text)) setText(''); }}><label className="sr-only" htmlFor="realtime-text">رسالة أثناء المحادثة</label><input id="realtime-text" value={text} onChange={(event) => setText(event.target.value)} maxLength={2000} placeholder="أو اكتب سؤالك هنا…" /><button className="button button-outline" disabled={!text.trim()}><Send size={16} /></button></form> : null}
-      <small className="voice-console-disclosure">هذا صوت مولّد بالذكاء الاصطناعي. المحادثة ثنائية الاتجاه عبر WebRTC ويمكن مقاطعة الرد. تسجيل رد المساعد يتم محليًا في المتصفح فقط لتمكين الحفظ؛ لا يرفع التطبيق نسخة التسجيل إلى خادم KOSIF.</small>
+      <small className="voice-console-disclosure">هذا صوت مولّد بالذكاء الاصطناعي. Realtime يعيد الصوت مع نصه في نفس المحادثة. تسجيل رد المساعد يبقى محليًا، وعند طلب التنزيل يُحوّل داخل المتصفح إلى MP3 حقيقي ثم يُحفظ أو يُشارك من جهازك؛ لا يرفع KOSIF نسخة التسجيل إلى خادمه.</small>
     </div>
   );
 }
