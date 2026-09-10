@@ -1,6 +1,7 @@
 /** KOSIF V5 — source-backed professional report model. Rendering is a separate concern. */
 import { reportReadiness } from './engagement-machine.js';
 import { evidenceRequestMetrics } from './evidence-requests.js';
+import { reportSourceFingerprint } from './report-source.js';
 
 const titleMap = {
   cover:'الغلاف', 'executive-summary':'الملخص التنفيذي', opinion:'الرأي', 'basis-for-opinion':'أساس الرأي',
@@ -93,6 +94,6 @@ export function reportQuality(model) {
 export function buildProfessionalReportModel({ engagement, recipe, statements=null, materiality=null, documentMetrics=null, traceabilityMetrics=null, createdAt=new Date().toISOString() }={}) {
   if(!engagement||!recipe)throw new TypeError('engagement and recipe are required');
   const readiness=reportReadiness(engagement), ctx={engagement,recipe,statements,materiality,documentMetrics,traceabilityMetrics,readiness};
-  const model={id:`RPT-${String((engagement.reports?.length||0)+1).padStart(3,'0')}`,version:1,status:'draft',createdAt,engagementId:engagement.id,recipeId:recipe.id,title:recipe.title,readiness,traceabilityMetrics,sections:(recipe.sections||[]).map(id=>buildSection(id,ctx))};
+  const model={id:`RPT-${String((engagement.reports?.length||0)+1).padStart(3,'0')}`,version:1,status:'draft',createdAt,engagementId:engagement.id,recipeId:recipe.id,title:recipe.title,sourceFingerprint:reportSourceFingerprint(engagement),readiness,traceabilityMetrics,sections:(recipe.sections||[]).map(id=>buildSection(id,ctx))};
   model.quality=reportQuality(model); return model;
 }
