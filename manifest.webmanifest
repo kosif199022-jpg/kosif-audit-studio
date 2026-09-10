@@ -1,24 +1,24 @@
 {
-  "name": "KOSIF 4 — Audit Intelligence Studio",
+  "name": "KOSIF 5 — Audit & Financial Reporting OS",
   "short_name": "KOSIF Audit",
-  "description": "نظام تشغيل عربي لملف المراجعة: مركز قيادة، ميزان مراجعة، مخاطر، قيود يومية، أدلة، معايير وتقارير محكومة.",
+  "description": "نظام تشغيل عربي للمراجعة والتقارير المالية: مستندات، أدلة، مجلس مراجعين، تسويات، قوائم وتقارير قابلة للتتبع.",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f3f7",
-  "theme_color": "#211830",
+  "background_color": "#100c16",
+  "theme_color": "#100c16",
   "icons": [
     { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "./icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ],
   "shortcuts": [
+    { "name": "الحلقة المستمرة V5", "url": "./continuous-review.html?view=dashboard", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "استوديو الإيجنت", "url": "./?view=agent", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "خطة العمل", "url": "./?view=workflow", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "ميزان المراجعة", "url": "./?view=data", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "المخاطر", "url": "./?view=risks", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "فحص قيود اليومية", "url": "./?view=journal", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
     { "name": "سجل الأدلة", "url": "./?view=evidence", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
   ]
 }
