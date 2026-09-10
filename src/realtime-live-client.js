@@ -41,13 +41,15 @@ function waitForIceGathering(peer, timeoutMs = 3_000) {
   });
 }
 
-function preferredRecorderMime(MediaRecorderClass) {
+export function preferredRecorderMime(MediaRecorderClass) {
   if (!MediaRecorderClass) return '';
+  // Chromium records WebM/Opus more reliably than fragmented MP4. Safari does
+  // not report WebM support and naturally falls through to MP4/AAC.
   const candidates = [
-    'audio/mp4;codecs=mp4a.40.2',
-    'audio/mp4',
     'audio/webm;codecs=opus',
-    'audio/webm'
+    'audio/webm',
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4'
   ];
   return candidates.find((type) => {
     try { return MediaRecorderClass.isTypeSupported?.(type) === true; } catch { return false; }
@@ -80,6 +82,19 @@ function attachmentContent(items) {
   return names.length ? { content, names } : null;
 }
 
+export function responseTranscript(response) {
+  const texts = [];
+  for (const item of response?.output || []) {
+    if (item?.type !== 'message') continue;
+    for (const part of item.content || []) {
+      const value = typeof part?.transcript === 'string' ? part.transcript
+        : typeof part?.text === 'string' ? part.text : '';
+      if (value.trim()) texts.push(value.trim());
+    }
+  }
+  return texts.join('\n').trim();
+}
+
 export function createRealtimeLiveClient({
   fetcher = nativeFetch,
   PeerConnection = globalThis.RTCPeerConnection,
@@ -108,6 +123,7 @@ export function createRealtimeLiveClient({
   let pendingResponseId = null;
   const responseItems = new Map();
   const handledCalls = new Set();
+  const completedTranscriptResponses = new Set();
 
   function send(event) {
     if (channel?.readyState !== 'open') return false;
@@ -203,6 +219,7 @@ export function createRealtimeLiveClient({
       return;
     }
     recorder = null;
+    try { current.requestData?.(); } catch {}
     try {
       if (current.state !== 'inactive') current.stop();
     } catch {}
@@ -258,6 +275,7 @@ export function createRealtimeLiveClient({
     }
     handledCalls.clear();
     responseItems.clear();
+    completedTranscriptResponses.clear();
     if (notify) onStatus('idle', 'انتهت المحادثة وأُغلق الميكروفون.');
   }
 
@@ -278,13 +296,27 @@ export function createRealtimeLiveClient({
       onTranscript({ id: itemId || responseId, responseId, role: 'assistant', text: String(message.delta || ''), done: false });
     }
     if (['response.output_audio_transcript.done', 'response.output_text.done'].includes(message.type)) {
+      if (responseId) completedTranscriptResponses.add(responseId);
       onTranscript({ id: itemId || responseId, responseId, role: 'assistant', text: String(message.transcript || message.text || '').slice(0, 12_000), done: true });
     }
     if (message.type === 'input_audio_buffer.speech_started') onStatus('connected', 'أستمع إليك…');
-    if (message.type === 'input_audio_buffer.speech_stopped') onStatus('connected', 'أجهّز الرد…');
+    if (message.type === 'input_audio_buffer.speech_stopped') onStatus('connected', 'أجهّز الرد الصوتي والنصي…');
     if (message.type === 'response.done') {
       for (const outputItem of message.response?.output || []) {
         if (responseId && outputItem?.id && outputItem.type === 'message') responseItems.set(responseId, outputItem.id);
+      }
+      if (responseId && !completedTranscriptResponses.has(responseId)) {
+        const fallbackText = responseTranscript(message.response);
+        if (fallbackText) {
+          completedTranscriptResponses.add(responseId);
+          onTranscript({
+            id: responseItems.get(responseId) || responseId,
+            responseId,
+            role: 'assistant',
+            text: fallbackText.slice(0, 12_000),
+            done: true
+          });
+        }
       }
       stopReplyRecording(responseId || activeResponseId);
       let called = false;
@@ -302,7 +334,7 @@ export function createRealtimeLiveClient({
         called = true;
       }
       if (called) send({ type: 'response.create' });
-      else onStatus('connected', 'المحادثة متصلة؛ تحدث أو اكتب أو أرفق ملفًا.');
+      else onStatus('connected', 'المحادثة متصلة؛ تحدث وسأرد صوتيًا ويظهر الرد مكتوبًا هنا.');
     }
     if (message.type === 'error') onStatus('connected', 'تعذر إكمال الرد؛ أعد السؤال أو أنهِ الاتصال.');
   }
@@ -359,7 +391,7 @@ export function createRealtimeLiveClient({
         if (active === generation) {
           clearTimeout(connectTimer);
           connectTimer = null;
-          onStatus('connected', 'المحادثة الحية متصلة؛ تحدث مباشرة وسأرد عليك بالصوت.');
+          onStatus('connected', 'المحادثة الحية متصلة؛ تحدث مباشرة وسأرد بالصوت ويظهر الرد مكتوبًا.');
         }
       };
       channel.onclose = () => {
