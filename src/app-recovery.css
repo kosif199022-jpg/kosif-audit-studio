@@ -1,10 +1,14 @@
-.app-fatal-recovery {
+.app-fatal-recovery,
+.app-boot-shell {
   min-height: 100dvh;
+  color: #f7f5ff;
+  background: radial-gradient(circle at 50% 20%, rgb(111 76 255 / 22%), transparent 38%), #070c20;
+}
+
+.app-fatal-recovery {
   display: grid;
   place-items: center;
   padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-  color: #f7f5ff;
-  background: radial-gradient(circle at 50% 20%, rgb(111 76 255 / 22%), transparent 38%), #070c20;
 }
 
 .app-fatal-recovery > section {
@@ -23,3 +27,61 @@
 .app-fatal-recovery h1 { margin-block: 4px 8px; font-size: clamp(1.35rem, 4vw, 2rem); }
 .app-fatal-recovery p { line-height: 1.8; color: #d8d4ef; }
 .app-fatal-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; color: #ffd66b; background: rgb(215 171 61 / 12%); border: 1px solid rgb(215 171 61 / 28%); }
+
+.app-boot-shell {
+  display: grid;
+  place-items: center;
+  padding: max(22px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  font-family: "IBM Plex Sans Arabic", "Tajawal", system-ui, sans-serif;
+}
+
+.app-boot-shell > section {
+  width: min(420px, 88vw);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-boot-mark {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #070c20;
+  background: linear-gradient(145deg, #ffd86d, #d8a92f);
+  font: 700 1.35rem/1 system-ui, sans-serif;
+  box-shadow: 0 10px 30px rgb(216 169 47 / 18%);
+}
+
+.app-boot-shell strong,
+.app-boot-shell span { display: block; }
+.app-boot-shell strong { font-size: 1.05rem; letter-spacing: .16em; }
+.app-boot-shell div > span { margin-block-start: 4px; color: #cfcbe8; font-size: .9rem; }
+
+.app-boot-progress {
+  grid-column: 1 / -1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 8%);
+}
+
+.app-boot-progress i {
+  width: 42%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #d8a92f, #7f67ff, transparent);
+  animation: kosif-boot-slide 1.15s ease-in-out infinite;
+}
+
+@keyframes kosif-boot-slide {
+  from { transform: translateX(140%); }
+  to { transform: translateX(-230%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-boot-progress i { animation: none; width: 100%; opacity: .55; }
+}
