@@ -2,9 +2,11 @@ const CACHE = 'kosif-audit-studio-v4.0.0';
 const CORE = [
   './', './index.html', './styles.css', './studio.css', './app.js', './engine.js', './data.js',
   './moon-core.js', './analytics.js', './council.js', './voice.js', './agent.js', './studio.js', './reference-registry.js',
-  './research-engine.js', './continuous-review.html', './continuous-review.css', './continuous-review.js',
+  './research-engine.js', './continuous-review.html', './continuous-review.css', './continuous-review.js', './document-intelligence.css',
   './v5/engagement-machine.js', './v5/evidence-requests.js', './v5/adjustment-ledger.js', './v5/report-recipes.js',
-  './v5/traceability.js', './v5/review-loop.js', './manifest.webmanifest', './icon.svg', './icon-maskable.svg'
+  './v5/traceability.js', './v5/review-loop.js', './v5/document-intelligence.js', './v5/document-client.js',
+  './v5/continuous-store.js', './v5/continuous-documents.js', './v5/continuous-council.js', './v5/continuous-reporting.js',
+  './manifest.webmanifest', './icon.svg', './icon-maskable.svg'
 ];
 const scope = self.registration.scope;
 const corePaths = new Set(CORE.map(path => new URL(path, scope).pathname));

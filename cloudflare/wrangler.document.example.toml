@@ -1,0 +1,25 @@
+# Copy the binding blocks below into cloudflare/wrangler.toml after creating resources.
+# The Worker still runs document analysis without D1/R2, but persistence requires both bindings.
+
+name = "kosif-audit-realtime"
+main = "document-worker.js"
+compatibility_date = "2026-09-10"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGIN = "*"
+DOCUMENT_MODEL = "gpt-5.6-terra"
+MAX_DOCUMENT_BYTES = "20971520"
+
+# Create with: npx wrangler d1 create kosif-audit
+# Then replace the placeholder id and apply migrations.
+[[d1_databases]]
+binding = "KOSIF_DB"
+database_name = "kosif-audit"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# Create with: npx wrangler r2 bucket create kosif-audit-documents
+[[r2_buckets]]
+binding = "KOSIF_DOCUMENTS"
+bucket_name = "kosif-audit-documents"
