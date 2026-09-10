@@ -3,6 +3,7 @@ import "./intelligence/pwa.js";
 import { createRoot } from "react-dom/client";
 import { CloudPersistenceBoundary } from "./CloudPersistenceBoundary.jsx";
 import { AppErrorBoundary } from "./components/AppErrorBoundary.jsx";
+import { GlobalAuditLauncher } from "./components/GlobalAuditLauncher.jsx";
 import "./app-recovery.css";
 
 const App = lazy(async () => {
@@ -37,6 +38,7 @@ createRoot(document.getElementById("root")).render(
         <Suspense fallback={<AppBootFallback />}>
           <App />
         </Suspense>
+        <GlobalAuditLauncher />
       </CloudPersistenceBoundary>
     </AppErrorBoundary>
   </React.StrictMode>,
