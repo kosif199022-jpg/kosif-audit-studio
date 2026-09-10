@@ -20,7 +20,7 @@ const defs={
   KAM_DETERMINATION:{title:'تحديد أمور المراجعة الرئيسية KAM',mode:'human',auditOnly:true},
   UNCORRECTED_MISSTATEMENTS:{title:'تقييم التحريفات غير المصححة',mode:'human',auditOnly:true},
   STATEMENT_PRESENTATION_REVIEW:{title:'مراجعة العرض النهائي للقائمة/القوائم',mode:'human',preparationOnly:true},
-  DISCLOSURE_REVIEW:{title:'مراجعة الإيضاحات والإفصاحات',mode:'human',fullStatementsOnly:true}
+  DISCLOSURE_REVIEW:{title:'مراجعة الإيضاحات والإفصاحات',mode:'human',fullStatementsOnly:true,requires:'disclosures'}
 };
 
 function isAudit(type=''){return['audit','review'].includes(type)}
@@ -45,6 +45,11 @@ export function completionRequirements(engagement={},ctx={}){
     const def=defs[id],decision=latest.get(id)||null;
     if(def.mode==='system'){const [status,detail]=systemStatus(id,engagement,ctx);return{id,...def,status,detail,decision:null}}
     if(def.requires==='materiality'&&!ctx.materiality)return{id,...def,status:'blocked',detail:'لا توجد Materiality محسوبة يمكن اعتمادها.',decision:null,prerequisiteMissing:true};
+    if(def.requires==='disclosures'){
+      const ds=ctx.disclosureStatus;
+      if(!ds)return{id,...def,status:'blocked',detail:'لم يتم احتساب قائمة الإفصاحات التفصيلية.',decision:null,prerequisiteMissing:true};
+      if(!ds.ready)return{id,...def,status:'blocked',detail:`${ds.pending} موضوع إفصاح ما زال يحتاج تحديد الانطباق أو الإعداد والمراجعة.`,decision:null,prerequisiteMissing:true};
+    }
     return{id,...def,status:decision?.status||'pending',detail:decision?.rationale||'يتطلب قرارًا مهنيًا بشريًا موثقًا.',decision};
   });
 }
