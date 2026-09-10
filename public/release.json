@@ -1,0 +1,14 @@
+{
+  "release": "2026-09-10-voice-attachment-v2",
+  "releasedAt": "2026-09-10T12:05:00+03:00",
+  "source": "kosif-audit-studio-main.zip",
+  "productionBranch": "codex/preserve-theme-cloudflare",
+  "features": [
+    "realtime-webRTC-voice",
+    "safari-iphone-local-fallback",
+    "iphone-audio-share-download",
+    "six-live-chat-attachments",
+    "markdown-xml-evidence",
+    "production-push-ci"
+  ]
+}
