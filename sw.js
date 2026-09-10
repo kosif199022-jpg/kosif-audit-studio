@@ -7,7 +7,7 @@ const CORE = [
   './v5/engagement-machine.js', './v5/evidence-requests.js', './v5/adjustment-ledger.js', './v5/report-recipes.js',
   './v5/traceability.js', './v5/review-loop.js', './v5/document-client.js', './v5/document-intelligence.js', './v5/audit-coverage.js', './v5/continuous-coverage.js', './v5/statement-comparison.js', './v5/continuous-statements.js',
   './v5/continuous-store.js', './v5/continuous-documents.js', './v5/continuous-council.js', './v5/continuous-issues.js', './v5/issue-workflow.js', './v5/continuous-reporting.js',
-  './v5/state-codec.js', './v5/engagement-persistence.js', './v5/continuous-persistence.js', './v5/report-model.js',
+  './v5/state-codec.js', './v5/engagement-persistence.js', './v5/continuous-persistence.js', './v5/report-model.js', './v5/report-detail-builders.js',
   './v5/completion-engine.js', './v5/report-approval.js', './v5/continuous-completion.js', './v5/report-source.js', './v5/specialist-registry.js',
   './manifest.webmanifest', './icon.svg', './icon-maskable.svg'
 ];
