@@ -6,7 +6,7 @@ const SELECTORS={
   overview:['.hero','.now-panel','.journey','#workspaceOverviewStrip'],
   documents:['#intakePanel','.request-panel'],
   issues:['#issueWorkspace'],
-  council:['.council-panel'],
+  council:['.council-panel','.request-panel'],
   financials:['.adjustment-panel','#statementWorkspace','#cashFlowWorkspace','#equityWorkspace','#disclosureWorkspace'],
   report:['#recipePanel','.trace-panel','#completionRoom','.report-panel']
 };
