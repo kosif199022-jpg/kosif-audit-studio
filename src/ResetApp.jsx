@@ -13,9 +13,7 @@ import {
   FileText,
   FileUp,
   FolderOpen,
-  ListChecks,
   Moon,
-  Plus,
   RefreshCcw,
   RotateCcw,
   ShieldCheck,
@@ -32,7 +30,6 @@ import {
   RESET_MIGRATION_KEY,
   RESET_STORAGE_KEY,
   RESET_THEME_KEY,
-  REVIEWER_ROLES,
   buildCouncilRound,
   buildFinalReport,
   createEmptyAuditState,
@@ -47,7 +44,7 @@ import {
   extractAuditDocument,
   readDocumentIndex,
 } from "./document-workbench.js";
-import { clearEvidenceStore, readEvidenceBytes } from "./evidence-store.js";
+import { clearEvidenceStore } from "./evidence-store.js";
 import "./reset-app.css";
 
 const NAV = [
@@ -65,6 +62,8 @@ const outcomeLabels = {
   scope_limitation: "قيد نطاق موثق",
 };
 
+let legacyResetPerformed = false;
+
 function resetLegacyStorageOnce() {
   try {
     if (localStorage.getItem(RESET_MIGRATION_KEY) === "1") return false;
@@ -75,6 +74,7 @@ function resetLegacyStorageOnce() {
       if (key.startsWith("kosif")) localStorage.removeItem(key);
     }
     localStorage.setItem(RESET_MIGRATION_KEY, "1");
+    legacyResetPerformed = true;
     return true;
   } catch {
     return false;
@@ -94,7 +94,7 @@ function loadTheme() {
   try {
     const stored = localStorage.getItem(RESET_THEME_KEY);
     if (stored === "light" || stored === "dark") return stored;
-    return matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+    return globalThis.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
   } catch {
     return "dark";
   }
@@ -316,7 +316,7 @@ function RoundWorkspace({ state, setState, hydratedDocuments, onToast, onView })
   </div>;
 }
 
-function RequestsWorkspace({ state, setState, hydratedDocuments, setHydratedDocuments, onToast, onView }) {
+function RequestsWorkspace({ state, setState, setHydratedDocuments, onToast, onView }) {
   const [busyId, setBusyId] = useState(null);
   const [reasons, setReasons] = useState({});
   const openCount = state.requests.filter((item) => item.status === "requested").length;
@@ -380,7 +380,7 @@ function ReportWorkspace({ state, setState, onToast, onView }) {
 
   function downloadReport() {
     if (!state.finalReport) return;
-    const blob = new Blob([JSON.stringify({ report: state.finalReport, rounds: state.rounds, requests: state.requests, documents: state.documents.map(({ snippets, ...item }) => item), auditTrail: state.auditTrail }, null, 2)], { type: "application/json;charset=utf-8" });
+    const blob = new Blob([JSON.stringify({ report: state.finalReport, rounds: state.rounds, requests: state.requests, documents: state.documents, auditTrail: state.auditTrail }, null, 2)], { type: "application/json;charset=utf-8" });
     const href = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = href;
@@ -423,7 +423,7 @@ export function ResetApp() {
   useEffect(() => {
     if (migrationClearedRef.current) return;
     migrationClearedRef.current = true;
-    if (resetLegacyStorageOnce()) clearEvidenceStore().catch(() => {});
+    if (legacyResetPerformed) clearEvidenceStore().catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -476,7 +476,7 @@ export function ResetApp() {
         {view === "documents" ? <DocumentUploadWorkspace state={state} setState={setState} hydratedDocuments={hydratedDocuments} setHydratedDocuments={setHydratedDocuments} onToast={notify} onView={setView} /> : null}
         {view === "council" ? <CouncilWorkspace state={state} setState={setState} onToast={notify} onView={setView} /> : null}
         {view === "rounds" ? <RoundWorkspace state={state} setState={setState} hydratedDocuments={hydratedDocuments} onToast={notify} onView={setView} /> : null}
-        {view === "requests" ? <RequestsWorkspace state={state} setState={setState} hydratedDocuments={hydratedDocuments} setHydratedDocuments={setHydratedDocuments} onToast={notify} onView={setView} /> : null}
+        {view === "requests" ? <RequestsWorkspace state={state} setState={setState} setHydratedDocuments={setHydratedDocuments} onToast={notify} onView={setView} /> : null}
         {view === "report" ? <ReportWorkspace state={state} setState={setState} onToast={notify} onView={setView} /> : null}
       </main>
     </div>
