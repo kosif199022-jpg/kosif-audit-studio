@@ -3,8 +3,9 @@ import "../global-audit-launcher.css";
 
 const GlobalAuditIntelligence = lazy(() => import("./GlobalAuditIntelligence.jsx").then((module) => ({ default: module.GlobalAuditIntelligence })));
 
-export function GlobalAuditLauncher() {
+export function GlobalAuditLauncher({ disabled = false }) {
   const [open, setOpen] = useState(false);
+  if (disabled) return null;
   return <>
     <button
       type="button"
