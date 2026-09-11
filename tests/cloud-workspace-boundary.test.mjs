@@ -21,13 +21,7 @@ test("cloud workspace snapshot keeps governed decisions but never raw/local-only
     opinionAssessment: { basis: "none", isPervasive: false },
     analyticsReview: { acknowledged: true },
     council: { rounds: [], humanDecision: { status: "approved" } },
-    periodLocks: [],
-    auditTrail: [],
-    rounds: [],
-    evidence: [],
-    findings: [],
-    adjustments: [],
-    externalAiRuns: [],
+    periodLocks: [], auditTrail: [], rounds: [], evidence: [], findings: [], adjustments: [], externalAiRuns: [],
     sourceDataset: { source: "demo", datasetId: "demo-1" },
     humanApproval: true,
     humanApprovedAt: "2026-08-28T15:00:00.000Z",
@@ -110,15 +104,16 @@ test("cloud hydration merges governed state conservatively and rejects incompati
   assert.deepEqual(mergeCloudWorkspaceState(local, { version: 6, humanApproval: true }), local);
 });
 
-test("React root is wrapped by the cloud persistence boundary without changing App JSX", async () => {
+test("reset production entry deliberately does not hydrate the legacy cloud engagement", async () => {
   const main = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
-  const app = await readFile(new URL("../src/App.jsx", import.meta.url), "utf8");
-  assert.match(main, /CloudPersistenceBoundary/);
-  assert.match(main, /<CloudPersistenceBoundary>[\s\S]*<App\s*\/>[\s\S]*<\/CloudPersistenceBoundary>/);
-  assert.doesNotMatch(app, /CloudPersistenceBoundary|createWorkspaceAutosave|getCloudSession/);
+  const reset = await readFile(new URL("../src/ResetApp.jsx", import.meta.url), "utf8");
+  assert.match(main, /import\("\.\/ResetApp\.jsx"\)/);
+  assert.doesNotMatch(main, /CloudPersistenceBoundary|\.\/App\.jsx/);
+  assert.match(reset, /RESET_STORAGE_KEY/);
+  assert.match(reset, /resetLegacyStorageOnce/);
 });
 
-test("Worker cloud contract persists human governance decisions needed for a faithful reload", async () => {
+test("Worker cloud contract remains available for archived legacy files but is outside reset production", async () => {
   const worker = await readFile(new URL("../worker/index.js", import.meta.url), "utf8");
   for (const key of ["mappingConfirmed", "opinionAssessment", "humanApproval", "humanApprovedAt"]) {
     assert.match(worker, new RegExp(`\\"${key}\\"`));
