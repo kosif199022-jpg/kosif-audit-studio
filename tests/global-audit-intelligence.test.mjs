@@ -70,14 +70,14 @@ test("auditor fee lens raises review signals without making an independence conc
   assert.match(elevated.conclusionAr, /ليست حكمًا|تقييم بشري/);
 });
 
-test("global audit workspace is lazy, mobile-safe, and mounted outside the heavy App chunk", async () => {
+test("global audit workspace remains archived and testable but is no longer mounted in reset production", async () => {
   const [main, launcher, studio, css] = await Promise.all([
     read("src/main.jsx"),
     read("src/components/GlobalAuditLauncher.jsx"),
     read("src/components/GlobalAuditIntelligence.jsx"),
     read("src/global-audit-intelligence.css"),
   ]);
-  assert.match(main, /<GlobalAuditLauncher \/>/);
+  assert.doesNotMatch(main, /GlobalAuditLauncher|GlobalAuditIntelligence/);
   assert.match(launcher, /lazy\(\(\) => import\("\.\/GlobalAuditIntelligence\.jsx"\)/);
   assert.match(studio, /12,505-page methodology extraction/);
   assert.match(studio, /محرك حساسية حتمي/);
