@@ -144,9 +144,8 @@ test("invalid persisted state cannot reintroduce the legacy demo dataset", () =>
   assert.equal(restored.rounds.length, 0);
 });
 
-test("production entry mounts ResetApp while legacy cloud hydration and global launcher are disabled", async () => {
+test("production entry mounts only ResetApp and excludes legacy production surfaces", async () => {
   const main = await readFile(new URL("../src/main.jsx", import.meta.url), "utf8");
   assert.match(main, /import\("\.\/ResetApp\.jsx"\)/);
-  assert.match(main, /<CloudPersistenceBoundary disabled>/);
-  assert.match(main, /<GlobalAuditLauncher disabled \/>/);
+  assert.doesNotMatch(main, /CloudPersistenceBoundary|GlobalAuditLauncher|import\("\.\/App\.jsx"\)/);
 });
