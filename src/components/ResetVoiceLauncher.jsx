@@ -1,10 +1,9 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Mic, X } from "lucide-react";
 import { RESET_STORAGE_KEY, sanitizeState } from "../reset-audit-engine.js";
-import "../voice-console.css";
 import "../reset-voice.css";
 
-const RealtimeVoice = lazy(() => import("./RealtimeVoice.jsx").then((module) => ({ default: module.RealtimeVoice })));
+const ResetVoiceExperience = lazy(() => import("./ResetVoiceExperience.jsx").then((module) => ({ default: module.ResetVoiceExperience })));
 
 const VIEW_LABELS = Object.freeze({
   overview: "رفع المستندات",
@@ -27,8 +26,13 @@ function readResetState() {
 function openResetWorkspace(view) {
   const label = VIEW_LABELS[view];
   if (!label) return;
+  const shortLabel = label
+    .replace("المستندات المطلوبة", "الطلبات")
+    .replace("جولات المراجعة", "الجولات")
+    .replace("مجلس المراجعين", "المجلس")
+    .replace("التقرير النهائي", "التقرير");
   const buttons = [...document.querySelectorAll(".reset-sidebar nav button, .reset-bottom-nav button")];
-  const target = buttons.find((button) => String(button.textContent || "").includes(label.replace("المستندات المطلوبة", "الطلبات").replace("جولات المراجعة", "الجولات").replace("مجلس المراجعين", "المجلس").replace("التقرير النهائي", "التقرير")))
+  const target = buttons.find((button) => String(button.textContent || "").includes(shortLabel))
     || buttons.find((button) => String(button.textContent || "").includes(label));
   target?.click();
 }
@@ -73,7 +77,7 @@ export function ResetVoiceLauncher() {
           <button type="button" className="reset-voice-close" onClick={() => setOpen(false)} aria-label="إغلاق المحادثة"><X size={20} /></button>
         </header>
         <Suspense fallback={<div className="reset-voice-loading" role="status">جارٍ تجهيز الاتصال الصوتي…</div>}>
-          <RealtimeVoice summary={summary} onView={openResetWorkspace} />
+          <ResetVoiceExperience summary={summary} onView={openResetWorkspace} />
         </Suspense>
       </section>
     </div> : null}
