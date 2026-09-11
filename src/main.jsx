@@ -5,6 +5,7 @@ import { AppErrorBoundary } from "./components/AppErrorBoundary.jsx";
 import "./app-recovery.css";
 
 const App = lazy(() => import("./ResetApp.jsx").then((module) => ({ default: module.ResetApp })));
+const ResetVoiceLauncher = lazy(() => import("./components/ResetVoiceLauncher.jsx").then((module) => ({ default: module.ResetVoiceLauncher })));
 
 function AppBootFallback() {
   return (
@@ -26,6 +27,9 @@ createRoot(document.getElementById("root")).render(
     <AppErrorBoundary>
       <Suspense fallback={<AppBootFallback />}>
         <App />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ResetVoiceLauncher />
       </Suspense>
     </AppErrorBoundary>
   </React.StrictMode>,
