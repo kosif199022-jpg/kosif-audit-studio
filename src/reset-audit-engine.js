@@ -57,7 +57,7 @@ export function inferDocumentType(name = "") {
   const rules = [
     ["trial_balance", /(ميزان|trial balance|tb\b)/],
     ["general_ledger", /(استاذ|ledger|gl\b|قيود يوميه|دفتر عام)/],
-    ["financial_statements", /(قوائم ماليه|financial statements|financial report|annual report)/],
+    ["financial_statements", /(قوائم(?:\s+ال)?ماليه|financial statements|financial report|annual report)/],
     ["chart_of_accounts", /(دليل الحسابات|chart of accounts|coa\b)/],
     ["bank_reconciliation", /(تسويه بنكي|bank reconciliation)/],
     ["bank_statement", /(كشف حساب|bank statement)/],
