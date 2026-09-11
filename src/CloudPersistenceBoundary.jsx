@@ -48,14 +48,20 @@ function writeLocalEngagement(storage, engagement) {
 
 export function CloudPersistenceBoundary({
   children,
+  disabled = false,
   storage: storageOverride = null,
   fetchImpl = globalThis.fetch,
   bootstrapTimeoutMs = DEFAULT_BOOTSTRAP_TIMEOUT_MS,
   pollMs = DEFAULT_POLL_MS,
 }) {
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(disabled);
 
   useEffect(() => {
+    if (disabled) {
+      setReady(true);
+      return undefined;
+    }
+
     let disposed = false;
     let localRendered = false;
     let pollTimer = null;
@@ -157,7 +163,7 @@ export function CloudPersistenceBoundary({
       if (pollTimer) clearInterval(pollTimer);
       autosave?.cancel();
     };
-  }, [bootstrapTimeoutMs, fetchImpl, pollMs, storageOverride]);
+  }, [bootstrapTimeoutMs, disabled, fetchImpl, pollMs, storageOverride]);
 
   return ready ? children : null;
 }
