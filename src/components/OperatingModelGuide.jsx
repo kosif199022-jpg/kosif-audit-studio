@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Route, X } from "lucide-react";
-import "./operating-model.css";
+
 
 const steps = [
   ["01", "استلام", "مستندات، كشوف، فواتير وميزان مراجعة"],
