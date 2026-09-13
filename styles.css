@@ -197,6 +197,13 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .command-hero .hero-mini-metrics div + div { border-right: 1px solid rgba(255,255,255,.13); }
 
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+.engagement-intent-panel { margin-top: 18px; }
+.intent-grid { display: grid; grid-template-columns: 1.1fr 1.6fr auto; gap: 14px; align-items: end; }
+.intent-card { display: grid; gap: 7px; color: var(--ink); font-weight: 700; }
+.intent-card span { font-size: .78rem; color: var(--muted); font-weight: 700; }
+.intent-card small { color: var(--muted); font-weight: 500; line-height: 1.5; }
+.intent-card input, .intent-card select { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); padding: 12px 13px; font: inherit; }
+.intent-save { min-height: 48px; white-space: nowrap; }
 .metric-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); }
 .metric-label { display: block; color: var(--muted); font-size: 12px; }
 .metric-card strong { display: block; font-size: 30px; line-height: 1.1; margin: 7px 0 5px; letter-spacing: -.02em; }
@@ -537,6 +544,8 @@ td.number { direction: ltr; text-align: left; font-variant-numeric: tabular-nums
 
 @media (max-width: 1180px) {
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .intent-grid { grid-template-columns: 1fr 1fr; }
+  .intent-save { grid-column: 1 / -1; }
   .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
   .standards-grid, .workpaper-board, .knowledge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .framework-grid { grid-template-columns: repeat(2, 1fr); }
@@ -590,6 +599,8 @@ td.number { direction: ltr; text-align: left; font-variant-numeric: tabular-nums
   .hero-copy h1 { font-size: 31px; }
   .hero-visual { flex-direction: column; }
   .metric-grid, .dashboard-grid, .standards-grid, .workpaper-board, .knowledge-grid, .council-grid, .coverage-strip { grid-template-columns: 1fr; }
+  .intent-grid { grid-template-columns: 1fr; }
+  .intent-save { grid-column: auto; width: 100%; }
   .span-2 { grid-column: auto; }
   .round-strip { grid-template-columns: repeat(5, 1fr); row-gap: 12px; }
   .upload-layout { gap: 10px; }

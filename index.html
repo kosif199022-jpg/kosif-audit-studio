@@ -119,6 +119,7 @@
               <div class="hero-actions">
                 <button class="button primary" id="nextActionButton" data-go="data"><svg><use href="#i-route"/></svg><span id="nextActionLabel">تحميل الميزان</span></button>
                 <button class="button secondary" id="heroDemoButton"><svg><use href="#i-grid"/></svg>تحميل 5000 حساب تجريبي</button>
+                <button class="button ghost" id="fullDemoButton"><svg><use href="#i-play"/></svg>تشغيل رحلة العرض الكامل</button>
               </div>
               <div class="command-authority"><span><svg><use href="#i-check"/></svg>تحليل حتمي</span><span><svg><use href="#i-link"/></svg>مصدر قبل الاستنتاج</span><span><svg><use href="#i-shield"/></svg>الاعتماد للبشر</span></div>
             </div>
@@ -140,6 +141,15 @@
             <article class="metric-card"><span class="metric-label">أوراق العمل</span><strong id="metricWorkpapers">0</strong><small id="metricCompletedWp">0 مكتملة</small></article>
             <article class="metric-card"><span class="metric-label">فجوات الأدلة</span><strong id="metricEvidenceGaps">0</strong><small id="metricEvidenceHealth">مخاطر بلا دليل مستلم</small></article>
           </div>
+
+          <article class="panel engagement-intent-panel">
+            <div class="panel-header"><div><span class="eyebrow">Engagement Intent</span><h2>حدّد نقطة الوصول قبل رفع المستندات</h2></div><span class="status-chip neutral">بوابة البداية</span></div>
+            <div class="intent-grid">
+              <label class="intent-card"><span>نوع الاستخدام</span><select id="reviewModeInput"><option value="document">مراجعة مستند</option><option value="target">مراجعة للوصول إلى قائمة أو مخرج</option><option value="full-company">مراجعة كاملة للشركة</option><option value="custom">هدف مخصص</option></select><small>يحدد هذا الاختيار المستندات والاختبارات والجولات المقترحة.</small></label>
+              <label class="intent-card intent-goal"><span>الهدف المهني</span><input id="reviewGoalInput" maxlength="180" placeholder="مثال: إعداد قائمة دخل موثقة للسنة المالية"></label>
+              <button class="button primary intent-save" id="saveEngagementGoalButton"><svg><use href="#i-target"/></svg>حفظ الهدف وبدء المسار</button>
+            </div>
+          </article>
 
           <div class="dashboard-grid">
             <article class="panel span-2 command-gates-panel">

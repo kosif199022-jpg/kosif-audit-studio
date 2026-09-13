@@ -56,7 +56,9 @@ const createDefaultState = () => ({
     entity: 'شركة محمود السويسي القابضة',
     period: 'للسنة المنتهية في 31 ديسمبر 2026',
     currency: 'SAR',
-    reviewer: 'محمود القصيف'
+    reviewer: 'محمود القصيف',
+    reviewMode: 'document',
+    reviewGoal: 'مراجعة مستندات للوصول إلى نتيجة موثقة'
   },
   sourceName: null,
   rawRows: [],
@@ -406,6 +408,64 @@ function loadDemo() {
   }
 }
 
+function runFullDemo() {
+  // Idempotent showcase: each module keeps its own records and can be replayed safely.
+  loadDemo();
+  loadJournalDemo();
+  seedPbc();
+  if (!state.workpapers.length) generateWorkpapers();
+
+  const existingEvidence = new Set(state.evidence.map((item) => normalizeText(item.title)));
+  const demoEvidence = [
+    { title: 'مصادقة بنكية مباشرة — بنك الشركة', sourceType: 'external', riskIndex: 0, direct: true },
+    { title: 'كشف أعمار الذمم المدينة', sourceType: 'internal', riskIndex: 1, direct: false },
+    { title: 'محضر جرد المخزون المؤرخ', sourceType: 'external', riskIndex: 2, direct: true },
+    { title: 'عقود الإيراد والعينات المختبرة', sourceType: 'management', riskIndex: 3, direct: false }
+  ];
+  for (const item of demoEvidence) {
+    if (existingEvidence.has(normalizeText(item.title))) continue;
+    const risk = runtime.risks[item.riskIndex] ?? runtime.risks[0];
+    const workpaper = state.workpapers[item.riskIndex] ?? state.workpapers[0];
+    const record = {
+      id: `E-DEMO-${fnv1a(item.title).toString(16).toUpperCase()}`,
+      title: item.title,
+      sourceType: item.sourceType,
+      documentDate: '2026-12-31',
+      status: 'reviewed',
+      obtainedDirectly: item.direct,
+      riskIds: risk ? [risk.id] : [],
+      workpaperIds: workpaper ? [workpaper.id] : [],
+      fileName: `${item.title}.pdf`,
+      fileSize: 245760,
+      mimeType: 'application/pdf',
+      fileHash: `fnv1a:${fnv1a(`${item.title}|demo`).toString(16).padStart(8, '0')}`,
+      reviewer: state.engagement.reviewer,
+      createdAt: new Date().toISOString()
+    };
+    Object.assign(record, scoreEvidenceQuality(record));
+    state.evidence.push(record);
+    recordAuditEvent('EVIDENCE_REGISTERED', { evidenceId: record.id, demo: true, score: record.score });
+  }
+
+  if (runtime.analysis) {
+    const session = convene({
+      analysis: runtime.analysis, materiality: runtime.materiality, risks: runtime.risks, findings: state.findings,
+      workpapers: state.workpapers, pbc: state.pbc, evidence: state.evidence, journalReview: runtime.journalReview,
+      analytics: runtime.analytics, opinion: runtime.opinion, gates: reportGateData(), graph: runtime.graph,
+      currency: state.engagement.currency
+    });
+    session.sourceStamp = contextStamp(studioContext());
+    state.councilRuns.unshift(session);
+    state.councilRuns = state.councilRuns.slice(0, 20);
+    recordAuditEvent('COUNCIL_SESSION_CONVENED', { sessionId: session.id, demo: true, consensus: session.consensus, verdict: session.verdict });
+  }
+  analyzeRuntime();
+  saveState();
+  renderAll();
+  openView('reports');
+  showToast('اكتملت رحلة العرض: بيانات ← قيود ← طلبات ← أدلة ← أوراق عمل ← مجلس ← تقرير.');
+}
+
 async function ensureXlsx() {
   if (window.XLSX) return window.XLSX;
   return new Promise((resolve, reject) => {
@@ -515,6 +575,8 @@ function renderDashboard() {
   $('#heroBalanceState').textContent = runtime.analysis ? (runtime.analysis.balanced ? 'متزن حسابيًا' : 'يوجد فرق') : 'بانتظار البيانات';
   $('#heroCoverage').textContent = `${evidenceCoverage}%`;
   $('#heroJournalState').textContent = journalPending.toLocaleString('ar-SA');
+  if ($('#reviewModeInput')) $('#reviewModeInput').value = state.engagement.reviewMode ?? 'document';
+  if ($('#reviewGoalInput')) $('#reviewGoalInput').value = state.engagement.reviewGoal ?? '';
   $('#riskBadge').textContent = openRisks.length > 99 ? '99+' : String(openRisks.length);
   $('#journalBadge').textContent = journalPending > 99 ? '99+' : String(journalPending);
   const evidenceAttention = Math.max(Number(graph.risksWithoutEvidence ?? 0), Number(graph.orphanEvidence ?? 0));
@@ -1613,7 +1675,16 @@ function bindEvents() {
   });
 
   $('#heroDemoButton').addEventListener('click', loadDemo);
+  $('#fullDemoButton').addEventListener('click', runFullDemo);
   $('#loadDemoButton').addEventListener('click', loadDemo);
+  $('#saveEngagementGoalButton').addEventListener('click', () => {
+    state.engagement.reviewMode = $('#reviewModeInput').value;
+    state.engagement.reviewGoal = $('#reviewGoalInput').value.trim() || 'مراجعة مستندات للوصول إلى نتيجة موثقة';
+    recordAuditEvent('REVIEW_OBJECTIVE_DEFINED', { mode: state.engagement.reviewMode, goal: state.engagement.reviewGoal });
+    saveState();
+    renderAll();
+    showToast('تم حفظ هدف المراجعة وسيظهر في مسار الارتباط والتقرير.');
+  });
   $('#dropZone').addEventListener('click', () => $('#fileInput').click());
   $('#dropZone').addEventListener('keydown', (event) => {
     if (['Enter', ' '].includes(event.key)) { event.preventDefault(); $('#fileInput').click(); }
