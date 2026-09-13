@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#171021">
+  <title>KOSIF Research Intelligence Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{color-scheme:dark;--bg:#100b18;--panel:#1a1324;--panel2:#21172e;--line:#3b2d4c;--text:#f6f1fb;--muted:#b9aec5;--accent:#b691ff;--good:#8de4b4;--warn:#ffd38a;--danger:#ff9aa9;--shadow:0 24px 70px rgba(0,0,0,.32)}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% -10%,#30204a 0,transparent 32%),radial-gradient(circle at 90% 10%,#27153c 0,transparent 25%),var(--bg);color:var(--text);font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;min-height:100vh}.shell{max-width:1450px;margin:auto;padding:28px}.top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}.brand{display:flex;gap:14px;align-items:center}.mark{width:52px;height:52px;border-radius:17px;display:grid;place-items:center;background:linear-gradient(145deg,#c9afff,#7752b9);color:#150d20;font-weight:800;font-size:24px;box-shadow:0 12px 35px rgba(157,114,240,.25)}h1{font-size:clamp(23px,3vw,38px);margin:0}.eyebrow{color:var(--accent);font-weight:700;font-size:12px;letter-spacing:.08em}.sub{color:var(--muted);margin:4px 0 0}.back{color:var(--text);text-decoration:none;border:1px solid var(--line);border-radius:14px;padding:10px 14px;background:rgba(255,255,255,.03)}.hero{display:grid;grid-template-columns:1.35fr .65fr;gap:18px;margin-bottom:18px}.card{background:linear-gradient(180deg,rgba(36,25,50,.94),rgba(25,18,36,.94));border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}.hero-copy{padding:26px}.hero-copy h2{font-size:clamp(28px,4vw,52px);line-height:1.12;margin:8px 0 12px;max-width:850px}.hero-copy p{color:var(--muted);max-width:900px;line-height:1.85}.source-list{display:grid;gap:10px;margin-top:14px}.source-pill{padding:10px 12px;border-radius:13px;background:rgba(182,145,255,.08);border:1px solid rgba(182,145,255,.18);color:#ddd0f3}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}.span-8{grid-column:span 8}.span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-12{grid-column:span 12}.card h3{margin:0 0 4px;font-size:20px}.hint{color:var(--muted);font-size:13px;line-height:1.7}.controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}.field{display:grid;gap:7px}.field span{font-size:12px;color:var(--muted)}select,input{width:100%;border:1px solid var(--line);background:#130e1b;color:var(--text);border-radius:12px;padding:11px 12px;font:inherit;outline:none}select:focus,input:focus{border-color:var(--accent)}button{border:0;border-radius:13px;padding:11px 15px;font:inherit;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#b691ff,#8062d2);color:#150d20}.secondary{background:#2c213b;color:var(--text);border:1px solid var(--line)}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.metric{border:1px solid var(--line);background:rgba(255,255,255,.025);border-radius:15px;padding:13px}.metric span{display:block;color:var(--muted);font-size:11px}.metric strong{font-size:18px}.status{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700}.status.good{background:rgba(141,228,180,.12);color:var(--good)}.status.warn{background:rgba(255,211,138,.12);color:var(--warn)}.status.danger{background:rgba(255,154,169,.12);color:var(--danger)}.status.info{background:rgba(182,145,255,.12);color:#cfb7ff}.table-wrap{overflow:auto;margin-top:14px;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:11px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,.07);font-size:13px}th{color:#d8c7ef;background:rgba(255,255,255,.03)}td{color:#eee7f5}.list{display:grid;gap:10px;margin-top:14px}.item{border:1px solid var(--line);border-radius:14px;padding:13px;background:rgba(255,255,255,.02)}.item strong{display:block}.item small{color:var(--muted)}.bar{height:7px;background:#0f0a15;border-radius:99px;overflow:hidden;margin-top:8px}.bar>i{display:block;height:100%;background:linear-gradient(90deg,#7652be,#c7a9ff);border-radius:inherit}.note{border-right:3px solid var(--accent);padding:10px 12px;background:rgba(182,145,255,.07);color:#d8cde4;border-radius:10px;margin-top:13px;line-height:1.75;font-size:13px}.footer{color:var(--muted);font-size:12px;text-align:center;padding:30px 10px 10px}@media(max-width:1050px){.hero{grid-template-columns:1fr}.span-8,.span-4,.span-6{grid-column:span 12}.metrics{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.shell{padding:15px}.top{align-items:flex-start}.back{white-space:nowrap}.controls{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.hero-copy{padding:18px}.card{padding:16px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand"><div class="mark">K</div><div><div class="eyebrow">KOSIF · RESEARCH INTELLIGENCE</div><h1>مختبر ذكاء المراجعة</h1><p class="sub">تحويل حزمة التقارير المالية والمراجعة العالمية إلى قرارات تشغيلية قابلة للتتبع.</p></div></div>
+      <a class="back" href="./">العودة إلى KOSIF</a>
+    </header>
+
+    <section class="hero">
+      <article class="card hero-copy">
+        <div class="eyebrow">GLOBAL FINANCIAL & AUDIT RESEARCH BUNDLE</div>
+        <h2>من تقارير منشورة إلى محرك مراجعة قابل للتفسير.</h2>
+        <p>هذه الصفحة التجريبية توصل الأنماط المتكررة في الحزمة بمحرك KOSIF الحتمي: أهمية الأداء، نطاق الاختبار، البنود المفحوصة 100%، إسقاط التحريفات، ترشيح المسائل الرئيسية، نطاق مراجعة المجموعة، ودورة علاج نقاط الرقابة.</p>
+        <div class="note">السياسات الرقمية هنا أدوات تخطيط داخلية شفافة وقابلة لتعديل المراجع. لا تدّعي أن ISA 530 أو أي معيار يفرض معادلة واحدة أو نسب نطاق ثابتة.</div>
+      </article>
+      <aside class="card">
+        <h3>الإشارات البحثية المستخدمة</h3><div class="source-list">
+          <div class="source-pill">Performance materiality → extent / sample size</div>
+          <div class="source-pill">Risk + controls + aggregation risk → audit scope</div>
+          <div class="source-pill">KAM → significance → response → results</div>
+          <div class="source-pill">Group audit → components + coverage + supervision</div>
+          <div class="source-pill">ICFR → design → operating effectiveness → sustainability</div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="grid">
+      <article class="card span-8">
+        <h3>01 · مخطط المعاينة البحثي</h3><div class="hint">يشغّل 5,000 حساب تجريبي، يحسب الأهمية، يعزل البنود ذات الأهمية الفردية للفحص 100%، ثم يحدد امتداد العينة المتبقية وفق عوامل المخاطر والضوابط.</div>
+        <div class="controls">
+          <label class="field"><span>مخاطر التحريف</span><select id="risk"><option value="low">منخفضة</option><option value="medium" selected>متوسطة</option><option value="high">مرتفعة</option></select></label>
+          <label class="field"><span>فعالية الضوابط</span><select id="controls"><option value="strong">قوية</option><option value="moderate" selected>متوسطة</option><option value="weak">ضعيفة</option><option value="none">لا اعتماد</option></select></label>
+          <label class="field"><span>مخاطر التجميع</span><select id="aggregation"><option value="low">منخفضة</option><option value="medium" selected>متوسطة</option><option value="high">مرتفعة</option></select></label>
+          <label class="field"><span>طريقة الاختيار</span><select id="method"><option value="mus" selected>MUS</option><option value="risk">موجهة بالمخاطر</option><option value="systematic">منتظمة</option><option value="random">عشوائية</option></select></label>
+          <label class="field"><span>التحريف المتوقع (ريال)</span><input id="expected" value="25000" inputmode="decimal"></label>
+          <label class="field"><span>حد أقصى للعينة المتبقية</span><input id="maxSample" type="number" min="20" max="1000" value="500"></label>
+        </div>
+        <div class="actions"><button id="runPlan">إعادة بناء الخطة</button><button class="secondary" id="simulateErrors">محاكاة 5 تحريفات واختبار الإسقاط</button></div>
+        <div class="metrics" id="sampleMetrics"></div>
+        <div class="table-wrap"><table><thead><tr><th>المؤشر</th><th>النتيجة</th><th>المعنى المهني</th></tr></thead><tbody id="sampleTable"></tbody></table></div>
+      </article>
+
+      <aside class="card span-4">
+        <h3>02 · إسقاط التحريفات</h3><div class="hint">يفصل الأخطاء المعروفة في طبقة 100% عن تحريفات العينة المتبقية، ثم يعرض إسقاطًا نسبيًا واضحًا للمراجعة البشرية.</div>
+        <div id="projectionBox" class="list"><div class="item"><strong>لم تُشغّل المحاكاة بعد</strong><small>اضغط «محاكاة 5 تحريفات» لرؤية تقييم تجريبي.</small></div></div>
+      </aside>
+
+      <article class="card span-6">
+        <h3>03 · مرشح المسائل الرئيسية KAM</h3><div class="hint">يرتب المسائل التي أثرت في المخاطر، الحكم، الموارد أو الأدلة؛ ويعرضها كمرشحات فقط، وليس قرارًا آليًا بإدراج KAM.</div>
+        <div id="kamList" class="list"></div>
+      </article>
+
+      <article class="card span-6">
+        <h3>04 · نطاق مراجعة المجموعة</h3><div class="hint">نموذج توضيحي: Full scope / Specific line items / Targeted risk assessment مع قياس تغطية الإيرادات والأصول.</div>
+        <div class="metrics" id="groupMetrics"></div><div class="table-wrap"><table><thead><tr><th>المكون</th><th>المخاطر</th><th>الإيراد</th><th>النطاق</th></tr></thead><tbody id="groupTable"></tbody></table></div>
+      </article>
+
+      <article class="card span-12">
+        <h3>05 · دورة علاج نقاط الرقابة</h3><div class="hint">تمنع إغلاق ضعف رقابي لمجرد تنفيذ الإجراء؛ يلزم إثبات التصميم والتنفيذ والفعالية التشغيلية ثم الاستدامة.</div>
+        <div class="metrics" id="controlMetrics"></div><div id="controlList" class="list"></div>
+      </article>
+    </section>
+    <footer class="footer">KOSIF Research Intelligence Lab · القرار المهني النهائي والاعتماد يظلان للمراجع البشري.</footer>
+  </main>
+  <script type="module" src="./research-lab.js"></script>
+</body>
+</html>

@@ -3,7 +3,13 @@
   "version": "5.0.0",
   "private": true,
   "type": "module",
-    "scripts": {
+  "description": "KOSIF Audit Studio — deterministic Arabic-first audit workspace",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check app.js && node --check voice.js && node --check realtime.js && node --check continuous-review.js",
     "build:cloudflare": "node scripts/build-cloudflare.mjs"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
