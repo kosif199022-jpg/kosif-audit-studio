@@ -6,7 +6,8 @@
   "description": "KOSIF Audit Studio — deterministic Arabic-first audit workspace",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node scripts/check-static.mjs"
+    "check": "node scripts/check-static.mjs",
+    "build:cloudflare": "node scripts/build-cloudflare.mjs"
   },
   "engines": {
     "node": ">=20"
