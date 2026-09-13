@@ -1,0 +1,13 @@
+/* KOSIF Unified Design Tokens — shared foundation for the merged shell. */
+:root[data-kosif-unified] {
+  --kosif-space-1: 4px; --kosif-space-2: 8px; --kosif-space-3: 12px; --kosif-space-4: 16px;
+  --kosif-space-5: 24px; --kosif-space-6: 32px; --kosif-space-7: 48px;
+  --kosif-pine: #0f3d31; --kosif-viridian: #0e7a5f; --kosif-seal: #a97e2f;
+  --kosif-paper: #f3f5f1; --kosif-surface: #fff; --kosif-line: #dde4dc;
+  --kosif-danger: #a83a2e; --kosif-warning: #b3541e; --kosif-info: #33566b;
+  --kosif-radius-sm: 9px; --kosif-radius: 14px; --kosif-radius-lg: 24px;
+  --kosif-shadow: 0 1px 2px rgb(18 33 28 / 6%), 0 8px 24px -12px rgb(18 33 28 / 18%);
+  --kosif-motion-fast: 160ms; --kosif-motion: 220ms; --kosif-ease: cubic-bezier(.2,.8,.2,1);
+}
+:root[data-kosif-unified] :focus-visible { outline: 2.5px solid var(--kosif-seal); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { :root[data-kosif-unified] * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
