@@ -4,9 +4,11 @@ import { createRoot } from "react-dom/client";
 import { AppErrorBoundary } from "./components/AppErrorBoundary.jsx";
 import { OperatingModelGuide } from "./components/OperatingModelGuide.jsx";
 import { ReviewCommandCenter } from "./components/ReviewCommandCenter.jsx";
+import { ReviewFlowBlueprint } from "./components/ReviewFlowBlueprint.jsx";
 import "./app-recovery.css";
 import "./operating-model.css";
 import "./review-command-center.css";
+import "./flow-blueprint.css";
 
 const App = lazy(() => import("./ResetApp.jsx").then((module) => ({ default: module.ResetApp })));
 const ResetVoiceLauncher = lazy(() => import("./components/ResetVoiceLauncher.jsx").then((module) => ({ default: module.ResetVoiceLauncher })));
@@ -37,6 +39,7 @@ createRoot(document.getElementById("root")).render(
       </Suspense>
       <OperatingModelGuide />
       <ReviewCommandCenter />
+      <ReviewFlowBlueprint />
     </AppErrorBoundary>
   </React.StrictMode>,
 );
