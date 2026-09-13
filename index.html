@@ -1,13 +1,77 @@
 <!doctype html>
-<html lang="ar" dir="rtl" data-kosif-unified><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f8fafc"><meta name="description" content="KOSIF — نظام تشغيل عربي موحد يحول المستندات والعمليات المحاسبية إلى مراجعة وتقارير مالية قابلة للتتبع."><title>KOSIF 5 — Audit & Financial Reporting OS | نظام تشغيل المحاسبة والمراجعة والتقارير</title><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg" type="image/svg+xml"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet"><link rel="stylesheet" href="./continuous-review.css"><link rel="stylesheet" href="./kosif-editorial-foundation.css"></head><body>
-<header class="topbar"><a class="brand" href="./"><span>K</span><strong>KOSIF</strong><small>Accounting · Audit · Reporting OS</small></a><div class="top-actions"><span id="stageBadge" class="badge">استلام</span><a class="ghost" href="./legacy.html">الواجهة السابقة</a></div></header>
-<main class="shell unified-shell"><section class="hero"><div><p class="eyebrow">DOCUMENT → ACCOUNTING → AUDIT → REPORT</p><h1>نظام واحد للملف المالي.<br>من المستند إلى القرار.</h1><p>يستقبل KOSIF المستندات والعمليات المحاسبية، يحولها إلى حسابات وقيود وقوائم، يحلل المخاطر والأهمية النسبية، يدير الأدلة وجولات مجلس المراجعين، ثم يبني تقارير قابلة للتتبع. الذكاء الاصطناعي يقترح ويفسر؛ المراجع البشري يعتمد.</p></div><div class="intent-grid"><button class="intent-card" id="reviewDocumentCard"><span>01</span><strong>ابدأ من المستندات</strong><small>ارفع كشفًا أو فاتورة أو ميزان مراجعة.</small></button><button class="intent-card" id="buildReportCard"><span>02</span><strong>ابدأ من المخرج</strong><small>اختر قائمة أو تقرير مراجعة أو تحليلًا.</small></button></div></section>
-<section class="now-panel panel"><div><p class="eyebrow">NEXT CONTROLLED ACTION</p><h2>الخطوة التالية للملف</h2><p id="nextAction">ارفع أول مستند أو حمّل نموذج 5000 حساب.</p></div><div class="readiness"><span id="readinessValue">0%</span><small>جاهزية التقرير</small></div></section>
-<section class="journey panel" aria-label="دورة الملف"><div data-stage="INTAKE">استلام</div><i></i><div data-stage="UNDERSTANDING">تصنيف</div><i></i><div data-stage="PLANNING">تخطيط</div><i></i><div data-stage="COUNCIL_REVIEW">مراجعة</div><i></i><div data-stage="AWAITING_EVIDENCE">أدلة</div><i></i><div data-stage="ADJUSTMENTS">تسويات</div><i></i><div data-stage="COMPLETION">إكمال</div><i></i><div data-stage="REPORTING">تقرير</div></section>
-<section class="workspace-grid"><article class="panel intake-panel" id="intakePanel"><div class="section-head"><div><p class="eyebrow">SOURCE INTAKE</p><h2>المستندات والمصادر</h2></div><button id="demoButton" class="secondary">تحميل نموذج 5000 حساب</button></div><label class="dropzone"><input id="documentInput" type="file" multiple><strong>اسحب أو اختر مستندات الملف</strong><span>PDF · Excel · CSV · Word · صور · JSON</span><small>يُحفظ مصدر كل قيمة وبصمة الملف. لا يُمنح النظام أو AI سلطة اعتماد دليل أو رأي نهائي.</small></label><div id="documentList" class="stack empty">لا توجد مستندات بعد.</div></article>
-<article class="panel recipe-panel" id="recipePanel"><p class="eyebrow">OUTPUT BUILDER</p><h2>ما الذي تريد إنتاجه؟</h2><form id="recipeForm" class="recipe-form"><input id="recipeInput" placeholder="مثال: تقرير مراجعة مع القوائم والإيضاحات" value="تقرير مالي"><button class="primary">تحديد المسار</button></form><div id="recipeResult" class="stack"></div></article></section>
-<section class="workspace-grid wide-left"><article class="panel council-panel"><div class="section-head"><div><p class="eyebrow">REVIEW COUNCIL</p><h2>مجلس المراجعين والجولات</h2></div><button id="runCouncilButton" class="primary">عقد جولة</button></div><div id="councilSummary" class="callout">لم تُعقد أي جولة.</div><div id="roundTimeline" class="timeline"></div><div id="seatList" class="seat-list"></div></article><article class="panel request-panel"><p class="eyebrow">EVIDENCE CONTROL</p><h2>طلبات الأدلة</h2><div id="requestMetrics" class="mini-metrics"></div><div id="requestList" class="stack empty">لا توجد طلبات مفتوحة.</div></article></section>
-<section class="workspace-grid"><article class="panel adjustment-panel"><div class="section-head"><div><p class="eyebrow">ACCOUNTING CONTROL</p><h2>القيود والتسويات المقترحة</h2></div><button id="proposeAdjustmentButton" class="secondary">اقتراح قيد تجريبي</button></div><div id="adjustmentList" class="stack empty">لا توجد تسويات.</div></article><article class="panel trace-panel"><p class="eyebrow">SOURCE TRACE</p><h2>خريطة التتبع</h2><div id="traceMetrics" class="trace-metrics"></div><div id="tracePreview" class="trace-preview">أضف مصادر وأدلة وجولات لرؤية السلسلة.</div></article></section>
-<section class="panel report-panel"><div class="section-head"><div><p class="eyebrow">REPORT STUDIO</p><h2>مركز القوالب والتقارير</h2></div><button id="buildDraftButton" class="primary">بناء مسودة</button></div><div class="report-layout"><aside id="reportOutline" class="report-outline"></aside><article class="paper" id="reportPaper"><div class="paper-brand">KOSIF</div><p>اختر قائمة أو تقريرًا، أكمل الأدلة، ثم ابنِ مسودة قابلة للتتبع.</p></article><aside id="reportInspector" class="report-inspector"><strong>مصدر التقرير</strong><p>سيظهر هنا مصدر كل فصل وحالته ومعياره.</p></aside></div></section></main>
-<dialog id="evidenceDialog"><form method="dialog" id="evidenceForm"><h2>إضافة دليل للطلب</h2><p id="evidenceRequestTitle"></p><input id="evidenceFile" type="file" required><label>نوع المصدر<select id="evidenceSource"><option value="external">خارجي مستقل</option><option value="internal">داخلي</option><option value="management">إعداد الإدارة</option></select></label><label class="check"><input id="criterionRelevance" type="checkbox" checked> يجيب مباشرة عن الطلب</label><label class="check"><input id="criterionPeriod" type="checkbox" checked> يغطي الفترة المطلوبة</label><menu><button value="cancel" class="ghost">إلغاء</button><button id="saveEvidenceButton" value="default" class="primary">حفظ الدليل</button></menu></form></dialog>
-<script type="module" src="./continuous-review.js"></script><script src="./product-model.js" defer></script></body></html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a4938">
+  <meta name="description" content="KOSIF One — مساحة مراجعة مالية من المستند إلى التقرير.">
+  <title>KOSIF One — مساحة المراجعة المالية</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><span class="brand-mark">K</span><span><strong>KOSIF One</strong><small>Financial review workspace</small></span></a>
+    <div class="topbar-meta"><span class="status-dot"></span><span>ملف مراجعة نشط</span><button class="outline-button" id="resetButton" type="button">بدء ملف جديد</button></div>
+  </header>
+  <div class="app-shell">
+    <aside class="process-rail" aria-label="خطوات المراجعة">
+      <p class="rail-title">مسار الملف</p>
+      <button class="rail-step active" data-step="intake"><b>01</b><span>استلام البيانات</span><small>المستندات والمصادر</small></button>
+      <button class="rail-step" data-step="analysis"><b>02</b><span>فهم وتحليل</span><small>التوازن والمخاطر</small></button>
+      <button class="rail-step" data-step="council"><b>03</b><span>مجلس المراجعين</span><small>الجولة والرأي</small></button>
+      <button class="rail-step" data-step="evidence"><b>04</b><span>الأدلة المطلوبة</span><small>استكمال النواقص</small></button>
+      <button class="rail-step" data-step="report"><b>05</b><span>التقرير النهائي</span><small>مراجعة واعتماد</small></button>
+      <div class="rail-footer"><strong>قرار مهني أوضح</strong><span>كل قيمة مرتبطة بمصدرها.</span></div>
+    </aside>
+    <main class="content">
+      <section class="hero section-band">
+        <div class="hero-copy">
+          <p class="kicker">KOSIF ONE · AUDIT WORKSPACE</p>
+          <h1>من المستند<br><em>إلى القرار.</em></h1>
+          <p class="hero-lead">مساحة مراجعة مالية تجمع المستندات، الحسابات، الأدلة، وجولات المراجعين في مسار واضح يمكن تتبعه حتى التقرير.</p>
+          <div class="hero-actions"><button class="primary-button" id="heroUpload" type="button">ابدأ برفع المستندات <span>←</span></button><button class="text-button" id="heroDemo" type="button">أو افتح ملفًا تجريبيًا من 5,000 حساب</button></div>
+        </div>
+        <div class="hero-note"><div class="note-number">01</div><strong>ابدأ من المصدر</strong><p>ارفع كشفًا، فاتورة، قيدًا، أو تقريرًا. سيحافظ KOSIF على مصدر كل قيمة قبل أي استنتاج.</p><div class="note-rule"></div><span>القرار النهائي للمراجع البشري.</span></div>
+      </section>
+
+      <section class="metrics" aria-label="مؤشرات الملف">
+        <article class="metric"><span>المستندات</span><strong id="metricDocs">0</strong><small id="metricDocsNote">بانتظار الرفع</small></article>
+        <article class="metric"><span>الحسابات</span><strong id="metricAccounts">0</strong><small id="metricAccountsNote">لم يُحمّل ميزان</small></article>
+        <article class="metric"><span>القضايا المفتوحة</span><strong id="metricIssues">0</strong><small>تحتاج قرارًا أو دليلًا</small></article>
+        <article class="metric metric-accent"><span>جاهزية التقرير</span><strong id="metricReadiness">0%</strong><small id="metricReadinessNote">أكمل بوابات الملف</small></article>
+      </section>
+
+      <section class="intake-layout section-band" id="intakeSection">
+        <div class="intake-main">
+          <div class="section-heading"><div><p class="kicker">01 / SOURCE INTAKE</p><h2>اجمع الملف في مكان واحد.</h2></div><span class="section-index">A</span></div>
+          <label class="upload-zone" id="uploadZone"><input id="fileInput" type="file" multiple accept=".pdf,.csv,.xlsx,.xls,.doc,.docx,.jpg,.jpeg,.png"><span class="upload-icon">↑</span><strong>اسحب المستندات هنا أو اخترها</strong><small>PDF · Excel · CSV · صور · Word</small><em>لا تُرسل الملفات خارج المتصفح في هذه النسخة.</em></label>
+          <div class="document-list" id="documentList"><div class="empty-state">لم تُضف مستندات بعد. ابدأ بكشف البنك أو ميزان المراجعة.</div></div>
+        </div>
+        <aside class="intake-side"><p class="kicker">WORKFLOW</p><h3>خمس حركات واضحة</h3><ol><li><b>ارفع</b><span>المستندات والمصادر</span></li><li><b>حلّل</b><span>التوازن والمخاطر</span></li><li><b>راجع</b><span>جولات مجلس المراجعين</span></li><li><b>استكمل</b><span>الأدلة المطلوبة</span></li><li><b>أصدر</b><span>تقريرًا قابلًا للتتبع</span></li></ol><button class="dark-button" id="sideCouncil" type="button">عقد الجولة الأولى</button></aside>
+      </section>
+
+      <section class="analysis-layout section-band" id="analysisSection">
+        <div class="section-heading"><div><p class="kicker">02 / ANALYSIS</p><h2>قراءة أولى قابلة للفحص.</h2></div><button class="outline-button" id="analyzeButton" type="button">تشغيل الفحص</button></div>
+        <div class="analysis-grid"><article class="analysis-card"><span class="card-label">اتزان الميزان</span><strong id="balanceValue">بانتظار البيانات</strong><p id="balanceNote">حمّل نموذج 5,000 حساب أو ارفع ملفك.</p></article><article class="analysis-card"><span class="card-label">أعلى إشارة خطر</span><strong id="riskValue">لا توجد إشارات</strong><p id="riskNote">ستظهر بعد تشغيل الفحص.</p></article><article class="analysis-card"><span class="card-label">مصدر القرار</span><strong id="sourceValue">—</strong><p>لا ينتقل الاستنتاج دون مصدر.</p></article></div>
+      </section>
+
+      <section class="council-layout section-band" id="councilSection">
+        <div class="council-main"><div class="section-heading"><div><p class="kicker">03 / REVIEW COUNCIL</p><h2>جولة يراجعها أكثر من منظور.</h2></div><button class="primary-button" id="councilButton" type="button">عقد جولة جديدة</button></div><div class="reviewers"><article><span class="reviewer-mark">01</span><div><strong>مراجع المخاطر</strong><p>يراجع المؤشرات والانحرافات.</p></div><i>جاهز</i></article><article><span class="reviewer-mark green">02</span><div><strong>مراجع الأدلة</strong><p>يفحص كفاية المصدر وملاءمته.</p></div><i>جاهز</i></article><article><span class="reviewer-mark gold">03</span><div><strong>مراجع التقرير</strong><p>يربط الحكم بالمعيار والدليل.</p></div><i>بانتظار الجولة</i></article></div><div class="round-status" id="roundStatus"><span class="round-number">00</span><div><strong>لم تبدأ جولة بعد</strong><p>عقد الجولة يفتح مسار الملاحظات والطلبات.</p></div></div></div>
+        <aside class="council-side"><p class="kicker">ROUND NOTES</p><h3>سجل الجولات</h3><div id="roundList" class="round-list"><div class="empty-state">ستظهر هنا ملاحظات المجلس.</div></div></aside>
+      </section>
+
+      <section class="report-layout section-band" id="reportSection">
+        <div class="section-heading"><div><p class="kicker">04–05 / EVIDENCE & REPORT</p><h2>كل طلب يقود إلى تقرير أوضح.</h2></div><button class="primary-button" id="reportButton" type="button">إنشاء مسودة التقرير</button></div>
+        <div class="report-grid"><div class="evidence-column"><div class="subheading"><strong>قائمة الأدلة</strong><span id="evidenceCount">0 طلبات</span></div><div id="evidenceList" class="evidence-list"><div class="evidence-row"><span class="evidence-status pending">01</span><div><strong>ميزان مراجعة معتمد</strong><small>ارفع المستند لبدء التحليل.</small></div><b>مطلوب</b></div><div class="evidence-row"><span class="evidence-status pending">02</span><div><strong>كشوف بنكية للفترة</strong><small>ستُربط بالقيود والمصادر.</small></div><b>مطلوب</b></div></div></div><article class="report-paper" id="reportPaper"><div class="paper-top"><strong>KOSIF ONE</strong><span>مسودة غير معتمدة</span></div><h3>تقرير المراجعة</h3><p>ستظهر هنا المسودة بعد اكتمال التحليل وجولة المجلس. يمكنك تتبع كل رقم إلى مصدره قبل الاعتماد.</p><div class="paper-line"></div><span class="paper-sign">المراجع المسؤول: محمود القصيف</span></article></div>
+      </section>
+    </main>
+  </div>
+  <button class="voice-fab" id="voiceFab" type="button" aria-label="فتح المساعد الصوتي">صوت</button>
+  <aside class="voice-panel" id="voicePanel" hidden><header><strong>KOSIF Live</strong><button id="voiceClose" type="button" aria-label="إغلاق">×</button></header><p>اسأل عن الخطوة التالية أو حالة الملف.</p><div id="voiceTranscript" class="voice-transcript"><div class="voice-hint">جرّب: «ما الخطوة التالية؟»</div></div><button class="primary-button" id="voiceStart" type="button">🎙 ابدأ الاستماع</button></aside>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
