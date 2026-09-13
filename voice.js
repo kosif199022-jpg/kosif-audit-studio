@@ -266,15 +266,25 @@ export function createVoiceAssistant({ getContext = () => ({}), api = {}, onEven
       await attachMeter(localStream);
 
       pc = new RTCPeerConnection();
-      remoteAudio = new Audio();
+      remoteAudio = document.createElement('audio');
       remoteAudio.autoplay = true;
-      remoteAudio.setAttribute('playsinline', '');
-      remoteAudio.style.display = 'none';
+      remoteAudio.playsInline = true;
+      remoteAudio.controls = false;
+      remoteAudio.volume = 1;
+      remoteAudio.setAttribute('aria-label', 'صوت KOSIF Live');
+      remoteAudio.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1';
       document.body.append(remoteAudio);
 
       pc.ontrack = (event) => {
-        remoteAudio.srcObject = event.streams?.[0] ?? new MediaStream([event.track]);
-        remoteAudio.play().catch(() => {});
+        const stream = event.streams?.[0] ?? new MediaStream([event.track]);
+        remoteAudio.srcObject = stream;
+        const playRemote = () => {
+          const result = remoteAudio.play();
+          if (result?.catch) result.catch(() => emit('audio-blocked', { message: 'اضغط تشغيل الصوت من لوحة KOSIF Live.' }));
+        };
+        if (remoteAudio.readyState >= 2) playRemote();
+        else remoteAudio.onloadedmetadata = playRemote;
+        emit('audio-ready');
       };
 
       pc.onconnectionstatechange = () => {
