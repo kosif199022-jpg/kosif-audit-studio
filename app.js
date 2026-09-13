@@ -85,11 +85,16 @@ function loadState() {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if (!parsed || ![1, 2, STATE_VERSION].includes(parsed.version)) return createDefaultState();
     const savedStudio = parsed.studio && typeof parsed.studio === 'object' ? parsed.studio : {};
+    const savedEngagement = { ...createDefaultState().engagement, ...(parsed.engagement ?? {}) };
+    // Migrate demo names from earlier releases to the canonical showcase company.
+    if (['شركة الأفق التجريبية', 'شركة مصر المحروسة', 'شركة محمود الدسوقي'].includes(savedEngagement.entity)) {
+      savedEngagement.entity = 'شركة محمود السويسي القابضة';
+    }
     return {
       ...createDefaultState(),
       ...parsed,
       version: STATE_VERSION,
-      engagement: { ...createDefaultState().engagement, ...(parsed.engagement ?? {}) },
+      engagement: savedEngagement,
       preferences: { ...createDefaultState().preferences, ...(parsed.preferences ?? {}) },
       riskDecisions: parsed.riskDecisions ?? {},
       workpapers: Array.isArray(parsed.workpapers) ? parsed.workpapers : [],
