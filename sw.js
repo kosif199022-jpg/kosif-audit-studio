@@ -1,4 +1,4 @@
-const CACHE = 'kosif-audit-studio-v4.0.0';
+const CACHE = 'kosif-audit-studio-v5.0.0';
 const CORE = [
   './', './index.html', './continuous-review.html', './legacy.html',
   './styles.css', './studio.css', './app.js', './engine.js', './data.js',
