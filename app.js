@@ -53,7 +53,7 @@ const createDefaultState = () => ({
   version: STATE_VERSION,
   activeView: 'dashboard',
   engagement: {
-    entity: 'شركة الأفق التجريبية',
+    entity: 'شركة محمود السويسي القابضة',
     period: 'للسنة المنتهية في 31 ديسمبر 2026',
     currency: 'SAR',
     reviewer: 'محمود القصيف'
