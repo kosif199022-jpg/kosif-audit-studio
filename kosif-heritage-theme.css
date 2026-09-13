@@ -1,0 +1,43 @@
+/* KOSIF Heritage AI v1.0
+   Visual layer: ivory paper + royal purple + gold + audit green
+   Loaded as an optional presentation layer.
+*/
+:root {
+  --heritage-paper:#f6efe3;
+  --heritage-purple:#241332;
+  --heritage-gold:#c59a3b;
+  --heritage-green:#216753;
+  --heritage-ink:#241c34;
+}
+.heritage-shell,
+.kosif-heritage {
+  background:
+    radial-gradient(circle at top right, #c59a3b22, transparent 30%),
+    linear-gradient(135deg,var(--heritage-paper),#fffaf2);
+  color:var(--heritage-ink);
+}
+.heritage-card {
+  background:rgba(255,252,246,.82);
+  border:1px solid #c59a3b38;
+  border-radius:22px;
+  box-shadow:0 18px 50px rgba(36,19,50,.10);
+}
+.heritage-panel-title {
+  font-weight:700;
+  border-bottom:2px solid var(--heritage-gold);
+}
+.heritage-ai-core {
+  background:radial-gradient(circle,#c59a3b,var(--heritage-purple));
+  color:white;
+  border-radius:50%;
+  box-shadow:0 0 45px #c59a3b66;
+}
+.heritage-status-success {color:var(--heritage-green);}
+.heritage-action {
+  background:var(--heritage-purple);
+  color:white;
+  border-radius:14px;
+}
+@media(max-width:768px){
+ .heritage-card{border-radius:16px;}
+}
