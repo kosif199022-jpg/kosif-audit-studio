@@ -3,8 +3,7 @@
   "version": "5.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "build:cloudflare": "node scripts/build-cloudflare.mjs",
-    "test": "node --test tests/*.test.js"
+    "scripts": {
+    "build:cloudflare": "node scripts/build-cloudflare.mjs"
   }
 }
