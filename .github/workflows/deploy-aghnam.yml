@@ -30,7 +30,10 @@ jobs:
           print("index bytes:", len(b))
           head=b.lstrip()[:20].lower()
           assert head.startswith(b"<!doctype html") or head.startswith(b"<html"), head
-          print("Locked HTML validation: OK")\n          assert Path("dist/secure/crypto.json").exists()\n          assert len(list(Path("dist/secure").glob("seed.enc.b64.part*"))) == 6\n          print("Encrypted dataset validation: OK")
+          print("Locked HTML validation: OK")
+          assert Path("dist/secure/crypto.json").exists()
+          assert len(list(Path("dist/secure").glob("seed.enc.b64.part*"))) == 6
+          print("Encrypted dataset validation: OK")
           PY
 
       - name: Deploy to Cloudflare Pages
