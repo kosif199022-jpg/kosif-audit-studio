@@ -33,14 +33,14 @@ body{background:#f6efe3!important;background-image:radial-gradient(760px 460px a
 /* الهيكل: شريط علوي عاجي بخط ذهبي */
 .topbar{background:rgba(255,253,248,.94)!important;border-bottom:1px solid #ece1cd!important;box-shadow:0 10px 30px -22px rgba(36,19,50,.5),inset 0 -2px 0 -1px rgba(197,154,59,.35)!important;color:#241c34!important}
 .brand{color:#241c34!important}.brand>span{background:var(--heritage-gradient)!important;color:#f6e3b6!important;border-radius:14px!important;box-shadow:0 0 0 2px rgba(197,154,59,.55)!important}
-.brand small,.workspace-context small{color:#8d8296!important}.workspace-context strong{color:#3b2f4d!important}
+.brand small,.workspace-context small{color:#7f7589!important}.workspace-context strong{color:#3b2f4d!important}
 .badge,.tag{background:#f6efdf!important;color:#8a6220!important;border:1px solid #e7cf9a!important;border-radius:999px!important}
 
 /* العناوين بخط كوفي والمتون بخط Tajawal — بنفس قوة قاعدة الخط العامة في الطبقة الأساس */
 .shell :is(h1,h2,h3,h4),.brand strong,.paper :is(h1,h2,h3),.assistant :is(h2,h3),.dashboard-widget h3{font-family:'Noto Kufi Arabic','Tajawal',sans-serif!important;font-weight:700!important}
 .shell :is(h1,h2,h3,h4),h1,h2,h3,h4{color:#241c34!important;text-wrap:balance}
 .eyebrow{color:#8a6220!important;font-weight:800!important;letter-spacing:.12em!important}
-.muted,.hint,.subtitle,.sub,small,.empty{color:#8d8296!important}
+.muted,.hint,.subtitle,.sub,small,.empty{color:#7f7589!important}
 
 /* الواجهة الرئيسية */
 .hero{background:var(--heritage-hero)!important;border-radius:26px!important;box-shadow:0 26px 66px -30px rgba(36,19,50,.72)!important;border:1px solid rgba(197,154,59,.34)!important}
@@ -52,12 +52,12 @@ body{background:#f6efe3!important;background-image:radial-gradient(760px 460px a
 .now-panel{align-items:center!important}.now-panel h2{margin:4px 0}
 .readiness{border-color:#e7cf9a!important;background:linear-gradient(145deg,#fffdf8,#f6efe3)!important;box-shadow:inset 0 0 0 4px rgba(197,154,59,.09)!important}
 .readiness span{background:linear-gradient(135deg,#4a2a6b,#8a6220)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:#4a2a6b!important}
-.readiness small{color:#8d8296!important}
+.readiness small{color:#7f7589!important}
 
 /* الرحلة والألواح */
 .journey{background:rgba(255,253,248,.86)!important;border-color:#ece1cd!important}
 .journey i{background:linear-gradient(90deg,#e7cf9a,#efe6d6)!important}
-.journey div{color:#8d8296!important;border:1px solid transparent!important}
+.journey div{color:#7f7589!important;border:1px solid transparent!important}
 .journey div.active{background:var(--heritage-gradient)!important;color:#f6e3b6!important;box-shadow:0 8px 22px -10px rgba(36,19,50,.6)!important}
 .panel,.doc,.request,.adjustment,.seat,.issue-card,.coverage-row,.statement-workspace,.cash-flow-workspace,.equity-workspace,.disclosure-workspace,.completion-room,.document-inspector-panel{background:#fffdf8!important;color:#241c34!important;border:1px solid #ece1cd!important;border-radius:18px!important;box-shadow:var(--heritage-shadow)!important}
 .panel:hover{box-shadow:0 18px 44px -22px rgba(36,19,50,.5)!important;border-color:#e2d3b7!important}
@@ -65,7 +65,7 @@ body{background:#f6efe3!important;background-image:radial-gradient(760px 460px a
 .callout{background:linear-gradient(90deg,#fffdf8,#f6efe3)!important;border:1px solid #ece1cd!important;border-inline-start:4px solid #c59a3b!important;color:#3b2f4d!important}
 .hash{color:#8a6220!important}
 .dropzone{background:linear-gradient(135deg,#fffdf8,#f6efe3)!important;border:1px dashed #c9ab6b!important;color:#3b2f4d!important}
-.dropzone:hover{background:linear-gradient(135deg,#faf4e7,#f2e9da)!important;border-color:#a8781f!important}
+.dropzone:hover{background:linear-gradient(135deg,#faf4e7,#f2e9da)!important;border-color:#8a6220!important}
 .dropzone span,.dropzone small{color:#776d82!important}
 .round{background:#f8f2e7!important;border-color:#ece1cd!important;color:#3b2f4d!important}
 .round.current{background:linear-gradient(135deg,#f6efdf,#fffdf8)!important;border-color:#c59a3b!important;box-shadow:0 8px 22px -14px rgba(138,98,32,.6)!important}
@@ -89,8 +89,8 @@ label{color:#3b2f4d!important}
 :focus-visible{outline:3px solid rgba(197,154,59,.7)!important;outline-offset:2px}
 
 /* الحالة والمعايير */
-.status-satisfied{color:#1f6b54!important}.status-required{color:#a8781f!important}
-.priority-critical{color:#a4343a!important}.priority-high{color:#a8781f!important}.priority-normal{color:#4a2a6b!important}
+.status-satisfied{color:#1f6b54!important}.status-required{color:#8a6220!important}
+.priority-critical{color:#a4343a!important}.priority-high{color:#8a6220!important}.priority-normal{color:#4a2a6b!important}
 .seat[data-stance="blocked"],.seat[data-stance="objection"]{border-inline-start:3px solid #a4343a!important}
 .seat[data-stance="caution"]{border-inline-start:3px solid #c59a3b!important}
 .seat[data-stance="clear"]{border-inline-start:3px solid #1f6b54!important}
@@ -106,22 +106,22 @@ label{color:#3b2f4d!important}
 .workspace-navigation button.active em{background:rgba(231,207,154,.22)!important;border-color:rgba(231,207,154,.5)!important;color:#f6e3b6!important}
 .workspace-overview-strip{background:#fffdf8!important;border-color:#ece1cd!important;box-shadow:var(--heritage-shadow)!important}
 .workspace-overview-strip>div{border-color:#f2e9da!important}
-.workspace-overview-strip span,.workspace-overview-strip small{color:#8d8296!important}
+.workspace-overview-strip span,.workspace-overview-strip small{color:#7f7589!important}
 .workspace-overview-strip strong{color:#241c34!important}
-.workspace-overview-strip .attention strong{color:#a8781f!important}.workspace-overview-strip .critical strong{color:#a4343a!important}
+.workspace-overview-strip .attention strong{color:#8a6220!important}.workspace-overview-strip .critical strong{color:#a4343a!important}
 
 /* مركز القيادة وقدرات اللوحة */
 .dashboard-toolbar{background:rgba(255,253,248,.94)!important;border-color:#ece1cd!important;box-shadow:var(--heritage-shadow)!important}
-.dashboard-toolbar-title strong{color:#241c34!important}.dashboard-toolbar-title small{color:#8d8296!important}
+.dashboard-toolbar-title strong{color:#241c34!important}.dashboard-toolbar-title small{color:#7f7589!important}
 .dashboard-kpi{background:#fffdf8!important;border-color:#ece1cd!important;box-shadow:var(--heritage-shadow)!important}
 .dashboard-kpi::after{background:radial-gradient(circle,rgba(197,154,59,.18),transparent 68%)!important}
 .dashboard-kpi:hover{box-shadow:var(--heritage-shadow-hover)!important;border-color:#e7cf9a!important}
 .dashboard-kpi span{color:#776d82!important}
 .dashboard-kpi strong{background:linear-gradient(135deg,#241332,#8a6220)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important}
-.dashboard-kpi small{color:#8d8296!important}
+.dashboard-kpi small{color:#7f7589!important}
 .dashboard-kpi.attention{border-color:#e7cf9a!important}.dashboard-kpi.critical{border-color:#e0b3b6!important}.dashboard-kpi.good{border-color:#a9cdc1!important}
 .dashboard-widget{background:#fffdf8!important;border-color:#ece1cd!important;box-shadow:var(--heritage-shadow)!important}
-.dashboard-widget header small{color:#8d8296!important}
+.dashboard-widget header small{color:#7f7589!important}
 .rule-badge{background:#f6efdf!important;color:#8a6220!important}
 .dashboard-bar-row>span,.dashboard-bar-row strong{color:#5c5268!important}
 .dashboard-bar-track{background:#f2e9da!important}
@@ -137,7 +137,7 @@ label{color:#3b2f4d!important}
 .dashboard-recommendation strong{color:#3b2f4d!important}.dashboard-recommendation p{color:#776d82!important}
 .dashboard-recommendation.urgent{background:#fbf0f0!important;border-color:#e8cfd0!important}
 .dashboard-recommendation.warn{background:#fbf5e6!important;border-color:#eddfbb!important}
-.dashboard-empty{background:#f8f2e7!important;border-color:#e2d3b7!important;color:#8d8296!important}
+.dashboard-empty{background:#f8f2e7!important;border-color:#e2d3b7!important;color:#7f7589!important}
 .dashboard-icon-button{background:#f4eee2!important;color:#5c5268!important}
 .dashboard-icon-button:hover{background:#f6efdf!important;color:#8a6220!important}
 .dashboard-ops-nav{background:linear-gradient(180deg,#f6efdf,#fffdf8)!important;border-inline-end-color:#ece1cd!important}
