@@ -1,0 +1,42 @@
+name: Repair Aghnam Alwadi Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy-aghnam.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Aghnam source
+        uses: actions/checkout@v4
+        with:
+          repository: kosif199022-jpg/cloude
+          ref: main
+
+      - name: Build plain HTML release
+        run: |
+          python3 build.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("dist/index.html")
+          b=p.read_bytes()
+          print("index bytes:", len(b))
+          head=b.lstrip()[:20].lower()
+          assert head.startswith(b"<!doctype html") or head.startswith(b"<html"), head
+          print("HTML validation: OK")
+          PY
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 9ff3d8494afab356ecbf95a2a231a6b5
+          wranglerVersion: "4"
+          command: pages deploy dist --project-name=aghnam-alwadi-iphone --branch=main
