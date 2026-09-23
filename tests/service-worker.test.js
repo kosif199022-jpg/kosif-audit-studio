@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+const source = readFileSync(new URL('../sw.js',import.meta.url),'utf8');
+const currentCache = source.match(/const CACHE = '([^']+)'/)[1];
 function worker() {
  const handlers={};const deleted=[];
- vm.runInNewContext(readFileSync(new URL('../sw.js',import.meta.url),'utf8'),{
+ vm.runInNewContext(source,{
   URL,Response,fetch:async()=>new Response('shell'),
   self:{registration:{scope:'https://example.test/kosif/'},location:{origin:'https://example.test'},clients:{claim:async()=>{}},skipWaiting:async()=>{},addEventListener:(name,fn)=>handlers[name]=fn},
-  caches:{keys:async()=>['other-app','kosif-audit-studio-v6','kosif-audit-studio-v4.0.0'],delete:async key=>deleted.push(key),open:async()=>({addAll:async()=>{},put:async()=>{}}),match:async()=>undefined}
+  caches:{keys:async()=>['other-app','kosif-audit-studio-v6','kosif-audit-studio-v4.0.0',currentCache],delete:async key=>deleted.push(key),open:async()=>({addAll:async()=>{},put:async()=>{}}),match:async()=>undefined}
  });return {handlers,deleted};
 }
 test('service worker does not intercept APIs, evidence, credentials or arbitrary assets',()=>{
@@ -19,5 +21,7 @@ test('service worker does not intercept APIs, evidence, credentials or arbitrary
 });
 test('cache upgrade preserves unrelated applications',async()=>{
  const {handlers,deleted}=worker();let pending;
- handlers.activate({waitUntil:promise=>pending=promise});await pending;assert.deepEqual(deleted,['kosif-audit-studio-v6']);
+ handlers.activate({waitUntil:promise=>pending=promise});await pending;
+ assert.deepEqual(deleted,['kosif-audit-studio-v6','kosif-audit-studio-v4.0.0']);
+ assert.ok(!deleted.includes(currentCache),'the active cache must survive activation');
 });

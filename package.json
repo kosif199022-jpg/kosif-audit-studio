@@ -1,6 +1,6 @@
 {
   "name": "kosif-audit-studio",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "private": true,
   "type": "module",
   "description": "KOSIF Audit Studio — deterministic Arabic-first audit workspace",

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { V5_STYLE_ASSETS } from '../v5/ui-assets.js';
+import { V5_STYLE_ASSETS, V5_THEME_ASSETS } from '../v5/ui-assets.js';
 
 const theme=readFileSync(new URL('../dashboard-theme.css',import.meta.url),'utf8');
 const nav=readFileSync(new URL('../dashboard-navigation-theme.css',import.meta.url),'utf8');
@@ -24,7 +24,8 @@ test('workspace navigation is bridged into the same light dashboard theme',()=>{
 });
 
 test('dashboard theme loads after every V5 workbench style and is painted from first navigation',()=>{
-  assert.equal(V5_STYLE_ASSETS.at(-1),'./dashboard-theme.css');
+  assert.ok(V5_STYLE_ASSETS.slice(0,-2).every(asset=>!/^dashboard-theme\.css$/.test(asset)),'no workbench style may load after the theme tier');
+  assert.deepEqual([...V5_THEME_ASSETS],['./dashboard-theme.css','./kosif-heritage-v5.css']);
   assert.match(shell,/name="theme-color" content="#f8fafc"/i);
   assert.match(shell,/Tajawal:wght@300;400;500;700;800;900/i);
   assert.match(shell,/href="\.\/dashboard-theme\.css"/i);
