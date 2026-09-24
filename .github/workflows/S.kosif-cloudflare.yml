@@ -1,0 +1,150 @@
+name: S.kosif Cloudflare
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/S.kosif-cloudflare.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    name: Create and deploy S.kosif
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 9ff3d8494afab356ecbf95a2a231a6b5
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PROJECT_NAME: s-kosif
+
+    steps:
+      - name: Checkout S.kosif source
+        uses: actions/checkout@v4
+        with:
+          repository: kosif199022-jpg/cloude
+          ref: main
+
+      - name: Build S.kosif
+        run: |
+          python3 build.py
+          test -f dist/index.html
+          test -f dist/app-safe.html
+          test -f dist/skosif-v30.js
+          grep -q "S.kosif" dist/index.html
+          grep -q "skosif-v30.js?v=30" dist/app-safe.html
+
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@4
+
+      - name: Prepare Jev credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRIDGE_SOURCE="$(curl --fail --silent --show-error             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/jev-claude-bridge/content/v2")"
+          JEV_BRIDGE_TOKEN="$(printf '%s' "$BRIDGE_SOURCE" | python3 -c 'import sys,re; s=sys.stdin.read(); m=re.search(r"const\s+ACCESS_TOKEN\s*=\s*[\x27\x22]([^\x27\x22]+)",s); print(m.group(1) if m else "")')"
+          test -n "$JEV_BRIDGE_TOKEN"
+          SESSION_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$JEV_BRIDGE_TOKEN"
+          echo "::add-mask::$SESSION_SECRET"
+          echo "JEV_BRIDGE_TOKEN=$JEV_BRIDGE_TOKEN" >> "$GITHUB_ENV"
+          echo "SESSION_SECRET=$SESSION_SECRET" >> "$GITHUB_ENV"
+
+      - name: Deploy Jev API for S.kosif
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --config wrangler.jev.toml
+          printf '%s' "$JEV_BRIDGE_TOKEN" | npx wrangler secret put JEV_BRIDGE_TOKEN --name aghnam-jev-api
+          printf '%s' "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET --name aghnam-jev-api
+          npx wrangler deploy --config wrangler.jev.toml --keep-vars
+
+      - name: Create Git-connected Cloudflare Pages project
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT_NAME"
+          STATUS="$(curl --silent --output /tmp/project-get.json --write-out '%{http_code}'             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$URL")"
+          if [ "$STATUS" = "200" ]; then
+            echo "Cloudflare Pages project already exists."
+          elif [ "$STATUS" = "404" ]; then
+            cat > /tmp/project-create.json <<'JSON'
+          {
+            "name": "s-kosif",
+            "production_branch": "main",
+            "build_config": {
+              "build_command": "python3 build.py",
+              "destination_dir": "dist",
+              "root_dir": ""
+            },
+            "source": {
+              "type": "github",
+              "config": {
+                "owner": "kosif199022-jpg",
+                "owner_id": "233368193",
+                "repo_name": "cloude",
+                "repo_id": "1352281400",
+                "production_branch": "main",
+                "production_deployments_enabled": true,
+                "preview_deployment_setting": "all",
+                "pr_comments_enabled": true
+              }
+            }
+          }
+          JSON
+            CREATE_STATUS="$(curl --silent --output /tmp/project-create-result.json --write-out '%{http_code}'               -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"               -H "Content-Type: application/json"               --data-binary @/tmp/project-create.json)"
+            echo "Create project HTTP: $CREATE_STATUS"
+            python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/project-create-result.json"))
+          if not d.get("success"):
+              print(json.dumps(d, ensure_ascii=False, indent=2))
+              raise SystemExit("Cloudflare Pages project creation failed")
+          r=d["result"]
+          print("Created project:", r.get("name"))
+          print("Production branch:", r.get("production_branch"))
+          print("Source type:", (r.get("source") or {}).get("type"))
+          PY
+          else
+            echo "Unexpected Cloudflare GET status: $STATUS"
+            cat /tmp/project-get.json || true
+            exit 1
+          fi
+
+      - name: Deploy current S.kosif build
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 9ff3d8494afab356ecbf95a2a231a6b5
+          wranglerVersion: "4"
+          command: pages deploy dist --project-name=s-kosif --branch=main
+
+      - name: Verify S.kosif project and Jev origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT_NAME"             -o /tmp/project-final.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/project-final.json"))
+          assert d.get("success") is True
+          r=d["result"]
+          assert r.get("name")=="s-kosif"
+          assert r.get("production_branch")=="main"
+          source=r.get("source") or {}
+          assert source.get("type")=="github", source
+          cfg=source.get("config") or {}
+          assert cfg.get("repo_name")=="cloude", cfg
+          assert cfg.get("production_branch")=="main", cfg
+          print("S.kosif Cloudflare project: OK")
+          print("Git source: kosif199022-jpg/cloude")
+          print("Production branch: main")
+          PY
+          for i in {1..12}; do
+            if curl --fail --silent --show-error               -H "Origin: https://s-kosif.pages.dev"               "https://aghnam-jev-api.kosif199022.workers.dev/health" -o /tmp/jev-health.json; then
+              break
+            fi
+            sleep 5
+          done
+          python3 -c 'import json; d=json.load(open("/tmp/jev-health.json")); assert d.get("ok") is True; print("Jev API health for S.kosif: OK")'
