@@ -34,9 +34,9 @@ jobs:
           head=b.lstrip()[:20].lower()
           assert head.startswith(b"<!doctype html") or head.startswith(b"<html"), head
           app=Path("dist/app-safe.html").read_text(encoding="utf-8")
-          for marker in ["mobile-v28.css?v=28","mobile-v28.js?v=28","jev-v1.css?v=1","jev-v1.js?v=1"]:
+          for marker in ["mobile-v28.css?v=28","mobile-v28.js?v=28","jev-v1.css?v=1","jev-v1.js?v=1","jev-question-v1.css?v=1","jev-question-v1.js?v=1"]:
               assert marker in app, marker
-          for f in ["mobile-v28.css","mobile-v28.js","jev-v1.css","jev-v1.js"]:
+          for f in ["mobile-v28.css","mobile-v28.js","jev-v1.css","jev-v1.js","jev-question-v1.css","jev-question-v1.js"]:
               assert Path("dist",f).exists(), f
           assert Path("dist/secure/crypto.json").exists()
           assert len(list(Path("dist/secure").glob("seed.enc.b64.part*"))) == 6
@@ -101,3 +101,5 @@ jobs:
           echo "Jev authentication gate: OK"
 
 # Jev session verifier refresh
+
+# Ask Jev section deploy refresh
