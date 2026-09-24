@@ -20,7 +20,7 @@ jobs:
           repository: kosif199022-jpg/cloude
           ref: main
 
-      - name: Build password-locked full-data release
+      - name: Build password-locked full-data mobile v28 release
         run: |
           python3 build.py
           python3 - <<'PY'
@@ -31,6 +31,12 @@ jobs:
           head=b.lstrip()[:20].lower()
           assert head.startswith(b"<!doctype html") or head.startswith(b"<html"), head
           print("Locked HTML validation: OK")
+          app=Path("dist/app-safe.html").read_text(encoding="utf-8")
+          assert "mobile-v28.css?v=28" in app
+          assert "mobile-v28.js?v=28" in app
+          assert Path("dist/mobile-v28.css").exists()
+          assert Path("dist/mobile-v28.js").exists()
+          print("Mobile v28 validation: OK")
           assert Path("dist/secure/crypto.json").exists()
           assert len(list(Path("dist/secure").glob("seed.enc.b64.part*"))) == 6
           print("Encrypted dataset validation: OK")
