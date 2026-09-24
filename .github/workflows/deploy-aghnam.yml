@@ -1,4 +1,4 @@
-name: Repair Aghnam Alwadi Pages
+name: Deploy Aghnam Alwadi + Jev
 
 on:
   push:
@@ -13,6 +13,10 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 9ff3d8494afab356ecbf95a2a231a6b5
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
     steps:
       - name: Checkout Aghnam source
         uses: actions/checkout@v4
@@ -20,27 +24,59 @@ jobs:
           repository: kosif199022-jpg/cloude
           ref: main
 
-      - name: Build password-locked full-data mobile v28 release
+      - name: Build password-locked full-data mobile + Jev release
         run: |
           python3 build.py
           python3 - <<'PY'
           from pathlib import Path
           p=Path("dist/index.html")
           b=p.read_bytes()
-          print("index bytes:", len(b))
           head=b.lstrip()[:20].lower()
           assert head.startswith(b"<!doctype html") or head.startswith(b"<html"), head
-          print("Locked HTML validation: OK")
           app=Path("dist/app-safe.html").read_text(encoding="utf-8")
-          assert "mobile-v28.css?v=28" in app
-          assert "mobile-v28.js?v=28" in app
-          assert Path("dist/mobile-v28.css").exists()
-          assert Path("dist/mobile-v28.js").exists()
-          print("Mobile v28 validation: OK")
+          for marker in ["mobile-v28.css?v=28","mobile-v28.js?v=28","jev-v1.css?v=1","jev-v1.js?v=1"]:
+              assert marker in app, marker
+          for f in ["mobile-v28.css","mobile-v28.js","jev-v1.css","jev-v1.js"]:
+              assert Path("dist",f).exists(), f
           assert Path("dist/secure/crypto.json").exists()
           assert len(list(Path("dist/secure").glob("seed.enc.b64.part*"))) == 6
-          print("Encrypted dataset validation: OK")
+          assert Path("jev-api/worker.js").exists()
+          assert Path("wrangler.jev.toml").exists()
+          print("Build validation: OK")
           PY
+
+      - name: Prepare Jev bridge credentials securely
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRIDGE_SOURCE="$(curl --fail --silent --show-error             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/jev-claude-bridge/content/v2")"
+          JEV_BRIDGE_TOKEN="$(printf '%s' "$BRIDGE_SOURCE" | python3 -c 'import sys,re; s=sys.stdin.read(); m=re.search(r"const\s+ACCESS_TOKEN\s*=\s*[\x27\x22]([^\x27\x22]+)",s); print(m.group(1) if m else "")')"
+          test -n "$JEV_BRIDGE_TOKEN"
+          SESSION_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$JEV_BRIDGE_TOKEN"
+          echo "::add-mask::$SESSION_SECRET"
+          echo "JEV_BRIDGE_TOKEN=$JEV_BRIDGE_TOKEN" >> "$GITHUB_ENV"
+          echo "SESSION_SECRET=$SESSION_SECRET" >> "$GITHUB_ENV"
+
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@4
+
+      - name: Deploy private Jev API worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --config wrangler.jev.toml
+          printf '%s' "$JEV_BRIDGE_TOKEN" | npx wrangler secret put JEV_BRIDGE_TOKEN --name aghnam-jev-api
+          printf '%s' "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET --name aghnam-jev-api
+
+      - name: Verify Jev API
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error "https://aghnam-jev-api.kosif199022.workers.dev/health" | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("ok") is True; print("Jev API health: OK")'
+          STATUS="$(curl --silent --output /tmp/jev-auth.json --write-out '%{http_code}'             -X POST "https://aghnam-jev-api.kosif199022.workers.dev/session"             -H "Origin: https://aghnam-alwadi-iphone.pages.dev"             -H "Content-Type: application/json"             --data '{"password":"__wrong_password_test__"}')"
+          test "$STATUS" = "401"
+          echo "Jev authentication gate: OK"
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
