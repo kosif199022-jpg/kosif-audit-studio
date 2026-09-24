@@ -69,15 +69,6 @@ jobs:
           printf '%s' "$JEV_BRIDGE_TOKEN" | npx wrangler secret put JEV_BRIDGE_TOKEN --name aghnam-jev-api
           printf '%s' "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET --name aghnam-jev-api
 
-      - name: Verify Jev API
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --silent --show-error "https://aghnam-jev-api.kosif199022.workers.dev/health" | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("ok") is True; print("Jev API health: OK")'
-          STATUS="$(curl --silent --output /tmp/jev-auth.json --write-out '%{http_code}'             -X POST "https://aghnam-jev-api.kosif199022.workers.dev/session"             -H "Origin: https://aghnam-alwadi-iphone.pages.dev"             -H "Content-Type: application/json"             --data '{"password":"__wrong_password_test__"}')"
-          test "$STATUS" = "401"
-          echo "Jev authentication gate: OK"
-
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
         with:
@@ -85,3 +76,19 @@ jobs:
           accountId: 9ff3d8494afab356ecbf95a2a231a6b5
           wranglerVersion: "4"
           command: pages deploy dist --project-name=aghnam-alwadi-iphone --branch=main
+
+      - name: Verify Jev API after propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..12}; do
+            if curl --fail --silent --show-error "https://aghnam-jev-api.kosif199022.workers.dev/health" -o /tmp/jev-health.json; then
+              break
+            fi
+            echo "Waiting for Workers.dev propagation ($i/12)..."
+            sleep 5
+          done
+          python3 -c 'import json; d=json.load(open("/tmp/jev-health.json")); assert d.get("ok") is True; print("Jev API health: OK")'
+          STATUS="$(curl --silent --output /tmp/jev-auth.json --write-out '%{http_code}'             -X POST "https://aghnam-jev-api.kosif199022.workers.dev/session"             -H "Origin: https://aghnam-alwadi-iphone.pages.dev"             -H "Content-Type: application/json"             --data '{"password":"__wrong_password_test__"}')"
+          test "$STATUS" = "401"
+          echo "Jev authentication gate: OK"
