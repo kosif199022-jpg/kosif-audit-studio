@@ -96,7 +96,7 @@ jobs:
             sleep 5
           done
           python3 -c 'import json; d=json.load(open("/tmp/jev-health.json")); assert d.get("ok") is True; print("Jev API health: OK")'
-          STATUS="$(curl --silent --output /tmp/jev-auth.json --write-out '%{http_code}'             -X POST "https://aghnam-jev-api.kosif199022.workers.dev/session"             -H "Origin: https://aghnam-alwadi-iphone.pages.dev"             -H "Content-Type: application/json"             --data '{"password":"__wrong_password_test__"}')"
+          STATUS="$(curl --silent --output /tmp/jev-auth.json --write-out '%{http_code}'             -X POST "https://aghnam-jev-api.kosif199022.workers.dev/session"             -H "Origin: https://aghnam-alwadi.pages.dev"             -H "Content-Type: application/json"             --data '{"password":"__wrong_password_test__"}')"
           echo "Jev auth test HTTP: $STATUS"
           if [ "$STATUS" != "401" ]; then
             cat /tmp/jev-auth.json || true
@@ -111,3 +111,5 @@ jobs:
 # V29 smart pricing inventory decision-log deploy
 
 # Redeploy Jev API for aghnam-alwadi.pages.dev origin
+
+# Verify Jev auth against current production origin
