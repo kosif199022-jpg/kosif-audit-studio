@@ -34,14 +34,18 @@ jobs:
           head=b.lstrip()[:20].lower()
           assert head.startswith(b"<!doctype html") or head.startswith(b"<html"), head
           app=Path("dist/app-safe.html").read_text(encoding="utf-8")
-          for marker in ["mobile-v28.css?v=28","mobile-v28.js?v=28","jev-v1.css?v=1","jev-v1.js?v=1","jev-question-v1.css?v=1","jev-question-v1.js?v=1"]:
+          for marker in ["mobile-v28.css?v=28","mobile-v28.js?v=28","jev-v1.css?v=1","jev-v1.js?v=1","jev-question-v1.css?v=1","jev-question-v1.js?v=1","v29-smart.css?v=29","v29-smart.js?v=29"]:
               assert marker in app, marker
-          for f in ["mobile-v28.css","mobile-v28.js","jev-v1.css","jev-v1.js","jev-question-v1.css","jev-question-v1.js"]:
+          for f in ["mobile-v28.css","mobile-v28.js","jev-v1.css","jev-v1.js","jev-question-v1.css","jev-question-v1.js","v29-smart.css","v29-smart.js"]:
               assert Path("dist",f).exists(), f
           assert Path("dist/secure/crypto.json").exists()
           assert len(list(Path("dist/secure").glob("seed.enc.b64.part*"))) == 6
           assert Path("jev-api/worker.js").exists()
           assert Path("wrangler.jev.toml").exists()
+          v29=Path("dist/v29-smart.js").read_text(encoding="utf-8")
+          for marker in ["محرك التسعير اليومي","مساعد المخزون","سجل قرارات Jev","jev:decision"]:
+              assert marker in v29, marker
+          print("V29 feature validation: OK")
           print("Build validation: OK")
           PY
 
@@ -103,3 +107,5 @@ jobs:
 # Jev session verifier refresh
 
 # Ask Jev section deploy refresh
+
+# V29 smart pricing inventory decision-log deploy
