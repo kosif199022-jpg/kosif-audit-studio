@@ -1,0 +1,10 @@
+{
+  "name": "kosif-whatsapp-container",
+  "version": "2.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "pino": "^9.0.0"
+  }
+}
