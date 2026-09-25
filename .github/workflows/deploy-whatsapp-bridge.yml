@@ -32,6 +32,11 @@ jobs:
           npm ci
           npx tsc -p .
 
+      - name: Check Containers access
+        run: |
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/me" | jq -c '{success, errors}'
+
       - name: Deploy Worker + container
         run: npx wrangler deploy
 
