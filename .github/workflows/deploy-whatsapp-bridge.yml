@@ -1,0 +1,49 @@
+name: Deploy WhatsApp bridge
+
+on:
+  push:
+    branches: [claude/whatsapp-integration-messaging-mvdnxr]
+    paths:
+      - ".github/workflows/deploy-whatsapp-bridge.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 9ff3d8494afab356ecbf95a2a231a6b5
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: whatsapp-bridge
+    steps:
+      - name: Checkout bridge source
+        uses: actions/checkout@v4
+        with:
+          repository: kosif199022-jpg/cloude
+          ref: claude/whatsapp-integration-messaging-mvdnxr
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install and typecheck
+        run: |
+          npm ci
+          npx tsc -p .
+
+      - name: Deploy Worker + container
+        run: npx wrangler deploy
+
+      - name: Smoke test
+        run: |
+          sleep 10
+          SUB="$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | jq -r .result.subdomain)"
+          URL="https://wa-kosif.$SUB.workers.dev"
+          echo "Worker URL: $URL"
+          curl -fsS "$URL/"
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$URL/status")" = "401"
