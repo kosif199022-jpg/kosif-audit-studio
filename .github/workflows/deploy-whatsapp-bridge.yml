@@ -5,6 +5,7 @@ on:
     branches: [claude/whatsapp-integration-messaging-mvdnxr]
     paths:
       - ".github/workflows/deploy-whatsapp-bridge.yml"
+      - "whatsapp-bridge/**"
   workflow_dispatch:
 
 permissions:
@@ -20,11 +21,7 @@ jobs:
       run:
         working-directory: whatsapp-bridge
     steps:
-      - name: Checkout bridge source
-        uses: actions/checkout@v4
-        with:
-          repository: kosif199022-jpg/cloude
-          ref: claude/whatsapp-integration-messaging-mvdnxr
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
