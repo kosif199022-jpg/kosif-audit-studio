@@ -48,7 +48,6 @@ jobs:
               "step_percentage":100,
               "target_configuration":{
                 "image":"registry.cloudflare.com/9ff3d8494afab356ecbf95a2a231a6b5/wa-kosif-wabridge:v2",
-                "instance_type":"basic",
-                "observability":{"logs":{"enabled":true}}
+                "instance_type":"basic"
               }
             }'
