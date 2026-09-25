@@ -1,6 +1,4 @@
-// WhatsApp link held by Baileys. Nothing is written to the container disk:
-// the auth state lives in memory and the Durable Object in front of this
-// container pulls it (GET /state) and pushes it back after a restart (POST /restore).
+// WhatsApp link held by Baileys. Auth format is preserved exactly for the Durable Object.
 import http from 'node:http';
 import pino from 'pino';
 import makeWASocket, {
@@ -12,12 +10,13 @@ import makeWASocket, {
 } from 'baileys';
 
 const PORT = 8080;
+const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 
-let auth = null; // { creds, keys: { [type]: { [id]: value } } }
-let version = 0; // bumped on every auth change so the DO knows when to save
+let auth = null;
+let version = 0;
 let sock = null;
-let connection = 'idle'; // idle | connecting | qr | open | closed | logged_out
+let connection = 'idle';
 let qr = null;
 
 const bump = () => { version++; };
@@ -57,7 +56,7 @@ async function connect() {
     auth: authState(),
     logger,
     ...(waVersion ? { version: waVersion } : {}),
-    browser: ['Kosif Bridge', 'Chrome', '1.0'],
+    browser: ['Kosif Bridge', 'Chrome', '2.0'],
     markOnlineOnConnect: false,
     syncFullHistory: false,
   });
@@ -78,7 +77,6 @@ async function connect() {
         return;
       }
       connection = 'closed';
-      // 515 right after pairing, or a network drop: reconnect with the same state.
       setTimeout(() => connect().catch((e) => logger.error(e)), code === DisconnectReason.restartRequired ? 0 : 3000);
     }
   });
@@ -99,67 +97,113 @@ function waitOpen(ms) {
 
 function toJid(to) {
   let d = String(to ?? '').replace(/\D/g, '');
-  if (d.length === 11 && d.startsWith('01')) d = '20' + d.slice(1); // Egyptian local format
+  if (d.length === 11 && d.startsWith('01')) d = '20' + d.slice(1);
   if (d.length < 10 || d.length > 15) throw new Error('invalid phone number');
   return `${d}@s.whatsapp.net`;
 }
 
 const readBody = async (req) => {
   let b = '';
-  for await (const c of req) b += c;
+  for await (const c of req) {
+    b += c;
+    if (b.length > 40 * 1024 * 1024) throw new Error('payload too large');
+  }
   return b;
 };
+
 const send = (res, status, body, type = 'application/json') => {
   res.writeHead(status, { 'content-type': type });
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 };
 
-http
-  .createServer(async (req, res) => {
-    try {
-      const path = new URL(req.url, 'http://x').pathname;
-      if (path === '/status') {
-        return send(res, 200, { restored: !!auth, connection, qr, version, me: auth?.creds?.me ?? null });
-      }
-      if (path === '/restore' && req.method === 'POST') {
-        if (!auth) {
-          const body = await readBody(req);
-          auth = body ? JSON.parse(body, BufferJSON.reviver) : { creds: initAuthCreds(), keys: {} };
-          auth.keys ??= {};
-          await connect();
-        }
-        return send(res, 200, { ok: true });
-      }
-      if (!auth) return send(res, 409, { error: 'not restored' });
-      if (path === '/state') {
-        return send(res, 200, JSON.stringify({ version, auth }, BufferJSON.replacer));
-      }
-      if (path === '/connect' && req.method === 'POST') {
-        if (!sock && connection !== 'connecting') await connect();
-        return send(res, 200, { connection });
-      }
-      if (path === '/send' && req.method === 'POST') {
-        const { to, message } = JSON.parse(await readBody(req));
-        if (!message?.trim()) return send(res, 400, { error: 'message is required' });
-        const jid = toJid(to);
-        if (!sock && connection !== 'connecting') await connect();
-        await waitOpen(45000);
-        const [check] = await sock.onWhatsApp(jid);
-        if (!check?.exists) return send(res, 404, { error: 'this number is not on WhatsApp' });
-        const sent = await sock.sendMessage(check.jid, { text: message.trim() });
-        return send(res, 200, { sent: true, to: check.jid, id: sent?.key?.id });
-      }
-      if (path === '/logout' && req.method === 'POST') {
-        await sock?.logout().catch(() => {});
-        sock = null;
-        auth = { creds: initAuthCreds(), keys: {} };
-        connection = 'logged_out';
-        bump();
-        return send(res, 200, { ok: true });
-      }
-      send(res, 404, { error: 'not found' });
-    } catch (e) {
-      send(res, 500, { error: String(e?.message || e) });
+async function recipient(to) {
+  const jid = toJid(to);
+  if (!sock && connection !== 'connecting') await connect();
+  await waitOpen(45000);
+  const [check] = await sock.onWhatsApp(jid);
+  if (!check?.exists) {
+    const e = new Error('this number is not on WhatsApp');
+    e.status = 404;
+    throw e;
+  }
+  return check.jid;
+}
+
+async function mediaBytes(body) {
+  if (body.fileBase64) {
+    const data = Buffer.from(String(body.fileBase64), 'base64');
+    if (data.length > MAX_MEDIA_BYTES) throw new Error('file too large');
+    return { data, detectedMime: '' };
+  }
+  if (!body.fileUrl) throw new Error('fileUrl or fileBase64 is required');
+  const r = await fetch(String(body.fileUrl), { redirect: 'follow' });
+  if (!r.ok) throw new Error('file download failed');
+  const len = Number(r.headers.get('content-length') || 0);
+  if (len && len > MAX_MEDIA_BYTES) throw new Error('file too large');
+  const ab = await r.arrayBuffer();
+  if (ab.byteLength > MAX_MEDIA_BYTES) throw new Error('file too large');
+  return { data: Buffer.from(ab), detectedMime: r.headers.get('content-type') || '' };
+}
+
+function mediaMessage(data, mimetype, filename, caption) {
+  const mt = String(mimetype || 'application/octet-stream').toLowerCase();
+  if (mt.startsWith('image/')) return { image: data, mimetype: mt, caption: caption || undefined };
+  if (mt.startsWith('video/')) return { video: data, mimetype: mt, caption: caption || undefined };
+  if (mt.startsWith('audio/')) return { audio: data, mimetype: mt, ptt: false };
+  return { document: data, mimetype: mt, fileName: filename || 'file', caption: caption || undefined };
+}
+
+http.createServer(async (req, res) => {
+  try {
+    const path = new URL(req.url, 'http://x').pathname;
+    if (path === '/status') {
+      return send(res, 200, { restored: !!auth, connection, qr, version, me: auth?.creds?.me ?? null });
     }
-  })
-  .listen(PORT, () => logger.warn(`listening on ${PORT}`));
+    if (path === '/restore' && req.method === 'POST') {
+      if (!auth) {
+        const body = await readBody(req);
+        auth = body ? JSON.parse(body, BufferJSON.reviver) : { creds: initAuthCreds(), keys: {} };
+        auth.keys ??= {};
+        await connect();
+      }
+      return send(res, 200, { ok: true });
+    }
+    if (!auth) return send(res, 409, { error: 'not restored' });
+    if (path === '/state') {
+      return send(res, 200, JSON.stringify({ version, auth }, BufferJSON.replacer));
+    }
+    if (path === '/connect' && req.method === 'POST') {
+      if (!sock && connection !== 'connecting') await connect();
+      return send(res, 200, { connection });
+    }
+    if (path === '/send' && req.method === 'POST') {
+      const { to, message } = JSON.parse(await readBody(req));
+      if (!message?.trim()) return send(res, 400, { error: 'message is required' });
+      const jid = await recipient(to);
+      const sent = await sock.sendMessage(jid, { text: message.trim() });
+      return send(res, 200, { sent: true, to: jid, id: sent?.key?.id });
+    }
+    if (path === '/send-media' && req.method === 'POST') {
+      const body = JSON.parse(await readBody(req));
+      if (!body.to) return send(res, 400, { error: 'to is required' });
+      const jid = await recipient(body.to);
+      const { data, detectedMime } = await mediaBytes(body);
+      const payload = mediaMessage(data, body.mimetype || detectedMime, body.filename, body.caption || body.message || '');
+      const sent = await sock.sendMessage(jid, payload);
+      return send(res, 200, { sent: true, to: jid, id: sent?.key?.id, filename: body.filename || null });
+    }
+    if (path === '/logout' && req.method === 'POST') {
+      await sock?.logout().catch(() => {});
+      sock = null;
+      auth = { creds: initAuthCreds(), keys: {} };
+      connection = 'logged_out';
+      bump();
+      return send(res, 200, { ok: true });
+    }
+    send(res, 404, { error: 'not found' });
+  } catch (e) {
+    const message = String(e?.message || e);
+    const status = Number(e?.status || (message.includes('too large') ? 413 : 500));
+    send(res, status, { error: message });
+  }
+}).listen(PORT, () => logger.warn(`listening on ${PORT}`));
