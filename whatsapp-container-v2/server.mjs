@@ -63,9 +63,22 @@ async function snapshotAuth() {
 }
 
 function normalizeToJid(value) {
-  const digits = String(value || "").replace(/\D/g, "");
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("01")) digits = "20" + digits.slice(1);
   if (digits.length < 8 || digits.length > 15) throw new Error("invalid_phone");
   return digits + "@s.whatsapp.net";
+}
+
+async function recipientJid(value) {
+  await waitForOpen();
+  const jid = normalizeToJid(value);
+  const [check] = await sock.onWhatsApp(jid);
+  if (!check?.exists) {
+    const e = new Error("this number is not on WhatsApp");
+    e.status = 404;
+    throw e;
+  }
+  return check.jid || jid;
 }
 
 async function startSocket() {
@@ -140,8 +153,7 @@ function messageForMedia(data, mimetype, filename, caption) {
 }
 
 async function sendText(to, message) {
-  await waitForOpen();
-  const jid = normalizeToJid(to);
+  const jid = await recipientJid(to);
   return sock.sendMessage(jid, { text: String(message || "") });
 }
 
@@ -161,14 +173,12 @@ async function prepareMedia(body) {
 }
 
 async function sendMedia(body) {
-  await waitForOpen();
-  const jid = normalizeToJid(body.to);
+  const jid = await recipientJid(body.to);
   return sock.sendMessage(jid, await prepareMedia(body));
 }
 
 async function sendBundle(to, items) {
-  await waitForOpen();
-  const jid = normalizeToJid(to);
+  const jid = await recipientJid(to);
   if (!Array.isArray(items) || !items.length || items.length > 10) throw new Error("invalid_bundle");
 
   // Resolve every attachment before the first WhatsApp send, so missing/bad media
@@ -257,7 +267,7 @@ const server = http.createServer(async (req, res) => {
   } catch (e) {
     logger.error({ err: e }, "request failed");
     const msg = String(e?.message || e);
-    const status = msg === "payload_too_large" || msg === "file_too_large" ? 413 : 500;
+    const status = Number(e?.status || (msg === "payload_too_large" || msg === "file_too_large" ? 413 : 500));
     return json(res, status, { error: msg });
   }
 });
