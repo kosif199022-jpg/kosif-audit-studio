@@ -145,9 +145,7 @@ async function sendText(to, message) {
   return sock.sendMessage(jid, { text: String(message || "") });
 }
 
-async function sendMedia(body) {
-  await waitForOpen();
-  const jid = normalizeToJid(body.to);
+async function prepareMedia(body) {
   let data, detectedType = "";
   if (body.fileBase64) {
     data = Buffer.from(String(body.fileBase64), "base64");
@@ -159,8 +157,43 @@ async function sendMedia(body) {
   } else {
     throw new Error("file_required");
   }
-  const payload = messageForMedia(data, body.mimetype || detectedType, body.filename, body.caption || body.message || "");
-  return sock.sendMessage(jid, payload);
+  return messageForMedia(data, body.mimetype || detectedType, body.filename, body.caption || body.message || "");
+}
+
+async function sendMedia(body) {
+  await waitForOpen();
+  const jid = normalizeToJid(body.to);
+  return sock.sendMessage(jid, await prepareMedia(body));
+}
+
+async function sendBundle(to, items) {
+  await waitForOpen();
+  const jid = normalizeToJid(to);
+  if (!Array.isArray(items) || !items.length || items.length > 10) throw new Error("invalid_bundle");
+
+  // Resolve every attachment before the first WhatsApp send, so missing/bad media
+  // cannot cause a partial bundle before delivery starts.
+  const prepared = await Promise.all(items.map(async (item) => {
+    if (item?.kind === "text") {
+      const text = String(item.message || "").trim();
+      if (!text) throw new Error("empty_text_item");
+      return { text };
+    }
+    if (item?.kind === "media") return prepareMedia(item);
+    throw new Error("invalid_bundle_item");
+  }));
+
+  const results = [];
+  for (let index = 0; index < prepared.length; index++) {
+    try {
+      const sent = await sock.sendMessage(jid, prepared[index]);
+      results.push({ index, ok: true, id: sent?.key?.id || null });
+    } catch (e) {
+      results.push({ index, ok: false, error: String(e?.message || e) });
+      return { sent: false, to: jid, results };
+    }
+  }
+  return { sent: true, to: jid, results };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -202,6 +235,13 @@ const server = http.createServer(async (req, res) => {
       if (!body.to) return json(res, 400, { error: "to_required" });
       const result = await sendMedia(body);
       return json(res, 200, { ok: true, id: result?.key?.id || null });
+    }
+
+    if (url.pathname === "/send-bundle" && req.method === "POST") {
+      const body = JSON.parse((await readBody(req)).toString("utf8"));
+      if (!body.to || !Array.isArray(body.items)) return json(res, 400, { error: "to_and_items_required" });
+      const result = await sendBundle(body.to, body.items);
+      return json(res, result.sent ? 200 : 502, result);
     }
 
     if (url.pathname === "/logout" && req.method === "POST") {
