@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wa-kosif",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-24",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": { "API_KEY_SHA256": "dedad5f0d3a07dfdec6aa0b7d1739ef94ba29d81abb429f681e5efb69d684097" },
+  "containers": [
+    {
+      "class_name": "WaBridge",
+      "image": "./container/Dockerfile",
+      "instance_type": "basic",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "WA", "class_name": "WaBridge" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WaBridge"] }]
+}
