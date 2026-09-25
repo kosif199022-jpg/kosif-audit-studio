@@ -1,0 +1,8 @@
+{
+  "name": "wa-kosif-mcp",
+  "main": "index.js",
+  "compatibility_date": "2026-09-24",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "services": [{ "binding": "BRIDGE", "service": "wa-kosif" }]
+}

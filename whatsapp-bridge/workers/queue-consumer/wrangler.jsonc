@@ -1,0 +1,11 @@
+{
+  // Secret (set with `wrangler secret put`): BRIDGE_KEY
+  "name": "wa-kosif-queue-consumer",
+  "main": "index.js",
+  "compatibility_date": "2026-09-24",
+  "observability": { "enabled": true },
+  "services": [{ "binding": "DISPATCH", "service": "wa-kosif-dispatch" }],
+  "queues": {
+    "consumers": [{ "queue": "wa-kosif-paced", "max_batch_size": 1, "max_concurrency": 1, "max_retries": 2, "retry_delay": 120 }]
+  }
+}

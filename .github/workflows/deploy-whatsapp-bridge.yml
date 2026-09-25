@@ -27,10 +27,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install and typecheck
+      - name: Install, typecheck and test
         run: |
           npm ci
-          npx tsc -p .
+          npm run typecheck
+          npm test
 
       - name: Check Containers access
         run: |
@@ -39,6 +40,9 @@ jobs:
 
       - name: Deploy Worker + container
         run: npx wrangler deploy
+
+      - name: Deploy MCP worker
+        run: npx wrangler deploy -c workers/mcp/wrangler.jsonc
 
       - name: Smoke test
         run: |
@@ -49,3 +53,5 @@ jobs:
           echo "Worker URL: $URL"
           curl -fsS "$URL/"
           test "$(curl -s -o /dev/null -w '%{http_code}' "$URL/status")" = "401"
+          curl -fsS "$URL/openapi.json" | jq -e '.paths["/send-bundle"] and .paths["/messages"]' > /dev/null
+          curl -fsS "https://wa-kosif-mcp.$SUB.workers.dev/"

@@ -1,0 +1,10 @@
+{
+  // Secrets (set with `wrangler secret put`): BRIDGE_KEY, DISPATCH_TOKEN_SHA256
+  "name": "wa-kosif-dispatch",
+  "main": "index.js",
+  "compatibility_date": "2026-09-24",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "services": [{ "binding": "BRIDGE", "service": "wa-kosif" }],
+  "queues": { "producers": [{ "binding": "WA_QUEUE", "queue": "wa-kosif-paced" }] }
+}
