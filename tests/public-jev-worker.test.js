@@ -52,15 +52,15 @@ test('the page and its browser script are served, and the script is complete', a
   assert.match(app, /document\.body\.dataset\.jevReady='1';\n\}\);\n\}\)\(\);$/, 'APP_JS ends where the page marks itself ready');
 });
 
-test('every element the browser script looks up exists on the page, including the image-provider status', async () => {
+test('every element the browser script looks up exists on the page, including the image-processing status', async () => {
   const page = await (await get('/')).text(), app = await (await get('/app.js')).text();
   const ids = new Set([...page.matchAll(/\bid="([\w-]+)"/g)].map((m) => m[1]));
   const wanted = [...new Set([...app.matchAll(/\$\('#([\w-]+)'\)/g)].map((m) => m[1]))];
   assert.ok(wanted.includes('visionProvider') && wanted.includes('visionProviderText'), 'the script shows which image provider is active');
   assert.deepEqual(wanted.filter((id) => !ids.has(id)), []);
   for (const route of ['/api/chatgpt-web/status', '/api/extract', '/api/public-jev']) assert.ok(app.includes(`fetch('${route}'`), `the script calls ${route}`);
-  assert.ok(app.includes("'ChatGPT Web عبر TinyFish متصل'") && app.includes("'Cloudflare Vision مؤقتًا"), 'both provider states have a label');
-  assert.ok(app.includes("x.method==='chatgpt-web-via-tinyfish'?'ChatGPT Web ✓':'تم الفهم ✓'"), 'the file chip names the provider');
+  assert.ok(app.includes("chatgptWebConnected?'جاهز للتحويل':'وضع احتياطي جاهز'") && app.includes("visionProviderText.textContent='وضع احتياطي جاهز'"), 'connected and fallback states remain visibly distinct without exposing provider details');
+  assert.ok(app.includes("const via='تم التحويل ✓'") && app.includes("fileStatus.textContent='تم التحويل ✓'"), 'successful file processing is reported consistently');
 });
 
 test('/health, unknown routes and method checks', async () => {
