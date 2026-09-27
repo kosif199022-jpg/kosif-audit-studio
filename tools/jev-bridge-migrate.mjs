@@ -13,18 +13,27 @@
  *   switch    each consumer's JEV_BRIDGE_TOKEN := new, then an end-to-end call through its public Jev endpoint
  *   finalize  delete LEGACY_ACCESS_TOKEN: the old token stops working only now, after every check has passed
  *   rollback  put everything back explicitly, then prove the old path works again end to end:
+ *             - old token first: if a consumer was switched and the bridge no longer has LEGACY_ACCESS_TOKEN (finalize
+ *               started), it is written back, so the wrapped bridge accepts both tokens again during the switch-back.
  *             - consumers: JEV_BRIDGE_TOKEN is written back to the previous value (the only thing rotation changed on
  *               them). This does not rely on version rollback: Cloudflare refuses to roll back a Worker whose secrets
  *               changed unless forced, and does not document which secret values a forced rollback uses.
- *             - bridge: the snapshot version is redeployed (forced); if that fails, the saved original source is
- *               re-uploaded. The original code checks its hard-coded token, so it works whatever the secrets hold.
+ *             - bridge: the saved original source is re-uploaded. The original code checks its hard-coded token, so it
+ *               works whatever the secrets hold. Doing this before any secret is deleted also makes it the most recent
+ *               upload, so a secret change that releases a version of the most recent upload releases the original.
  *             - bridge secrets: ACCESS_TOKEN and LEGACY_ACCESS_TOKEN (added by stage) are deleted explicitly. The
  *               snapshot refuses to start if the bridge already had either, so deleting them restores the exact set.
- *             - the bridge is then probed: if the wrapped code answers (a secret change can release a new version of
- *               the most recent upload), the original is deployed again the same way.
+ *             - the exact snapshot version is then redeployed (forced) where Cloudflare allows it; if it refuses, the
+ *               re-uploaded original keeps serving the same code, and the log says so.
+ *             - the bridge is then probed, even when a delete failed: if the wrapped code answers anyway (Cloudflare does
+ *               not document which code a secret change releases), the original is uploaded again. In every behaviour
+ *               the simulation models, the original already serves at this point, so this is a safety net only.
  *             - bindings: every Worker's binding and secret names must equal the snapshot, or rollback reports it.
- *             - order: while LEGACY_ACCESS_TOKEN exists the wrapped bridge still accepts the old token, so consumers
- *               go back first; after finalize it does not, so the bridge goes back first.
+ *             - every rollback write is retried, and re-reads the live state first, so a write that took effect but
+ *               answered with an error is not repeated blindly. If a write still fails, rollback stops before any
+ *               later write that would cut a consumer off, and says which write failed.
+ *             - order: consumers go back while the wrapped bridge accepts their old token, then the bridge; in the
+ *               simulated Cloudflare every consumer answers at every step of a rollback (tests/jev-bridge-rollback-proof).
  *
  * Never printed, written to logs, or uploaded as an artifact: either token, the bridge source, or any response body.
  * Secrets live in STATE_DIR (mode 0600) for the lifetime of the job, and the workflow deletes that directory. Every
@@ -179,6 +188,22 @@ async function retry(label, fn, tries = 12) {
   fail(`${label}: ${last && last.message}`);
 }
 const check = (cond, msg) => { if (!cond) fail(msg); };
+const reason = (e) => (e instanceof MigrationError ? e.message : (e && e.name) || 'error');
+
+/* A rollback write. Retried, and every attempt re-reads the live state it depends on (fn does that), so a write that took
+   effect but answered with an error is not applied twice. */
+const ROLLBACK_TRIES = Number(process.env.JEV_ROLLBACK_TRIES || 4);
+async function persist(label, fn) {
+  let last;
+  for (let i = 1; i <= ROLLBACK_TRIES; i++) {
+    try { return await fn(); } catch (e) {
+      last = e;
+      console.log(`· ${label}: attempt ${i} of ${ROLLBACK_TRIES} failed (${reason(e)})`);
+      if (i < ROLLBACK_TRIES) await sleep(RETRY_MS);
+    }
+  }
+  fail(`rollback stopped: ${label} failed ${ROLLBACK_TRIES} times (${reason(last)})`);
+}
 
 async function mcpToolsList(token) {
   const r = await get(`${origin(BRIDGE)}/mcp/${token}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json', 'mcp-protocol-version': '2025-06-18' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) });
@@ -304,39 +329,71 @@ export const steps = {
     const s = readState();
     if (!s.mutated) { console.log('nothing to roll back: production was not changed'); return; }
     const { next, legacy } = secrets();
+    const bridgeHas = async (key) => (await bindingNames(BRIDGE)).includes(`secret_text:${key}`);
     const originalServes = async () => {
       const h = await get(`${origin(BRIDGE)}/health`); let d = null; try { d = JSON.parse(h.text); } catch { /* not JSON */ }
       return !(d && d.service === 'jev-claude-bridge' && 'auth' in d) && (await mcpToolsList(legacy));
     };
-    const redeployOriginal = async () => {
-      try {
-        await deployVersions(BRIDGE, s.rollback[BRIDGE]);
-        console.log(`↩ ${BRIDGE}: snapshot version ${s.rollback[BRIDGE].map((v) => v.version_id).join(', ')} redeployed`);
-      } catch (e) {
-        console.log(`· redeploying the snapshot version failed (${e instanceof MigrationError ? e.message : e && e.name}); re-uploading the saved original source`);
-        await uploadBridge(readFileSync(file('bridge-original.mjs'), 'utf8'));
-        console.log(`↩ ${BRIDGE}: original source re-uploaded`);
+    const uploadOriginal = async () => {
+      await persist(`re-upload the ${BRIDGE} original source`, () => uploadBridge(readFileSync(file('bridge-original.mjs'), 'utf8')));
+      console.log(`↩ ${BRIDGE}: original source re-uploaded`);
+    };
+
+    /* 1. Consumers go back while the wrapped bridge still accepts their old token. After finalize started it no longer
+          does, so LEGACY_ACCESS_TOKEN is written back first. */
+    const switched = s.switched || [];
+    if (switched.length) {
+      const readded = await persist(`${BRIDGE}: accept the previous token again`, async () => {
+        if (await bridgeHas('LEGACY_ACCESS_TOKEN')) return false;
+        await putSecret(BRIDGE, 'LEGACY_ACCESS_TOKEN', legacy);
+        return true;
+      });
+      if (readded) {
+        console.log(`↩ ${BRIDGE}: LEGACY_ACCESS_TOKEN written back, so the previous token works during the switch-back`);
+        await retry(`${BRIDGE} accepts the previous token again`, async () => check(await mcpToolsList(legacy), 'previous token rejected'));
       }
-    };
-    const bridgeBack = async () => {
-      await redeployOriginal();
-      const present = await bindingNames(BRIDGE);
-      for (const k of ADDED_BRIDGE_SECRETS) if (present.includes(`secret_text:${k}`)) { await deleteSecret(BRIDGE, k); console.log(`↩ ${BRIDGE}: secret ${k} deleted`); }
-      /* a secret change releases a new version; make sure it is still the original code that answers */
-      let ok = false;
-      for (let i = 0; i < 6 && !ok; i++) { ok = await originalServes(); if (!ok) await sleep(RETRY_MS); }
-      if (!ok) { console.log(`· ${BRIDGE}: the wrapped code answers after the secret changes; deploying the original again`); await redeployOriginal(); }
-    };
-    const consumersBack = async () => {
-      for (const name of s.switched || []) {
-        await putSecret(name, 'JEV_BRIDGE_TOKEN', legacy);
+      for (const name of switched) {
+        await persist(`${name}: write JEV_BRIDGE_TOKEN back`, () => putSecret(name, 'JEV_BRIDGE_TOKEN', legacy));
         console.log(`↩ ${name}: JEV_BRIDGE_TOKEN written back to its previous value`);
       }
-    };
-    if (s.finalized) { await bridgeBack(); await consumersBack(); } else { await consumersBack(); await bridgeBack(); }
+    }
+
+    /* 2. The bridge gets its original code back BEFORE any secret is deleted. The original checks its hard-coded token,
+          so it answers whatever the secrets hold. Uploading it (rather than only redeploying the old version) also
+          makes it the most recent upload, so the secret deletions below release the original, not the wrapped code. */
+    await uploadOriginal();
+
+    /* 3. Delete the secrets stage added. The probe after it runs even when a delete failed. */
+    let deleteError = null;
+    try {
+      for (const k of ADDED_BRIDGE_SECRETS) {
+        const deleted = await persist(`${BRIDGE}: delete secret ${k}`, async () => {
+          if (!(await bridgeHas(k))) return false;
+          await deleteSecret(BRIDGE, k);
+          return true;
+        });
+        if (deleted) console.log(`↩ ${BRIDGE}: secret ${k} deleted`);
+      }
+    } catch (e) { deleteError = e; }
+
+    /* 4. The exact snapshot version, where Cloudflare allows it. The re-uploaded original already serves the same code,
+          so a refusal here is reported but is not a failure. */
+    try {
+      await persist(`redeploy the ${BRIDGE} snapshot version`, () => deployVersions(BRIDGE, s.rollback[BRIDGE]));
+      console.log(`↩ ${BRIDGE}: snapshot version ${s.rollback[BRIDGE].map((v) => v.version_id).join(', ')} redeployed`);
+    } catch (e) {
+      console.log(`· ${BRIDGE}: the snapshot version could not be redeployed (${reason(e)}); the re-uploaded original source serves the same code`);
+    }
+
+    /* 5. It must be the original code that answers. */
+    let ok = false;
+    for (let i = 0; i < 6 && !ok; i++) { ok = await originalServes().catch(() => false); if (!ok) await sleep(RETRY_MS); }
+    if (!ok) { console.log(`· ${BRIDGE}: the wrapped code still answers; uploading the original again`); await uploadOriginal(); }
+    if (deleteError) throw deleteError;
+
     await retry(`after rollback: ${BRIDGE} serves its original code`, async () => check(await originalServes(), 'the wrapped bridge is still answering'));
     for (const [name, names] of Object.entries(s.bindings || {})) {
-      const now = await bindingNames(name);
+      const now = await persist(`read the ${name} bindings`, () => bindingNames(name));
       check(JSON.stringify(now) === JSON.stringify(names), `after rollback: ${name} bindings differ from the snapshot (now ${now.join(', ')})`);
       console.log(`✓ after rollback: ${name} bindings and secret names match the snapshot`);
     }

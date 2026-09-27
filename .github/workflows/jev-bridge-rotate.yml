@@ -9,6 +9,10 @@ name: Jev bridge — migrate and rotate credential (manual)
 #
 # Before the first run, create the GitHub Environment "jev-bridge-rotation" with required reviewers, and ideally move
 # CLOUDFLARE_API_TOKEN into it as an environment secret, so this job cannot start without an approval.
+#
+# Rollback also runs when the run is cancelled. Every step has its own timeout, and the job's timeout is larger than all
+# of them together, so a slow step fails (and is rolled back) instead of the whole job being cut off first.
+# tests/jev-bridge-rollback-proof.test.js checks these rules.
 
 on:
   workflow_dispatch:
@@ -33,7 +37,7 @@ concurrency:
 jobs:
   rotate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 150
     environment: jev-bridge-rotation
     env:
       CLOUDFLARE_ACCOUNT_ID: 9ff3d8494afab356ecbf95a2a231a6b5
@@ -44,6 +48,7 @@ jobs:
       CONFIRM: ${{ inputs.confirm }}
     steps:
       - name: Check the confirmation
+        timeout-minutes: 2
         shell: bash
         run: |
           set -euo pipefail
@@ -55,44 +60,55 @@ jobs:
           echo "mode: $MODE"
 
       - uses: actions/checkout@v4
+        timeout-minutes: 5
         with:
           persist-credentials: false
 
       - uses: actions/setup-node@v4
+        timeout-minutes: 5
         with:
           node-version: 22
 
       - name: Test the migration tool
-        run: node --test tests/jev-bridge-migrate.test.js tests/jev-bridge-rotation-sim.test.js
+        timeout-minutes: 5
+        run: node --test tests/jev-bridge-migrate.test.js tests/jev-bridge-rotation-sim.test.js tests/jev-bridge-rollback-proof.test.js
 
       - name: Snapshot the rollback point
+        timeout-minutes: 20
         run: node tools/jev-bridge-migrate.mjs snapshot
 
       - name: Generate the new token and migrate the bridge source in memory
+        timeout-minutes: 5
         run: node tools/jev-bridge-migrate.mjs prepare
 
       - name: Stage — bridge accepts the new token (and the old one, for the switch-over)
         if: env.MODE == 'rotate'
+        timeout-minutes: 15
         run: node tools/jev-bridge-migrate.mjs stage
 
       - name: Switch consumers to the new token and check them end to end
         if: env.MODE == 'rotate'
+        timeout-minutes: 30
         run: node tools/jev-bridge-migrate.mjs switch
 
       - name: Finalize — remove the old token, verify everything again
         if: env.MODE == 'rotate'
+        timeout-minutes: 20
         run: node tools/jev-bridge-migrate.mjs finalize
 
       # Rollback is explicit and never relies on a version rollback restoring secrets:
-      #   consumers get JEV_BRIDGE_TOKEN written back to the previous value;
-      #   the bridge gets its original code back (fallback: re-upload the saved source);
-      #   ACCESS_TOKEN / LEGACY_ACCESS_TOKEN are deleted from the bridge, and it is re-checked that the original code answers;
+      #   if finalize started, the bridge accepts the previous token again, then consumers get JEV_BRIDGE_TOKEN written back;
+      #   the bridge gets its original source back, then ACCESS_TOKEN / LEGACY_ACCESS_TOKEN are deleted, then the snapshot
+      #   version is redeployed where Cloudflare allows it, and it is re-checked that the original code answers;
       #   binding and secret names must equal the snapshot, and every consumer must work end to end on the previous token.
+      # It runs on failure and on cancellation (a person cancelling the run, or a step timing out).
       - name: Roll back to the snapshot and verify
-        if: failure() && env.MODE == 'rotate'
+        if: (failure() || cancelled()) && env.MODE == 'rotate'
+        timeout-minutes: 40
         run: node tools/jev-bridge-migrate.mjs rollback
 
       - name: Remove the job's secrets from the runner
         if: always()
+        timeout-minutes: 2
         shell: bash
         run: rm -rf "$STATE_DIR"
