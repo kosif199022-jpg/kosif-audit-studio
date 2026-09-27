@@ -148,5 +148,12 @@ test('the workflow rolls back on failure and on cancellation, and no step can ou
   for (const i of [stage, sw, finalize]) assert.equal(steps[i].if, "env.MODE == 'rotate'", `"${steps[i].name}" changes production only in rotate mode`);
   assert.equal(steps[rollback].if, "(failure() || cancelled()) && env.MODE == 'rotate'", 'rollback runs on failure and on cancellation');
   const last = steps[steps.length - 1];
-  assert.ok(rollback === steps.length - 2 && last.if === 'always()' && last.body.includes('rm -rf "$STATE_DIR"'), 'the job secrets are removed last, after rollback');
+  assert.ok(rollback === steps.length - 2 && last.if === 'always()' && last.body.includes('rm -rf "${STATE_DIR'), 'the job secrets are removed last, after rollback');
+
+  /* job-level env may only use the github, inputs, matrix, needs, secrets, strategy and vars contexts; anything else
+     (runner.temp was here) makes GitHub reject the whole file, so the workflow could never run */
+  const jobEnv = y.slice(y.indexOf('\n    env:\n'), y.indexOf('\n    steps:\n'));
+  const contexts = [...jobEnv.matchAll(/\$\{\{\s*([a-z_]+)\./g)].map((m) => m[1]);
+  assert.deepEqual(contexts.filter((c) => !['github', 'inputs', 'matrix', 'needs', 'secrets', 'strategy', 'vars'].includes(c)), [], 'job env uses only contexts GitHub allows there');
+  assert.ok(steps[0].body.includes('echo "STATE_DIR=$RUNNER_TEMP/jev-rotation" >> "$GITHUB_ENV"'), 'the state directory is set by the first step');
 });
