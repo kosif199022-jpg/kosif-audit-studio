@@ -97,6 +97,14 @@ export default {async fetch(request,env){
         if(String(run.status||'').toUpperCase()!=='COMPLETED'||!run.result)throw new Error(run&&run.error&&run.error.message?run.error.message:'TinyFish did not complete');
 
         const x=run.result;
+        const primaryFields=[
+          x.visual_summary,
+          x.visible_text,
+          x.numbers_and_tables,
+          x.important_facts
+        ].map((value)=>String(value||'').trim());
+        if(!primaryFields.some(Boolean))throw new Error('ChatGPT Web returned an empty analysis');
+
         const text=[
           '[تحليل ChatGPT Web للصورة عبر TinyFish]',
           'الملخص البصري: '+String(x.visual_summary||''),
@@ -105,8 +113,6 @@ export default {async fetch(request,env){
           'الحقائق المهمة: '+String(x.important_facts||''),
           'عدم اليقين: '+String(x.uncertainty||'')
         ].join('\n');
-
-        if(text.length<80)throw new Error('ChatGPT Web returned an empty analysis');
         return {data:text.slice(0,12000),method:'chatgpt-web-via-tinyfish',model:'ChatGPT Web via TinyFish'};
       }catch(e){
         return {error:e&&e.message?e.message:String(e)};
