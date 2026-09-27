@@ -1,0 +1,8 @@
+name = "jev-public"
+main = "worker.js"
+compatibility_date = "2026-09-27"
+workers_dev = true
+
+[[services]]
+binding = "JEV_BRIDGE"
+service = "jev-claude-bridge"
