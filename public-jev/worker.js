@@ -86,7 +86,7 @@ async function callJev(env, body) {
   return structured;
 }
 
-const PAGE = String.raw\`<!doctype html>
+const PAGE = String.raw`<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -214,7 +214,7 @@ $("#addChoice").onclick=()=>$("#choiceList").append(row(""));
 $("#addScore").onclick=()=>$("#scoreList").append(row(""));
 $$(".ex").forEach(x=>x.onclick=()=>{ q.value=x.dataset.q; if(x.dataset.mode)setMode(x.dataset.mode); q.focus(); });
 
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[c]));}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c==='"'?"&quot;":"&#39;");}
 function pct(n){return Math.round(Number(n||0)*1000)/10}
 function bars(items){
   return '<div class="bars">'+items.map(([label,p])=>'<div class="barrow"><div class="barlabel" title="'+esc(label)+'">'+esc(label)+'</div><div class="track"><div class="fill" style="width:'+Math.max(0,Math.min(100,pct(p)))+'%"></div></div><div class="pct">'+pct(p)+'%</div></div>').join("")+'</div>';
@@ -256,7 +256,7 @@ go.onclick=async()=>{
 };
 </script>
 </body>
-</html>\`;
+</html>`;
 
 export default {
   async fetch(request, env) {
