@@ -60,7 +60,8 @@ test('every element the browser script looks up exists on the page, including th
   assert.deepEqual(wanted.filter((id) => !ids.has(id)), []);
   for (const route of ['/api/chatgpt-web/status', '/api/extract', '/api/public-jev']) assert.ok(app.includes(`fetch('${route}'`), `the script calls ${route}`);
   assert.ok(app.includes("chatgptWebConnected?'جاهز للتحويل':'وضع احتياطي جاهز'") && app.includes("visionProviderText.textContent='وضع احتياطي جاهز'"), 'connected and fallback states remain visibly distinct without exposing provider details');
-  assert.ok(app.includes("const via='تم التحويل ✓'") && app.includes("fileStatus.textContent='تم التحويل ✓'"), 'successful file processing is reported consistently');
+  assert.ok(app.includes("let isImageAnalyzing=false") && app.includes("go.disabled=active") && app.includes("go.setAttribute('aria-busy',active?'true':'false')"), 'image analysis locks Jev until conversion finishes');
+  assert.ok(app.includes("<b>تم التحويل ✓</b>") && app.includes("fileStatus.textContent='تم التحويل ✓'"), 'successful file processing is reported consistently');
 });
 
 test('/health, unknown routes and method checks', async () => {
