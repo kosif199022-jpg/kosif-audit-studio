@@ -51,17 +51,20 @@ jobs:
 
       - name: Prepare Jev bridge credentials securely
         shell: bash
+        env:
+          BRIDGE_TOKEN_SECRET: ${{ secrets.JEV_BRIDGE_TOKEN }}
         run: |
           set -euo pipefail
-          BRIDGE_SOURCE="$(curl --fail --silent --show-error             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/jev-claude-bridge/content/v2")"
-          JEV_BRIDGE_TOKEN="$(printf '%s' "$BRIDGE_SOURCE" | python3 -c 'import sys,re; s=sys.stdin.read(); m=re.search(r"const\s+ACCESS_TOKEN\s*=\s*[\x27\x22]([^\x27\x22]+)",s); print(m.group(1) if m else "")')"
-          test -n "$JEV_BRIDGE_TOKEN"
+          # The bridge token comes from the JEV_BRIDGE_TOKEN repository secret (set it to the rotated token).
+          # It is never read out of another worker's deployed source.
+          if [ -z "${BRIDGE_TOKEN_SECRET:-}" ]; then
+            echo "::error::Missing JEV_BRIDGE_TOKEN repository secret — set it to the rotated bridge token"
+            exit 1
+          fi
           SESSION_SECRET="$(openssl rand -hex 32)"
-          echo "::add-mask::$JEV_BRIDGE_TOKEN"
           echo "::add-mask::$SESSION_SECRET"
-          echo "JEV_BRIDGE_TOKEN=$JEV_BRIDGE_TOKEN" >> "$GITHUB_ENV"
+          echo "JEV_BRIDGE_TOKEN=$BRIDGE_TOKEN_SECRET" >> "$GITHUB_ENV"
           echo "SESSION_SECRET=$SESSION_SECRET" >> "$GITHUB_ENV"
-
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
 
@@ -99,7 +102,7 @@ jobs:
           STATUS="$(curl --silent --output /tmp/jev-auth.json --write-out '%{http_code}'             -X POST "https://aghnam-jev-api.kosif199022.workers.dev/session"             -H "Origin: https://aghnam-alwadi.pages.dev"             -H "Content-Type: application/json"             --data '{"password":"__wrong_password_test__"}')"
           echo "Jev auth test HTTP: $STATUS"
           if [ "$STATUS" != "401" ]; then
-            cat /tmp/jev-auth.json || true
+            echo "::error::Jev auth gate returned $STATUS instead of 401"
             exit 1
           fi
           echo "Jev authentication gate: OK"
