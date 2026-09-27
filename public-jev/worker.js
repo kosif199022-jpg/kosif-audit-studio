@@ -16,7 +16,7 @@ function html(body, status = 200) {
     status,
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=300",
+      "cache-control": "no-store, max-age=0",
       "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
       "referrer-policy": "no-referrer",
       "x-content-type-options": "nosniff",
