@@ -18,6 +18,11 @@
  *               changed unless forced, and does not document which secret values a forced rollback uses.
  *             - bridge: the snapshot version is redeployed (forced); if that fails, the saved original source is
  *               re-uploaded. The original code checks its hard-coded token, so it works whatever the secrets hold.
+ *             - bridge secrets: ACCESS_TOKEN and LEGACY_ACCESS_TOKEN (added by stage) are deleted explicitly. The
+ *               snapshot refuses to start if the bridge already had either, so deleting them restores the exact set.
+ *             - the bridge is then probed: if the wrapped code answers (a secret change can release a new version of
+ *               the most recent upload), the original is deployed again the same way.
+ *             - bindings: every Worker's binding and secret names must equal the snapshot, or rollback reports it.
  *             - order: while LEGACY_ACCESS_TOKEN exists the wrapped bridge still accepts the old token, so consumers
  *               go back first; after finalize it does not, so the bridge goes back first.
  *
@@ -140,8 +145,10 @@ async function currentVersions(name) {
   if (!d || !d.versions || !d.versions.length) fail(`no active deployment found for ${name}`);
   return d.versions.map((v) => ({ version_id: v.version_id, percentage: v.percentage }));
 }
+const bindingNames = async (name) => ((await cf('GET', `${name}/settings`)).bindings || []).map((b) => `${b.type}:${b.name}`).sort();
 const putSecret = (name, key, text) => cf('PUT', `${name}/secrets`, { json: { name: key, text, type: 'secret_text' } });
 const deleteSecret = (name, key) => cf('DELETE', `${name}/secrets/${key}`);
+const ADDED_BRIDGE_SECRETS = ['ACCESS_TOKEN', 'LEGACY_ACCESS_TOKEN'];
 /* rolling back a Worker also restores that version's secrets; force acknowledges that */
 const deployVersions = (name, versions) => cf('POST', `${name}/deployments?force=true`, { json: { strategy: 'percentage', versions } });
 
@@ -210,9 +217,20 @@ export const steps = {
     for (const name of Object.keys(CONSUMERS)) if (await scriptExists(name)) consumers.push(name); else console.log(`· ${name} is not deployed; skipped`);
     check(await scriptExists(BRIDGE), `${BRIDGE} is not deployed`);
     check(consumers.length, 'no bridge consumer is deployed');
-    const rollback = {};
-    for (const name of [BRIDGE, ...consumers]) { rollback[name] = await currentVersions(name); console.log(`rollback point ${name}: ${rollback[name].map((v) => `${v.version_id}@${v.percentage}%`).join(' ')}`); }
-    writeState({ consumers, rollback, switched: [], mutated: false, finalized: false });
+    const rollback = {}, bindings = {};
+    for (const name of [BRIDGE, ...consumers]) {
+      rollback[name] = await currentVersions(name);
+      bindings[name] = await bindingNames(name);
+      console.log(`rollback point ${name}: ${rollback[name].map((v) => `${v.version_id}@${v.percentage}%`).join(' ')}; bindings ${bindings[name].join(', ')}`);
+    }
+    /* rollback deletes these two secrets; if the bridge already had one, its value could not be put back */
+    const clash = ADDED_BRIDGE_SECRETS.filter((k) => bindings[BRIDGE].includes(`secret_text:${k}`));
+    check(!clash.length, `${BRIDGE} already has secret(s) ${clash.join(', ')}; refusing, rollback could not restore them`);
+    for (const name of consumers) check(bindings[name].includes('secret_text:JEV_BRIDGE_TOKEN'), `${name} has no JEV_BRIDGE_TOKEN secret`);
+    /* baseline: each consumer works end to end now. The bridge only accepts its hard-coded token, so this proves every
+       consumer's current JEV_BRIDGE_TOKEN equals that token, the value rollback writes back. */
+    for (const name of consumers) await retry(`baseline: ${name} answers end to end before any change`, () => consumerEndToEnd(name, []), 3);
+    writeState({ consumers, rollback, bindings, switched: [], mutated: false, finalized: false });
   },
 
   async prepare() {
@@ -286,7 +304,11 @@ export const steps = {
     const s = readState();
     if (!s.mutated) { console.log('nothing to roll back: production was not changed'); return; }
     const { next, legacy } = secrets();
-    const bridgeBack = async () => {
+    const originalServes = async () => {
+      const h = await get(`${origin(BRIDGE)}/health`); let d = null; try { d = JSON.parse(h.text); } catch { /* not JSON */ }
+      return !(d && d.service === 'jev-claude-bridge' && 'auth' in d) && (await mcpToolsList(legacy));
+    };
+    const redeployOriginal = async () => {
       try {
         await deployVersions(BRIDGE, s.rollback[BRIDGE]);
         console.log(`↩ ${BRIDGE}: snapshot version ${s.rollback[BRIDGE].map((v) => v.version_id).join(', ')} redeployed`);
@@ -296,6 +318,15 @@ export const steps = {
         console.log(`↩ ${BRIDGE}: original source re-uploaded`);
       }
     };
+    const bridgeBack = async () => {
+      await redeployOriginal();
+      const present = await bindingNames(BRIDGE);
+      for (const k of ADDED_BRIDGE_SECRETS) if (present.includes(`secret_text:${k}`)) { await deleteSecret(BRIDGE, k); console.log(`↩ ${BRIDGE}: secret ${k} deleted`); }
+      /* a secret change releases a new version; make sure it is still the original code that answers */
+      let ok = false;
+      for (let i = 0; i < 6 && !ok; i++) { ok = await originalServes(); if (!ok) await sleep(RETRY_MS); }
+      if (!ok) { console.log(`· ${BRIDGE}: the wrapped code answers after the secret changes; deploying the original again`); await redeployOriginal(); }
+    };
     const consumersBack = async () => {
       for (const name of s.switched || []) {
         await putSecret(name, 'JEV_BRIDGE_TOKEN', legacy);
@@ -303,6 +334,12 @@ export const steps = {
       }
     };
     if (s.finalized) { await bridgeBack(); await consumersBack(); } else { await consumersBack(); await bridgeBack(); }
+    await retry(`after rollback: ${BRIDGE} serves its original code`, async () => check(await originalServes(), 'the wrapped bridge is still answering'));
+    for (const [name, names] of Object.entries(s.bindings || {})) {
+      const now = await bindingNames(name);
+      check(JSON.stringify(now) === JSON.stringify(names), `after rollback: ${name} bindings differ from the snapshot (now ${now.join(', ')})`);
+      console.log(`✓ after rollback: ${name} bindings and secret names match the snapshot`);
+    }
     await retry('after rollback: the bridge answers MCP with the previous token', async () => check(await mcpToolsList(legacy), 'previous token rejected'));
     for (const name of s.consumers) await retry(`after rollback: ${name} answers end to end`, () => consumerEndToEnd(name, [next, legacy]), 8);
     console.log('rollback verified: the previous token serves the bridge and every consumer again');

@@ -47,6 +47,9 @@ function simulate(opts = {}) {
     [API]: { n: 1, deployed: 'a1', versions: { a1: { secrets: { JEV_BRIDGE_TOKEN: OLD, SESSION_SECRET: 's' } } } },
   };
   const cur = (name) => scripts[name].versions[scripts[name].deployed];
+  /* a secret change makes a new version of the deployed code, or (harsher, opts.secretOpsUseLatestUpload) of the most
+     recent upload even after a rollback */
+  const secretBase = (name) => (opts.secretOpsUseLatestUpload && scripts[name].lastUpload ? { ...cur(name), code: scripts[name].lastUpload } : cur(name));
   const release = (name, v) => { const s = scripts[name]; const id = name[0] + (++s.n); s.versions[id] = v; s.deployed = id; return id; };
   const ok = (result = {}) => Response.json({ success: true, errors: [], result });
   const err = (status, code) => Response.json({ success: false, errors: [{ code, message: 'simulated' }] }, { status });
@@ -70,12 +73,13 @@ function simulate(opts = {}) {
     if (method === 'GET' && sub === 'settings') return ok({ bindings: Object.keys(cur(name).secrets).map((k) => ({ type: 'secret_text', name: k })).concat([{ type: 'service', name: 'X' }]), compatibility_date: '2026-09-01' });
     if (method === 'GET' && sub === 'deployments') return ok({ deployments: [{ id: 'd', versions: [{ version_id: s.deployed, percentage: 100 }] }] });
     if (method === 'GET' && sub === 'content/v2') return new Response(cur(name).code, { headers: { 'content-type': 'application/javascript' } });
-    if (method === 'PUT' && sub === 'secrets') { const b = JSON.parse(init.body); release(name, { ...cur(name), secrets: { ...cur(name).secrets, [b.name]: b.text } }); return ok({}); }
-    if (method === 'DELETE' && sub.startsWith('secrets/')) { const k = sub.slice(8), sec = { ...cur(name).secrets }; delete sec[k]; release(name, { ...cur(name), secrets: sec }); return ok(null); }
+    if (method === 'PUT' && sub === 'secrets') { const b = JSON.parse(init.body); release(name, { ...secretBase(name), secrets: { ...cur(name).secrets, [b.name]: b.text } }); return ok({}); }
+    if (method === 'DELETE' && sub.startsWith('secrets/')) { const k = sub.slice(8), sec = { ...cur(name).secrets }; if (!(k in sec)) return err(404, 10056); delete sec[k]; release(name, { ...secretBase(name), secrets: sec }); return ok(null); }
     if (method === 'PUT' && sub === '') {
       const meta = JSON.parse(await init.body.get('metadata').text());
       assert.ok(meta.keep_bindings.includes('secret_text') && meta.keep_bindings.includes('service'), 'upload keeps the existing secrets and bindings');
-      release(name, { ...cur(name), code: await init.body.get('worker.js').text() }); return ok({});
+      const code = await init.body.get('worker.js').text(); s.lastUpload = code;
+      release(name, { ...cur(name), code }); return ok({});
     }
     if (method === 'POST' && sub === 'deployments') {
       if (opts.deploymentsFail) return err(500, 10013);
@@ -147,6 +151,8 @@ for (const restores of [false, true]) {
     assert.match(r.rollbackError, /rolled back/);
     assert.ok(r.out.some((l) => l.includes('rollback verified')), r.out.join('\n'));
     assert.equal(sim.cur(BRIDGE).code, ORIGINAL, 'bridge runs its original code again');
+    assert.deepEqual(sim.cur(BRIDGE).secrets, {}, 'the secrets rotation added to the bridge are gone');
+    assert.ok(r.out.some((l) => l.includes(`${API} bindings and secret names match the snapshot`)));
     assert.equal(sim.cur(API).secrets.JEV_BRIDGE_TOKEN, OLD, 'consumer token written back explicitly');
     assert.equal(await probe(sim, OLD), true); assert.equal(await e2e(sim), true);
     assert.ok(noTokenInLogs(r));
@@ -157,8 +163,10 @@ for (const restores of [false, true]) {
     assert.equal(r.failed, 'finalize');
     assert.ok(r.out.some((l) => l.includes('rollback verified')), r.out.join('\n'));
     const order = r.out.filter((l) => l.startsWith('↩')).map((l) => l.split(':')[0]);
-    assert.deepEqual(order, [`↩ ${BRIDGE}`, `↩ ${API}`]);
+    assert.ok(order.includes(`↩ ${BRIDGE}`) && order.includes(`↩ ${API}`), order.join(' | '));
+    assert.ok(order.lastIndexOf(`↩ ${BRIDGE}`) < order.indexOf(`↩ ${API}`), 'every bridge step comes before the consumer');
     assert.equal(sim.cur(BRIDGE).code, ORIGINAL); assert.equal(sim.cur(API).secrets.JEV_BRIDGE_TOKEN, OLD);
+    assert.deepEqual(sim.cur(BRIDGE).secrets, {});
     assert.equal(await probe(sim, OLD), true); assert.equal(await e2e(sim), true);
     assert.ok(noTokenInLogs(r));
   });
@@ -175,9 +183,38 @@ test('the deployments API refusing the rollback falls back to re-uploading the o
 
 test('a failure before production changes rolls nothing back', async () => {
   const sim = simulate();
-  sim.scripts[BRIDGE].versions.b1.code = 'export default {}'; /* no hard-coded token: prepare refuses */
+  /* a working bridge whose token is not a plain literal: the transform cannot migrate it, so prepare refuses */
+  sim.scripts[BRIDGE].versions.b1.code = ORIGINAL.replace(`const ACCESS_TOKEN = "${OLD}";`, `const ACCESS_TOKEN = ["${OLD.slice(0, 10)}", "${OLD.slice(10)}"].join("");`);
   const r = await run(sim);
   assert.equal(r.failed, 'prepare');
   assert.ok(r.out.some((l) => l.includes('production was not changed')));
+  assert.equal(sim.scripts[BRIDGE].deployed, 'b1'); assert.equal(sim.scripts[API].deployed, 'a1');
+});
+
+test('a secret change that re-releases the wrapped upload is caught and the original deployed again', async () => {
+  const sim = simulate({ secretOpsUseLatestUpload: true, consumerBroken: ({ secrets }) => secrets.JEV_BRIDGE_TOKEN !== OLD });
+  const r = await run(sim);
+  assert.equal(r.failed, 'switch');
+  assert.ok(r.out.some((l) => l.includes('wrapped code answers after the secret changes')), r.out.join('\n'));
+  assert.ok(r.out.some((l) => l.includes('rollback verified')), r.out.join('\n'));
+  assert.equal(sim.cur(BRIDGE).code, ORIGINAL); assert.deepEqual(sim.cur(BRIDGE).secrets, {});
+  assert.equal(await probe(sim, OLD), true); assert.equal(await e2e(sim), true);
+  assert.ok(noTokenInLogs(r));
+});
+
+test('snapshot refuses when the bridge already has a secret rollback would delete', async () => {
+  const sim = simulate();
+  sim.scripts[BRIDGE].versions.b1.secrets = { LEGACY_ACCESS_TOKEN: 'pre-existing' };
+  const r = await run(sim);
+  assert.equal(r.failed, 'snapshot');
+  assert.ok(r.out.some((l) => l.includes('already has secret(s) LEGACY_ACCESS_TOKEN')));
+  assert.equal(sim.scripts[BRIDGE].deployed, 'b1');
+});
+
+test('snapshot refuses when a consumer does not work before any change', async () => {
+  const sim = simulate({ consumerBroken: () => true });
+  const r = await run(sim);
+  assert.equal(r.failed, 'snapshot');
+  assert.ok(r.out.some((l) => l.includes('baseline: aghnam-jev-api')));
   assert.equal(sim.scripts[BRIDGE].deployed, 'b1'); assert.equal(sim.scripts[API].deployed, 'a1');
 });

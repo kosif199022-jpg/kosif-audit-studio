@@ -83,6 +83,11 @@ jobs:
         if: env.MODE == 'rotate'
         run: node tools/jev-bridge-migrate.mjs finalize
 
+      # Rollback is explicit and never relies on a version rollback restoring secrets:
+      #   consumers get JEV_BRIDGE_TOKEN written back to the previous value;
+      #   the bridge gets its original code back (fallback: re-upload the saved source);
+      #   ACCESS_TOKEN / LEGACY_ACCESS_TOKEN are deleted from the bridge, and it is re-checked that the original code answers;
+      #   binding and secret names must equal the snapshot, and every consumer must work end to end on the previous token.
       - name: Roll back to the snapshot and verify
         if: failure() && env.MODE == 'rotate'
         run: node tools/jev-bridge-migrate.mjs rollback
