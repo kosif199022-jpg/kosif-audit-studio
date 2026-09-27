@@ -25,9 +25,17 @@ test('workspace navigation is bridged into the same light dashboard theme',()=>{
 
 test('dashboard theme loads after every V5 workbench style and is painted from first navigation',()=>{
   assert.equal(V5_STYLE_ASSETS.at(-1),'./dashboard-theme.css');
-  assert.match(shell,/name="theme-color" content="#f8fafc"/i);
-  assert.match(shell,/Tajawal:wght@300;400;500;700;800;900/i);
-  assert.match(shell,/href="\.\/dashboard-theme\.css"/i);
+  /* since e3e1bbb the root shell paints with the KOSIF One editorial theme, layered after the dashboard theme */
+  const editorial=readFileSync(new URL('../kosif-one-editorial-theme.css',import.meta.url),'utf8');
+  const paint=shell.match(/name="theme-color" content="(#[0-9a-f]{6})"/i)?.[1];
+  assert.equal(paint?.toLowerCase(),'#24113f');
+  assert.match(editorial,new RegExp(paint,'i'),'theme-color must be a colour the editorial theme paints');
+  assert.match(shell,/family=IBM\+Plex\+Sans\+Arabic:wght@400;500;600;700/i);
+  assert.match(shell,/family=Noto\+Kufi\+Arabic:wght@500;600;700;800/i);
+  for(const font of ['IBM Plex Sans Arabic','Noto Kufi Arabic']) assert.match(editorial,new RegExp(font),`${font} is loaded because the editorial theme uses it`);
+  const dash=shell.indexOf('href="./dashboard-theme.css"'),ed=shell.indexOf('href="./kosif-one-editorial-theme.css"');
+  assert.ok(dash>0,'dashboard theme is linked from first navigation');
+  assert.ok(ed>dash,'the editorial theme loads after the dashboard theme');
 });
 
 test('dashboard capability assets are in the offline shell without caching private APIs',()=>{
