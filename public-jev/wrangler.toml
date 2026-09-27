@@ -1,0 +1,14 @@
+name = "jev-public"
+main = "worker.js"
+compatibility_date = "2026-09-27"
+workers_dev = true
+
+[[services]]
+binding = "JEV_BRIDGE"
+service = "jev-claude-bridge"
+
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 20, period = 60, mitigation_timeout = 60 }
