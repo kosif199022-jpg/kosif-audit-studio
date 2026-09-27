@@ -12,7 +12,14 @@
  *             both tokens work, so consumers still on the old one keep running
  *   switch    each consumer's JEV_BRIDGE_TOKEN := new, then an end-to-end call through its public Jev endpoint
  *   finalize  delete LEGACY_ACCESS_TOKEN: the old token stops working only now, after every check has passed
- *   rollback  redeploy the snapshot versions, then prove the old path works again (consumers end to end)
+ *   rollback  put everything back explicitly, then prove the old path works again end to end:
+ *             - consumers: JEV_BRIDGE_TOKEN is written back to the previous value (the only thing rotation changed on
+ *               them). This does not rely on version rollback: Cloudflare refuses to roll back a Worker whose secrets
+ *               changed unless forced, and does not document which secret values a forced rollback uses.
+ *             - bridge: the snapshot version is redeployed (forced); if that fails, the saved original source is
+ *               re-uploaded. The original code checks its hard-coded token, so it works whatever the secrets hold.
+ *             - order: while LEGACY_ACCESS_TOKEN exists the wrapped bridge still accepts the old token, so consumers
+ *               go back first; after finalize it does not, so the bridge goes back first.
  *
  * Never printed, written to logs, or uploaded as an artifact: either token, the bridge source, or any response body.
  * Secrets live in STATE_DIR (mode 0600) for the lifetime of the job, and the workflow deletes that directory. Every
@@ -153,13 +160,14 @@ async function uploadBridge(code) {
 
 const origin = (name) => `https://${name}.${need('WORKERS_SUBDOMAIN')}.workers.dev`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const RETRY_MS = Number(process.env.JEV_RETRY_MS || 5000);
 const leaks = (text, tokens) => tokens.some((t) => t && text.includes(t)) || /\/mcp\/(?!\[redacted\])[^\s"'<>`)\\]+/.test(text);
 async function get(url, init) { const r = await fetch(url, { ...init, signal: AbortSignal.timeout(90_000) }); return { status: r.status, text: await r.text() }; }
 
 async function retry(label, fn, tries = 12) {
   let last;
   for (let i = 1; i <= tries; i++) {
-    try { await fn(); console.log(`✓ ${label}`); return; } catch (e) { last = e; if (i < tries) await sleep(5000); }
+    try { await fn(); console.log(`✓ ${label}`); return; } catch (e) { last = e; if (i < tries) await sleep(RETRY_MS); }
   }
   fail(`${label}: ${last && last.message}`);
 }
@@ -195,7 +203,7 @@ const writeState = (s) => writeFileSync(file('state.json'), JSON.stringify(s, nu
 const mask = (v) => console.log(`::add-mask::${v}`);
 const secrets = () => ({ next: readFileSync(file('new-token'), 'utf8'), legacy: readFileSync(file('legacy-token'), 'utf8') });
 
-const steps = {
+export const steps = {
   async snapshot() {
     mkdirSync(dir(), { recursive: true, mode: 0o700 });
     const consumers = [];
@@ -204,7 +212,7 @@ const steps = {
     check(consumers.length, 'no bridge consumer is deployed');
     const rollback = {};
     for (const name of [BRIDGE, ...consumers]) { rollback[name] = await currentVersions(name); console.log(`rollback point ${name}: ${rollback[name].map((v) => `${v.version_id}@${v.percentage}%`).join(' ')}`); }
-    writeState({ consumers, rollback, mutated: false, finalized: false });
+    writeState({ consumers, rollback, switched: [], mutated: false, finalized: false });
   },
 
   async prepare() {
@@ -224,6 +232,7 @@ const steps = {
     mask(out.legacyToken);
     check(out.legacyToken !== next, 'generated token equals the old one');
     writeSecretFile('legacy-token', out.legacyToken);
+    writeSecretFile('bridge-original.mjs', source); /* the explicit rollback path if redeploying the old version fails */
     writeFileSync(file('bridge.mjs'), out.code, { mode: 0o600 });
     const syntax = spawnSync(process.execPath, ['--check', file('bridge.mjs')], { encoding: 'utf8' });
     check(syntax.status === 0, 'the wrapped bridge module does not parse (output suppressed: it may quote source)');
@@ -250,6 +259,7 @@ const steps = {
   async switch() {
     const { next, legacy } = secrets(), s = readState();
     for (const name of s.consumers) {
+      s.switched.push(name); writeState(s); /* recorded first: a put that succeeds but errors on the way back still gets rolled back */
       await putSecret(name, 'JEV_BRIDGE_TOKEN', next);
       console.log(`✓ ${name}: JEV_BRIDGE_TOKEN updated`);
       await retry(`${name} answers end to end through the bridge`, () => consumerEndToEnd(name, [next, legacy]), 8);
@@ -275,13 +285,27 @@ const steps = {
     if (!existsSync(file('state.json'))) { console.log('nothing to roll back: no snapshot was taken'); return; }
     const s = readState();
     if (!s.mutated) { console.log('nothing to roll back: production was not changed'); return; }
-    for (const [name, versions] of Object.entries(s.rollback)) {
-      await deployVersions(name, versions);
-      console.log(`↩ ${name}: redeployed ${versions.map((v) => v.version_id).join(', ')}`);
-    }
-    const tokens = existsSync(file('new-token')) ? Object.values(secrets()) : [];
-    for (const name of s.consumers) await retry(`after rollback: ${name} answers end to end`, () => consumerEndToEnd(name, tokens), 8);
-    console.log('rollback verified: the original deployment serves every consumer again');
+    const { next, legacy } = secrets();
+    const bridgeBack = async () => {
+      try {
+        await deployVersions(BRIDGE, s.rollback[BRIDGE]);
+        console.log(`↩ ${BRIDGE}: snapshot version ${s.rollback[BRIDGE].map((v) => v.version_id).join(', ')} redeployed`);
+      } catch (e) {
+        console.log(`· redeploying the snapshot version failed (${e instanceof MigrationError ? e.message : e && e.name}); re-uploading the saved original source`);
+        await uploadBridge(readFileSync(file('bridge-original.mjs'), 'utf8'));
+        console.log(`↩ ${BRIDGE}: original source re-uploaded`);
+      }
+    };
+    const consumersBack = async () => {
+      for (const name of s.switched || []) {
+        await putSecret(name, 'JEV_BRIDGE_TOKEN', legacy);
+        console.log(`↩ ${name}: JEV_BRIDGE_TOKEN written back to its previous value`);
+      }
+    };
+    if (s.finalized) { await bridgeBack(); await consumersBack(); } else { await consumersBack(); await bridgeBack(); }
+    await retry('after rollback: the bridge answers MCP with the previous token', async () => check(await mcpToolsList(legacy), 'previous token rejected'));
+    for (const name of s.consumers) await retry(`after rollback: ${name} answers end to end`, () => consumerEndToEnd(name, [next, legacy]), 8);
+    console.log('rollback verified: the previous token serves the bridge and every consumer again');
     fail('rotation failed and was rolled back (see the failing step above)');
   },
 };

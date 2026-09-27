@@ -63,7 +63,7 @@ jobs:
           node-version: 22
 
       - name: Test the migration tool
-        run: node --test tests/jev-bridge-migrate.test.js
+        run: node --test tests/jev-bridge-migrate.test.js tests/jev-bridge-rotation-sim.test.js
 
       - name: Snapshot the rollback point
         run: node tools/jev-bridge-migrate.mjs snapshot
