@@ -184,6 +184,33 @@ test('/api/extract: when TinyFish fails or is not connected, the image falls bac
   });
 });
 
+test('/api/extract: empty TinyFish fields fall back, while concise real content is accepted', async () => {
+  const emptyAnswers = [
+    { status: 'COMPLETED', result: { visual_summary: '', visible_text: '', numbers_and_tables: '', important_facts: '', uncertainty: '' } },
+    { status: 'COMPLETED', result: { visual_summary: '   ', visible_text: '\n', numbers_and_tables: '\t', important_facts: '', uncertainty: 'غير واضح' } },
+  ];
+  let n = 60;
+  for (const answer of emptyAnswers) {
+    const env = tinyfishEnv({ AI: fakeAI('بديل بصري مؤكد') });
+    await withTinyFish(answer, async () => {
+      const d = await (await extract([['empty.png', 'image/png', new Uint8Array([137, 80, 78, 71])]], env, `198.51.100.${n++}`)).json();
+      assert.equal(d.documents[0].method, 'vision+text-extraction');
+      assert.ok(d.documents[0].data.includes('بديل بصري مؤكد'));
+      assert.equal(env.TINYFISH_UPLOADS.store.size, 0, 'the temporary upload is deleted after fallback');
+    });
+  }
+
+  const concise = { status: 'COMPLETED', result: { visual_summary: 'فاتورة', visible_text: '', numbers_and_tables: '', important_facts: '', uncertainty: '' } };
+  const env = tinyfishEnv({ AI: fakeAI('لا يجب أن يُستخدم') });
+  await withTinyFish(concise, async () => {
+    const d = await (await extract([['short.png', 'image/png', new Uint8Array([137, 80, 78, 71])]], env, '198.51.100.62')).json();
+    assert.equal(d.documents[0].method, 'chatgpt-web-via-tinyfish');
+    assert.ok(d.documents[0].data.includes('الملخص البصري: فاتورة'));
+    assert.equal(env.AI.calls.length, 0, 'concise meaningful TinyFish output stays primary');
+    assert.equal(env.TINYFISH_UPLOADS.store.size, 0, 'the temporary upload is deleted after success');
+  });
+});
+
 test('/api/extract: Cloudflare vision first, text extraction as helper; PDFs extracted; limits enforced', async () => {
   const ai = fakeAI('فاتورة بمبلغ 1,150 ريال');
   const d = await (await extract([['invoice.png', 'image/png', new Uint8Array([137, 80, 78, 71])], ['report.pdf', 'application/pdf', '%PDF-1.4']], { AI: ai }, '203.0.113.1')).json();
