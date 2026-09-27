@@ -6,6 +6,13 @@ import { authorizeEngagementOperation } from './engagement-auth.js';
 const origins=v=>String(v||'*').split(',').map(x=>x.trim()).filter(Boolean);
 function protectedOriginAllowed(origin,env){const allowed=origins(env.PERSISTENCE_ALLOWED_ORIGIN||env.ALLOWED_ORIGIN);return !origin||allowed.includes('*')||allowed.includes(origin)}
 function protectedCors(origin,env){const allowed=origins(env.PERSISTENCE_ALLOWED_ORIGIN||env.ALLOWED_ORIGIN),resolved=allowed.includes('*')?'*':(origin&&allowed.includes(origin)?origin:(allowed[0]||'null'));return{'Access-Control-Allow-Origin':resolved,'Access-Control-Allow-Methods':'POST,PUT,OPTIONS,GET','Access-Control-Allow-Headers':'Content-Type,Accept,Authorization,X-KOSIF-Engagement','Access-Control-Max-Age':'86400','Vary':'Origin'}}
+/* /health is read cross-origin by the canonical S-KOSIF app (https://s-kosif.pages.dev) and the audit studio: it answers
+   OPTIONS itself and every GET carries CORS for an origin listed in ALLOWED_ORIGIN or PERSISTENCE_ALLOWED_ORIGIN.
+   (The base response's CORS headers used to be dropped when the gateway rebuilt the health body.) */
+const listed=v=>String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
+function healthCors(origin,env){const allowed=[...listed(env.ALLOWED_ORIGIN),...listed(env.PERSISTENCE_ALLOWED_ORIGIN)];
+  const resolved=allowed.includes('*')?'*':(origin&&allowed.includes(origin)?origin:(allowed[0]||'null'));
+  return{'Access-Control-Allow-Origin':resolved,'Access-Control-Allow-Methods':'GET,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Accept','Access-Control-Max-Age':'86400','Vary':'Origin'}}
 function protectedJson(data,{status=200,headers={}}={}){return Response.json(data,{status,headers})}
 function applyProtectedHeaders(response,headers){const out=new Headers(response.headers);for(const [k,v] of Object.entries(headers))out.set(k,v);out.set('Cache-Control','private, no-store');return new Response(response.body,{status:response.status,statusText:response.statusText,headers:out})}
 
@@ -82,9 +89,14 @@ export default {
     }
     const protectedRead=await handleProtectedDocumentRead(request,env,ctx);
     if(protectedRead)return protectedRead;
+    if(url.pathname==='/health'&&request.method==='OPTIONS')return new Response(null,{status:204,headers:healthCors(request.headers.get('Origin'),env)});
     if(url.pathname==='/health'&&request.method==='GET'){
-      const base=await baseWorker.fetch(request,env,ctx),body=await base.json().catch(()=>({ok:base.ok}));
-      return Response.json({...body,engagementPersistence:persistenceHealth(env),documentUploadAuth:{required:Boolean(env.KOSIF_DB),mode:env.KOSIF_DB?'engagement-bearer':'compatibility'},documentReadAuth:{required:Boolean(env.KOSIF_DB),mode:env.KOSIF_DB?'engagement-bearer':'compatibility'}},{status:base.status,headers:base.headers});
+      /* the base worker checks one ALLOWED_ORIGIN value; health is public, so ask it without the Origin and apply the
+         listed origins here instead */
+      const bare=new Headers(request.headers);bare.delete('Origin');
+      const base=await baseWorker.fetch(new Request(request.url,{method:'GET',headers:bare}),env,ctx),body=await base.json().catch(()=>({ok:base.ok}));
+      const headers={...healthCors(request.headers.get('Origin'),env),'Cache-Control':'no-store'};
+      return Response.json({...body,engagementPersistence:persistenceHealth(env),documentUploadAuth:{required:Boolean(env.KOSIF_DB),mode:env.KOSIF_DB?'engagement-bearer':'compatibility'},documentReadAuth:{required:Boolean(env.KOSIF_DB),mode:env.KOSIF_DB?'engagement-bearer':'compatibility'}},{status:base.status,headers});
     }
     return baseWorker.fetch(request,env,ctx);
   }
