@@ -40,28 +40,24 @@ jobs:
 
       - name: Prepare Jev credentials
         shell: bash
-        env:
-          BRIDGE_TOKEN_SECRET: ${{ secrets.JEV_BRIDGE_TOKEN }}
         run: |
           set -euo pipefail
-          # The bridge token comes from the JEV_BRIDGE_TOKEN repository secret (set it to the rotated token).
-          # It is never read out of another worker's deployed source.
-          if [ -z "${BRIDGE_TOKEN_SECRET:-}" ]; then
-            echo "::error::Missing JEV_BRIDGE_TOKEN repository secret — set it to the rotated bridge token"
-            exit 1
-          fi
+          # The bridge token is not handled here. It lives only in the JEV_BRIDGE_TOKEN Worker secret, which the
+          # manual "Jev bridge — migrate and rotate credential" workflow writes; deploys keep it and check it exists.
           SESSION_SECRET="$(openssl rand -hex 32)"
           echo "::add-mask::$SESSION_SECRET"
-          echo "JEV_BRIDGE_TOKEN=$BRIDGE_TOKEN_SECRET" >> "$GITHUB_ENV"
           echo "SESSION_SECRET=$SESSION_SECRET" >> "$GITHUB_ENV"
       - name: Deploy Jev API for S.kosif
         shell: bash
         run: |
           set -euo pipefail
           npx wrangler deploy --config wrangler.jev.toml
-          printf '%s' "$JEV_BRIDGE_TOKEN" | npx wrangler secret put JEV_BRIDGE_TOKEN --name aghnam-jev-api
           printf '%s' "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET --name aghnam-jev-api
           npx wrangler deploy --config wrangler.jev.toml --keep-vars
+          if ! npx wrangler secret list --name aghnam-jev-api | grep -q 'JEV_BRIDGE_TOKEN'; then
+            echo "::error::aghnam-jev-api has no JEV_BRIDGE_TOKEN secret — run the manual Jev bridge rotation workflow"
+            exit 1
+          fi
 
       - name: Create Git-connected Cloudflare Pages project
         shell: bash

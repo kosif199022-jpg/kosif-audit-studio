@@ -1,0 +1,93 @@
+name: Jev bridge — migrate and rotate credential (manual)
+
+# Manual only. Moves jev-claude-bridge from its hard-coded ACCESS_TOKEN to an ACCESS_TOKEN Worker secret with a fresh
+# random value, and switches every consumer (aghnam-jev-api, jev-public) to that same value:
+#   snapshot → prepare → stage (both tokens accepted) → switch consumers → finalize (old token removed)
+# and, if any step after the first production change fails, rollback to the snapshot, verified end to end.
+# All logic, every Cloudflare call and every credential stays inside tools/jev-bridge-migrate.mjs (tested in
+# tests/jev-bridge-migrate.test.js). No token, bridge source or response body is ever logged or uploaded.
+#
+# Before the first run, create the GitHub Environment "jev-bridge-rotation" with required reviewers, and ideally move
+# CLOUDFLARE_API_TOKEN into it as an environment secret, so this job cannot start without an approval.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run: fetch and migrate the bridge source in memory, change nothing. rotate: change production."
+        type: choice
+        options: [dry-run, rotate]
+        default: dry-run
+      confirm:
+        description: 'For mode "rotate", type exactly: ROTATE jev-claude-bridge'
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jev-bridge-rotation
+  cancel-in-progress: false
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: jev-bridge-rotation
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 9ff3d8494afab356ecbf95a2a231a6b5
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      WORKERS_SUBDOMAIN: kosif199022
+      STATE_DIR: ${{ runner.temp }}/jev-rotation
+      MODE: ${{ inputs.mode }}
+      CONFIRM: ${{ inputs.confirm }}
+    steps:
+      - name: Check the confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = "rotate" ] && [ "$CONFIRM" != "ROTATE jev-claude-bridge" ]; then
+            echo "::error::mode rotate needs the confirmation text exactly: ROTATE jev-claude-bridge"
+            exit 1
+          fi
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then echo "::error::CLOUDFLARE_API_TOKEN is not available to this job"; exit 1; fi
+          echo "mode: $MODE"
+
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test the migration tool
+        run: node --test tests/jev-bridge-migrate.test.js
+
+      - name: Snapshot the rollback point
+        run: node tools/jev-bridge-migrate.mjs snapshot
+
+      - name: Generate the new token and migrate the bridge source in memory
+        run: node tools/jev-bridge-migrate.mjs prepare
+
+      - name: Stage — bridge accepts the new token (and the old one, for the switch-over)
+        if: env.MODE == 'rotate'
+        run: node tools/jev-bridge-migrate.mjs stage
+
+      - name: Switch consumers to the new token and check them end to end
+        if: env.MODE == 'rotate'
+        run: node tools/jev-bridge-migrate.mjs switch
+
+      - name: Finalize — remove the old token, verify everything again
+        if: env.MODE == 'rotate'
+        run: node tools/jev-bridge-migrate.mjs finalize
+
+      - name: Roll back to the snapshot and verify
+        if: failure() && env.MODE == 'rotate'
+        run: node tools/jev-bridge-migrate.mjs rollback
+
+      - name: Remove the job's secrets from the runner
+        if: always()
+        shell: bash
+        run: rm -rf "$STATE_DIR"
