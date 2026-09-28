@@ -43,6 +43,7 @@ test('automatic deploy workflows preserve SESSION_SECRET instead of rotating it'
     const yml = readFileSync(resolve(ROOT, rel), 'utf8');
     assert.doesNotMatch(yml, /openssl rand -hex 32/, `${rel} must not generate a session secret during deploy`);
     assert.doesNotMatch(yml, /secret put SESSION_SECRET/, `${rel} must not overwrite SESSION_SECRET during deploy`);
+    assert.doesNotMatch(yml, /\n  push:\n/, `${rel} must not auto-run production provisioning on merge`);
     assert.match(yml, /wrangler deploy --config wrangler\.jev\.toml --keep-vars/, `${rel} must preserve existing Worker state`);
     assert.match(yml, /secret list --name aghnam-jev-api[\s\S]*SESSION_SECRET/, `${rel} must fail closed when SESSION_SECRET is missing`);
     assert.match(yml, /secret list --name aghnam-jev-api[\s\S]*JEV_BRIDGE_TOKEN/, `${rel} must fail closed when JEV_BRIDGE_TOKEN is missing`);
