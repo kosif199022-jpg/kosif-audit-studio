@@ -38,24 +38,18 @@ jobs:
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
 
-      - name: Prepare Jev credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          # The bridge token is not handled here. It lives only in the JEV_BRIDGE_TOKEN Worker secret, which the
-          # manual "Jev bridge — migrate and rotate credential" workflow writes; deploys keep it and check it exists.
-          SESSION_SECRET="$(openssl rand -hex 32)"
-          echo "::add-mask::$SESSION_SECRET"
-          echo "SESSION_SECRET=$SESSION_SECRET" >> "$GITHUB_ENV"
       - name: Deploy Jev API for S.kosif
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler deploy --config wrangler.jev.toml
-          printf '%s' "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET --name aghnam-jev-api
+          # Automatic deploys must never rotate SESSION_SECRET. Keep all existing Worker vars/secrets.
           npx wrangler deploy --config wrangler.jev.toml --keep-vars
           if ! npx wrangler secret list --name aghnam-jev-api | grep -q 'JEV_BRIDGE_TOKEN'; then
             echo "::error::aghnam-jev-api has no JEV_BRIDGE_TOKEN secret — run the manual Jev bridge rotation workflow"
+            exit 1
+          fi
+          if ! npx wrangler secret list --name aghnam-jev-api | grep -q 'SESSION_SECRET'; then
+            echo "::error::aghnam-jev-api has no SESSION_SECRET secret — provision/rotate it explicitly; automatic deploys preserve it"
             exit 1
           fi
 
