@@ -1,10 +1,7 @@
 name: S.kosif Cloudflare
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/S.kosif-cloudflare.yml"
+  # Production provisioning is deliberately manual. Security/workflow changes must not redeploy production on merge.
   workflow_dispatch:
 
 permissions:
@@ -38,27 +35,20 @@ jobs:
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
 
-      - name: Prepare Jev credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          BRIDGE_SOURCE="$(curl --fail --silent --show-error             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/jev-claude-bridge/content/v2")"
-          JEV_BRIDGE_TOKEN="$(printf '%s' "$BRIDGE_SOURCE" | python3 -c 'import sys,re; s=sys.stdin.read(); m=re.search(r"const\s+ACCESS_TOKEN\s*=\s*[\x27\x22]([^\x27\x22]+)",s); print(m.group(1) if m else "")')"
-          test -n "$JEV_BRIDGE_TOKEN"
-          SESSION_SECRET="$(openssl rand -hex 32)"
-          echo "::add-mask::$JEV_BRIDGE_TOKEN"
-          echo "::add-mask::$SESSION_SECRET"
-          echo "JEV_BRIDGE_TOKEN=$JEV_BRIDGE_TOKEN" >> "$GITHUB_ENV"
-          echo "SESSION_SECRET=$SESSION_SECRET" >> "$GITHUB_ENV"
-
       - name: Deploy Jev API for S.kosif
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler deploy --config wrangler.jev.toml
-          printf '%s' "$JEV_BRIDGE_TOKEN" | npx wrangler secret put JEV_BRIDGE_TOKEN --name aghnam-jev-api
-          printf '%s' "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET --name aghnam-jev-api
+          # Automatic deploys must never rotate SESSION_SECRET. Keep all existing Worker vars/secrets.
           npx wrangler deploy --config wrangler.jev.toml --keep-vars
+          if ! npx wrangler secret list --name aghnam-jev-api | grep -q 'JEV_BRIDGE_TOKEN'; then
+            echo "::error::aghnam-jev-api has no JEV_BRIDGE_TOKEN secret — run the manual Jev bridge rotation workflow"
+            exit 1
+          fi
+          if ! npx wrangler secret list --name aghnam-jev-api | grep -q 'SESSION_SECRET'; then
+            echo "::error::aghnam-jev-api has no SESSION_SECRET secret — provision/rotate it explicitly; automatic deploys preserve it"
+            exit 1
+          fi
 
       - name: Create Git-connected Cloudflare Pages project
         shell: bash
@@ -99,7 +89,8 @@ jobs:
           import json
           d=json.load(open("/tmp/project-create-result.json"))
           if not d.get("success"):
-              print(json.dumps(d, ensure_ascii=False, indent=2))
+              # the repository is public, so its logs are: print error codes only, never the response body
+              print("Cloudflare error codes:", [e.get("code") for e in d.get("errors", [])])
               raise SystemExit("Cloudflare Pages project creation failed")
           r=d["result"]
           print("Created project:", r.get("name"))
@@ -108,7 +99,7 @@ jobs:
           PY
           else
             echo "Unexpected Cloudflare GET status: $STATUS"
-            cat /tmp/project-get.json || true
+            python3 -c 'import json; d=json.load(open("/tmp/project-get.json")); print("Cloudflare error codes:", [e.get("code") for e in d.get("errors", [])])' || true
             exit 1
           fi
 

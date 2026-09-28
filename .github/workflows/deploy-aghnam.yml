@@ -1,10 +1,7 @@
 name: Deploy Aghnam Alwadi + Jev
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/deploy-aghnam.yml"
+  # Production provisioning is deliberately manual. Security/workflow changes must not redeploy production on merge.
   workflow_dispatch:
 
 permissions:
@@ -49,19 +46,6 @@ jobs:
           print("Build validation: OK")
           PY
 
-      - name: Prepare Jev bridge credentials securely
-        shell: bash
-        run: |
-          set -euo pipefail
-          BRIDGE_SOURCE="$(curl --fail --silent --show-error             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/jev-claude-bridge/content/v2")"
-          JEV_BRIDGE_TOKEN="$(printf '%s' "$BRIDGE_SOURCE" | python3 -c 'import sys,re; s=sys.stdin.read(); m=re.search(r"const\s+ACCESS_TOKEN\s*=\s*[\x27\x22]([^\x27\x22]+)",s); print(m.group(1) if m else "")')"
-          test -n "$JEV_BRIDGE_TOKEN"
-          SESSION_SECRET="$(openssl rand -hex 32)"
-          echo "::add-mask::$JEV_BRIDGE_TOKEN"
-          echo "::add-mask::$SESSION_SECRET"
-          echo "JEV_BRIDGE_TOKEN=$JEV_BRIDGE_TOKEN" >> "$GITHUB_ENV"
-          echo "SESSION_SECRET=$SESSION_SECRET" >> "$GITHUB_ENV"
-
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
 
@@ -69,12 +53,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler deploy --config wrangler.jev.toml
-          printf '%s' "$JEV_BRIDGE_TOKEN" | npx wrangler secret put JEV_BRIDGE_TOKEN --name aghnam-jev-api
-          printf '%s' "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET --name aghnam-jev-api
+          # Automatic deploys must never rotate SESSION_SECRET. Keep all existing Worker vars/secrets.
           npx wrangler deploy --config wrangler.jev.toml --keep-vars
-          npx wrangler secret list --name aghnam-jev-api | grep -q 'JEV_BRIDGE_TOKEN'
-          npx wrangler secret list --name aghnam-jev-api | grep -q 'SESSION_SECRET'
+          if ! npx wrangler secret list --name aghnam-jev-api | grep -q 'JEV_BRIDGE_TOKEN'; then
+            echo "::error::aghnam-jev-api has no JEV_BRIDGE_TOKEN secret — run the manual Jev bridge rotation workflow"
+            exit 1
+          fi
+          if ! npx wrangler secret list --name aghnam-jev-api | grep -q 'SESSION_SECRET'; then
+            echo "::error::aghnam-jev-api has no SESSION_SECRET secret — provision/rotate it explicitly; automatic deploys preserve it"
+            exit 1
+          fi
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
@@ -99,7 +87,7 @@ jobs:
           STATUS="$(curl --silent --output /tmp/jev-auth.json --write-out '%{http_code}'             -X POST "https://aghnam-jev-api.kosif199022.workers.dev/session"             -H "Origin: https://aghnam-alwadi.pages.dev"             -H "Content-Type: application/json"             --data '{"password":"__wrong_password_test__"}')"
           echo "Jev auth test HTTP: $STATUS"
           if [ "$STATUS" != "401" ]; then
-            cat /tmp/jev-auth.json || true
+            echo "::error::Jev auth gate returned $STATUS instead of 401"
             exit 1
           fi
           echo "Jev authentication gate: OK"
