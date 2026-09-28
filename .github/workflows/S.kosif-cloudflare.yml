@@ -1,10 +1,7 @@
 name: S.kosif Cloudflare
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/S.kosif-cloudflare.yml"
+  # Production provisioning is deliberately manual. Security/workflow changes must not redeploy production on merge.
   workflow_dispatch:
 
 permissions:
