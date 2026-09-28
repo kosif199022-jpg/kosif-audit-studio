@@ -1,10 +1,7 @@
 name: Deploy Aghnam Alwadi + Jev
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/deploy-aghnam.yml"
+  # Production provisioning is deliberately manual. Security/workflow changes must not redeploy production on merge.
   workflow_dispatch:
 
 permissions:
