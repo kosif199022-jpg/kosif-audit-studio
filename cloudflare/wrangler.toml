@@ -5,7 +5,7 @@ workers_dev = true
 
 [vars]
 ALLOWED_ORIGIN = "*"
-PERSISTENCE_ALLOWED_ORIGIN = "https://kosif-audit-studio.pages.dev,https://kosif-audit-studio.taunt-apron-speak.chatgpt.site"
+PERSISTENCE_ALLOWED_ORIGIN = "https://s-kosif.pages.dev,https://kosif-audit-studio.pages.dev,https://kosif-audit-studio.taunt-apron-speak.chatgpt.site"
 DOCUMENT_MODEL = "gpt-5.6-terra"
 MAX_DOCUMENT_BYTES = "20971520"
 
