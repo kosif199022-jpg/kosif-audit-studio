@@ -1,8 +1,9 @@
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import pino from "pino";
-import makeWASocket, { useMultiFileAuthState, DisconnectReason } from "@whiskeysockets/baileys";
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, proto } from "@whiskeysockets/baileys";
 
 const PORT = Number(process.env.PORT || 8080);
 const AUTH_DIR = "/tmp/wa-auth";
@@ -17,6 +18,55 @@ let connection = "idle";
 let qr = null;
 let me = null;
 let starting = null;
+
+const BOOT = randomUUID();
+let receiptSeq = 0;
+const receipts = [];
+const RECEIPT_MAX = 4000;
+
+function statusLabel(raw) {
+  const table = proto?.WebMessageInfo?.Status;
+  if (typeof raw === "number" && table) {
+    for (const [name, value] of Object.entries(table)) if (value === raw) return name;
+  }
+  return String(raw ?? "");
+}
+
+function normalizeReceiptStatus(raw) {
+  const label = statusLabel(raw).toUpperCase();
+  if (!label) return null;
+  if (label.includes("READ") || label.includes("PLAYED")) return "read";
+  if (label.includes("DELIVERY")) return "delivered";
+  if (label.includes("SERVER") && label.includes("ACK")) return "accepted";
+  if (label.includes("ERROR") || label.includes("FAILED")) return "failed";
+  return null;
+}
+
+function timestampMs(value) {
+  let n;
+  if (typeof value === "bigint") n = Number(value);
+  else if (value && typeof value.toNumber === "function") n = value.toNumber();
+  else n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return Date.now();
+  return n < 1e12 ? n * 1000 : n;
+}
+
+function recordReceipt({ providerMessageId, remoteJid, rawStatus, normalizedStatus, providerTimestamp }) {
+  if (!providerMessageId || !normalizedStatus) return;
+  receipts.push({
+    eventId: `${BOOT}:${++receiptSeq}`,
+    provider: "baileys",
+    bootId: BOOT,
+    receiptSeq,
+    providerMessageId,
+    remoteJid: remoteJid || null,
+    rawStatus: statusLabel(rawStatus),
+    normalizedStatus,
+    providerTimestamp: timestampMs(providerTimestamp),
+    receivedAt: Date.now()
+  });
+  if (receipts.length > RECEIPT_MAX) receipts.splice(0, receipts.length - RECEIPT_MAX);
+}
 
 const json = (res, status, body) => {
   const data = Buffer.from(JSON.stringify(body));
@@ -117,6 +167,40 @@ async function startSocket() {
         sock = null;
       }
     });
+
+    s.ev.on("messages.update", (updates) => {
+      for (const entry of updates || []) {
+        const rawStatus = entry?.update?.status;
+        const normalizedStatus = normalizeReceiptStatus(rawStatus);
+        if (!normalizedStatus) continue;
+        recordReceipt({
+          providerMessageId: entry?.key?.id,
+          remoteJid: entry?.key?.remoteJid,
+          rawStatus,
+          normalizedStatus,
+          providerTimestamp: Date.now()
+        });
+      }
+    });
+
+    s.ev.on("message-receipt.update", (updates) => {
+      const list = Array.isArray(updates) ? updates : [updates];
+      for (const entry of list) {
+        const r = entry?.receipt || {};
+        const normalizedStatus =
+          r.readTimestamp || r.playedTimestamp ? "read" :
+          r.receiptTimestamp ? "delivered" :
+          null;
+        if (!normalizedStatus) continue;
+        recordReceipt({
+          providerMessageId: entry?.key?.id,
+          remoteJid: entry?.key?.remoteJid,
+          rawStatus: normalizedStatus,
+          normalizedStatus,
+          providerTimestamp: r.readTimestamp || r.playedTimestamp || r.receiptTimestamp || Date.now()
+        });
+      }
+    });
     return s;
   })();
   try { return await starting; } finally { starting = null; }
@@ -144,6 +228,32 @@ async function downloadMedia(url) {
   return { data: Buffer.from(ab), contentType: r.headers.get("content-type") || "" };
 }
 
+function validateMediaIntegrity(data, mimetype, filename) {
+  const type = String(mimetype || "").toLowerCase().split(";")[0];
+  const name = String(filename || "").toLowerCase();
+  if (type === "application/pdf" || name.endsWith(".pdf")) {
+    const head = data.subarray(0, 5).toString("latin1");
+    const tail = data.subarray(Math.max(0, data.length - 65536)).toString("latin1");
+    if (head !== "%PDF-" || !tail.includes("%%EOF")) throw new Error("invalid_or_truncated_pdf");
+  }
+  if (type === "image/png") {
+    const sig = data.subarray(0, 8).toString("hex");
+    if (sig !== "89504e470d0a1a0a") throw new Error("invalid_png_signature");
+  }
+  if (type === "image/jpeg" || type === "image/jpg") {
+    if (!(data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff)) throw new Error("invalid_jpeg_signature");
+  }
+  if (type === "image/gif") {
+    const sig = data.subarray(0, 6).toString("ascii");
+    if (sig !== "GIF87a" && sig !== "GIF89a") throw new Error("invalid_gif_signature");
+  }
+  if (type === "image/webp") {
+    if (data.subarray(0,4).toString("ascii") !== "RIFF" || data.subarray(8,12).toString("ascii") !== "WEBP") {
+      throw new Error("invalid_webp_signature");
+    }
+  }
+}
+
 function messageForMedia(data, mimetype, filename, caption) {
   const type = String(mimetype || "").toLowerCase();
   if (type.startsWith("image/")) return { image: data, mimetype: type, caption: caption || undefined };
@@ -169,7 +279,9 @@ async function prepareMedia(body) {
   } else {
     throw new Error("file_required");
   }
-  return messageForMedia(data, body.mimetype || detectedType, body.filename, body.caption || body.message || "");
+  const mimetype = body.mimetype || detectedType;
+  validateMediaIntegrity(data, mimetype, body.filename);
+  return messageForMedia(data, mimetype, body.filename, body.caption || body.message || "");
 }
 
 async function sendMedia(body) {
@@ -211,7 +323,14 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://container");
 
     if (url.pathname === "/status" && req.method === "GET") {
-      return json(res, 200, { restored, version, connection, qr, me });
+      return json(res, 200, { restored, version, connection, qr, me, boot: BOOT, receiptSeq });
+    }
+
+    if (url.pathname === "/receipts" && req.method === "GET") {
+      const after = Math.max(0, Number(url.searchParams.get("after") || 0));
+      const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 1000), 1000));
+      const items = receipts.filter((r) => r.receiptSeq > after).slice(0, limit);
+      return json(res, 200, { boot: BOOT, receiptSeq, receipts: items });
     }
 
     if (url.pathname === "/restore" && req.method === "POST") {
