@@ -8,7 +8,8 @@ test('KOSIF V5 is the primary root shell and legacy workspace remains accessible
   const index = read('index.html');
   const legacy = read('legacy.html');
   const continuous = read('continuous-review.html');
-  assert.match(index, /KOSIF 5 — Audit & Financial Reporting OS/);
+  /* the root shell's title was renamed on purpose in 38ce4c5 (unify KOSIF product flow and report language) */
+  assert.match(index, /<title>KOSIF — نظام تشغيل المحاسبة والمراجعة والتقارير<\/title>/);
   assert.match(index, /continuous-review\.js/);
   assert.doesNotMatch(index, /src="\.\/app\.js"/);
   assert.match(index, /href="\.\/legacy\.html"/);
