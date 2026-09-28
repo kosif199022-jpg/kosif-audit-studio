@@ -1,5 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /* The public Jev workers call the bridge at a URL that embeds its access token. A failure that echoes that URL must
    never reach the caller: every error body is scrubbed of the token and of any /mcp/<…> path. */
@@ -31,3 +36,15 @@ for (const [name, path, route] of [['public-jev', '../public-jev/worker.js', '/a
     assert.match(out, /\/mcp\/\[redacted\]/);
   });
 }
+
+
+test('automatic deploy workflows preserve SESSION_SECRET instead of rotating it', () => {
+  for (const rel of ['.github/workflows/S.kosif-cloudflare.yml', '.github/workflows/deploy-aghnam.yml']) {
+    const yml = readFileSync(resolve(ROOT, rel), 'utf8');
+    assert.doesNotMatch(yml, /openssl rand -hex 32/, `${rel} must not generate a session secret during deploy`);
+    assert.doesNotMatch(yml, /secret put SESSION_SECRET/, `${rel} must not overwrite SESSION_SECRET during deploy`);
+    assert.match(yml, /wrangler deploy --config wrangler\.jev\.toml --keep-vars/, `${rel} must preserve existing Worker state`);
+    assert.match(yml, /secret list --name aghnam-jev-api[\s\S]*SESSION_SECRET/, `${rel} must fail closed when SESSION_SECRET is missing`);
+    assert.match(yml, /secret list --name aghnam-jev-api[\s\S]*JEV_BRIDGE_TOKEN/, `${rel} must fail closed when JEV_BRIDGE_TOKEN is missing`);
+  }
+});
