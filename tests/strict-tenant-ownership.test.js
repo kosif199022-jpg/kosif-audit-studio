@@ -129,3 +129,154 @@ test('strict mode document gateway requires D1 rather than falling back to publi
  const read=await gateway.fetch(req('/api/engagements/ENG-X/documents'),env,{});
  assert.equal(read.status,503);
 });
+
+/* Server-enforced, engagement-only signed backup and restore PLAN (no writes). */
+const BACKUP_SECRET='test-backup-secret-do-not-deploy-'+ 'B'.repeat(70);
+const backupEnv=db=>({...envFor(db),KOSIF_BACKUP_HMAC_SECRET:BACKUP_SECRET,KOSIF_BACKUP_ADMIN_SUBJECT:'user-A'});
+async function seededEngagement(){
+ const db=new FakeDB(),identity=await signed(),created=await create(db,identity);
+ assert.equal(created.status,201);
+ const id=created.body.engagementId,access=created.body.accessToken;
+ const state={schemaVersion:1,payload:{engagement:{id,companyId:'company-A',
+   workspaceId:'workspace-A',entity:'Synthetic only'},councilRounds:[],documents:[{id:'DOC-1',sha256:'a'.repeat(64)}]}};
+ const write=await handleEngagementApi(req('/api/engagements/'+id+'/state',{
+   method:'PUT',identity,access,body:{expectedVersion:0,state}
+ }),backupEnv(db));
+ assert.equal(write.status,200);
+ return {db,identity,id,access,state};
+}
+const backupRequest=(fixture,opts={})=>handleEngagementApi(
+ req('/api/engagements/'+fixture.id+'/backup',{
+   identity:opts.identity===undefined?fixture.identity:opts.identity,
+   access:opts.access===undefined?fixture.access:opts.access
+ }),opts.env||backupEnv(fixture.db));
+const previewRequest=(fixture,archive,opts={})=>handleEngagementApi(
+ req('/api/engagements/'+fixture.id+'/backup/preview',{
+   method:'POST',identity:opts.identity===undefined?fixture.identity:opts.identity,
+   access:opts.access===undefined?fixture.access:opts.access,body:archive
+ }),opts.env||backupEnv(fixture.db));
+
+test('server issues HMAC-signed, engagement-only backup and non-mutating restore preview',async()=>{
+ const fixture=await seededEngagement(),before=structuredClone(fixture.db.sessions.get(fixture.id));
+ const response=await backupRequest(fixture),body=await response.json();
+ assert.equal(response.status,200);
+ assert.equal(response.headers.get('cache-control'),'no-store');
+ assert.equal(body.archive.companyId,'company-A');
+ assert.equal(body.archive.workspaceId,'workspace-A');
+ assert.equal(body.archive.adminSubject,'user-A');
+ assert.equal(body.archive.stateVersion,1);
+ assert.equal(body.archive.state.payload.engagement.id,fixture.id);
+ assert.ok(body.archive.scopeExclusions.includes('ledger'));
+ assert.ok(body.archive.scopeExclusions.includes('r2_document_bytes'));
+ assert.match(body.signature,/^[A-Za-z0-9_-]{43}$/);
+ assert.doesNotMatch(JSON.stringify(body),new RegExp(fixture.access));
+ const pre=await previewRequest(fixture,body),result=await pre.json();
+ assert.equal(pre.status,200);
+ assert.equal(result.ok,true);
+ assert.equal(result.serverSigned,true);
+ assert.equal(result.restoreAllowed,false);
+ assert.equal(result.writePerformed,false);
+ assert.equal(result.versionConflict,false);
+ assert.deepEqual(fixture.db.sessions.get(fixture.id),before);
+ assert.equal(fixture.db.events.length,1);
+});
+test('backup denied for cross-company, other-subject, missing identity and invalid bearer',async()=>{
+ const f=await seededEngagement();
+ const b=await signed({sub:'user-B',companyId:'company-B',workspaceId:'workspace-B'});
+ for(const options of [
+   {identity:b},{identity:await signed({sub:'user-Z'})},
+   {identity:null},{access:'wrong'}]){
+   const resp=await backupRequest(f,options);
+   assert.ok([401,403].includes(resp.status));
+ }
+});
+test('server backup is disabled for absent signing secret, absent admin allowlist and non-strict mode',async()=>{
+ const f=await seededEngagement();
+ for(const env of [
+  {...backupEnv(f.db),KOSIF_BACKUP_HMAC_SECRET:null},
+  {...backupEnv(f.db),KOSIF_BACKUP_ADMIN_SUBJECT:null},
+  {...backupEnv(f.db),KOSIF_TENANCY_MODE:'legacy'}
+ ]){
+   const resp=await backupRequest(f,{env});
+   assert.equal(resp.status,503);
+ }
+ const denied=await backupRequest(f,{env:{...backupEnv(f.db),KOSIF_BACKUP_ADMIN_SUBJECT:'admin-else'}});
+ assert.equal(denied.status,403);
+});
+test('server refuses tampering after signing and does not write any data',async()=>{
+ const f=await seededEngagement();
+ const signedBackup=await (await backupRequest(f)).json();
+ const altered=structuredClone(signedBackup);
+ altered.archive.state.payload.engagement.entity='Injected malicious organization';
+ const r=await previewRequest(f,altered);
+ assert.equal(r.status,400);
+ assert.equal((await r.json()).error,'backup_signature_invalid');
+ assert.equal(f.db.sessions.get(f.id).state_version,1);
+ const alteredSig=structuredClone(signedBackup);alteredSig.signature='A'.repeat(43);
+ const s=await previewRequest(f,alteredSig);
+ assert.equal(s.status,400);
+ assert.equal(f.db.sessions.get(f.id).state_version,1);
+});
+test('cross-tenant restore request fails even with a signed archive and correct engagement bearer',async()=>{
+ const f=await seededEngagement();
+ const archive=await (await backupRequest(f)).json();
+ const other=await signed({sub:'user-B',companyId:'company-B',workspaceId:'workspace-B'});
+ const denied=await previewRequest(f,archive,{identity:other});
+ assert.equal(denied.status,403);
+ assert.equal(f.db.sessions.get(f.id).state_version,1);
+});
+test('restore preview shows version conflict instead of applying overwrite',async()=>{
+ const f=await seededEngagement();
+ const archive=await (await backupRequest(f)).json();
+ const newer=await handleEngagementApi(req('/api/engagements/'+f.id+'/state',{
+   method:'PUT',identity:f.identity,access:f.access,
+   body:{expectedVersion:1,state:{...f.state,payload:{...f.state.payload,notes:['version 2']}}}
+ }),backupEnv(f.db));
+ assert.equal(newer.status,200);
+ const resp=await previewRequest(f,archive),plan=await resp.json();
+ assert.equal(resp.status,200);
+ assert.equal(plan.versionConflict,true);
+ assert.equal(plan.currentVersion,2);
+ assert.equal(plan.restoreAllowed,false);
+ assert.equal(f.db.sessions.get(f.id).state_version,2);
+});
+test('reject foreign-company state embedded in server row before signing backup',async()=>{
+ const f=await seededEngagement();
+ const row=f.db.sessions.get(f.id);
+ row.state_json=JSON.stringify({schemaVersion:1,payload:{engagement:{
+   id:f.id,companyId:'company-B',workspaceId:'workspace-A'}}});
+ const denied=await backupRequest(f);
+ assert.equal(denied.status,400);
+ assert.equal((await denied.json()).error,'backup_nested_company_scope_mismatch');
+});
+
+test('reject cross-company and cross-workspace records nested inside a signed engagement backup',async()=>{
+ const f=await seededEngagement();
+ const row=f.db.sessions.get(f.id);
+ for(const nested of [{id:'foreign',companyId:'company-B'}, {id:'foreign',workspaceId:'workspace-B'}]){
+   row.state_json=JSON.stringify({...f.state,payload:{...f.state.payload,
+     auditFindings:[{evidence:{payload:nested}}]}});
+   const response=await backupRequest(f);
+   assert.equal(response.status,400);
+   const result=await response.json();
+   assert.match(result.error,/backup_nested_(company|workspace)_scope_mismatch/);
+ }
+});
+test('backup signer refuses using the identity JWT secret as the HMAC backup signing secret',async()=>{
+ const f=await seededEngagement();
+ const response=await backupRequest(f,{env:{...backupEnv(f.db),
+   KOSIF_BACKUP_HMAC_SECRET:SECRET}});
+ assert.equal(response.status,503);
+ assert.equal((await response.json()).error,'backup_signing_secret_not_configured');
+});
+test('expired server-signed archives cannot be previewed even by an authenticated admin',async()=>{
+ const {issueEngagementBackup}=await import('../cloudflare/engagement-backup.js');
+ const f=await seededEngagement();
+ const identity={subject:'user-A',companyId:'company-A',workspaceId:'workspace-A'};
+ const signedOld=await issueEngagementBackup(backupEnv(f.db),f.id,identity,
+   f.db.sessions.get(f.id),Date.now()-3*24*60*60*1000);
+ const response=await previewRequest(f,signedOld);
+ assert.equal(response.status,400);
+ assert.equal((await response.json()).error,'backup_expired_or_invalid');
+ assert.equal(f.db.sessions.get(f.id).state_version,1);
+});

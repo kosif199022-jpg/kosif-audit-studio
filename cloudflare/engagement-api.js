@@ -1,5 +1,6 @@
 // KOSIF V5 — authenticated D1 persistence for engagement workspace state.
 import {authenticatedScope,ownedEngagement,requestedScope,strictTenantMode} from './tenant-guard.js';
+import {backupGate,issueEngagementBackup,previewEngagementRestore} from './engagement-backup.js';
 const MAX_STATE_BYTES=1_800_000;
 let schemaReady=false;
 const json=(data,{status=200,headers={}}={})=>Response.json(data,{status,headers});
@@ -26,6 +27,39 @@ async function create(req,env,headers){if(!await ensureSchema(env))return json({
 async function get(req,env,id,headers){const a=await authorize(req,env,id);if(a.error)return json({error:a.error},{status:a.status,headers});const meta=await env.KOSIF_DB.prepare(`SELECT id,entity_name,period_end,jurisdiction,framework,created_at FROM engagements WHERE id=?`).bind(id).first();let state=null;if(a.row.state_json)try{state=JSON.parse(a.row.state_json)}catch{return json({error:'stored_state_corrupt'},{status:500,headers})}return json({ok:true,engagement:meta,state,version:Number(a.row.state_version||0),stateHash:a.row.state_hash||null},{headers})}
 async function put(req,env,id,headers){const a=await authorize(req,env,id);if(a.error)return json({error:a.error},{status:a.status,headers});const body=await req.json().catch(()=>null);if(!body||typeof body.state!=='object'||body.state===null)return json({error:'state_required'},{status:400,headers});const expected=Number(body.expectedVersion);if(!Number.isInteger(expected)||expected<0)return json({error:'expected_version_required'},{status:400,headers});const current=Number(a.row.state_version||0);if(current!==expected)return json({error:'version_conflict',currentVersion:current,stateHash:a.row.state_hash||null},{status:409,headers});const embedded=body.state?.payload?.engagement?.id;if(embedded&&embedded!==id)return json({error:'engagement_id_mismatch'},{status:409,headers});if(strictTenantMode(env)){const bound=body.state?.payload?.engagement;if(!bound||bound.companyId!==a.identity.companyId||bound.workspaceId!==a.identity.workspaceId)return json({error:'state_company_workspace_mismatch'},{status:403,headers})}const stateJson=JSON.stringify(body.state),bytes=new TextEncoder().encode(stateJson).byteLength;if(bytes>MAX_STATE_BYTES)return json({error:'state_too_large',maxBytes:MAX_STATE_BYTES,size:bytes},{status:413,headers});const stateHash=await sha256(stateJson),now=new Date().toISOString(),version=current+1,res=await env.KOSIF_DB.prepare(`UPDATE engagement_sessions SET state_json=?,state_hash=?,state_version=?,updated_at=? WHERE engagement_id=? AND state_version=?`).bind(stateJson,stateHash,version,now,id,current).run();if(Number(res?.meta?.changes??res?.changes??1)===0){const r=await env.KOSIF_DB.prepare(`SELECT state_version,state_hash FROM engagement_sessions WHERE engagement_id=?`).bind(id).first();return json({error:'version_conflict',currentVersion:Number(r?.state_version||0),stateHash:r?.state_hash||null},{status:409,headers})}const eventHash=await sha256(`${id}|${version}|${stateHash}`);await env.KOSIF_DB.prepare(`INSERT INTO engagement_events (engagement_id,sequence,event_type,object_type,object_id,payload_hash,created_at) VALUES (?,?,'STATE_SNAPSHOT_SAVED','ENGAGEMENT',?,?,?)`).bind(id,version,id,eventHash,now).run();return json({ok:true,engagementId:id,version,stateHash,savedAt:now},{headers})}
 async function events(req,env,id,headers){const a=await authorize(req,env,id);if(a.error)return json({error:a.error},{status:a.status,headers});const r=await env.KOSIF_DB.prepare(`SELECT sequence,event_type,object_type,object_id,payload_hash,created_at FROM engagement_events WHERE engagement_id=? ORDER BY sequence DESC LIMIT 100`).bind(id).all();return json({ok:true,events:r.results||[]},{headers})}
+/* Signed ENGAGEMENT STATE only, never blanket browser/device/company backups.
+   Explicit secret and server-configured administrator identity required. */
+async function engagementBackup(req,env,id,headers,preview=false){
+  const outHeaders={...headers,'Cache-Control':'no-store','Pragma':'no-cache'};
+  if(!strictTenantMode(env))return json({error:'strict_tenant_backup_required'},{status:503,headers:outHeaders});
+  const a=await authorize(req,env,id);
+  if(a.error)return json({error:a.error},{status:a.status,headers:outHeaders});
+  const gate=await backupGate(env,a.identity);
+  if(gate.error)return json({error:gate.error},{status:gate.status,headers:outHeaders});
+  try{
+    if(preview){
+      if(!(req.headers.get('Content-Type')||'').includes('application/json'))
+        return json({error:'application_json_required'},{status:415,headers:outHeaders});
+      const announced=Number(req.headers.get('Content-Length')||'0');
+      if(announced>1_900_000)return json({error:'backup_package_too_large'},{status:413,headers:outHeaders});
+      const body=await req.text();
+      if(new TextEncoder().encode(body).byteLength>1_900_000)
+        return json({error:'backup_package_too_large'},{status:413,headers:outHeaders});
+      const result=await previewEngagementRestore(env,id,a.identity,a.row,JSON.parse(body));
+      return json(result,{headers:outHeaders});
+    }
+    const result=await issueEngagementBackup(env,id,a.identity,a.row);
+    return json(result,{headers:outHeaders});
+  }catch(error){
+    const reason=String(error?.message||'backup_unavailable');
+    const status=reason.includes('too_large')?413:reason.includes('not_available')?404:400;
+    return json({error:reason},{status,headers:outHeaders});
+  }
+}
 export function persistenceHealth(env){return{configured:Boolean(env.KOSIF_DB),maxStateBytes:MAX_STATE_BYTES,optimisticConcurrency:true,access:strictTenantMode(env)?'engagement bearer + verified company identity':'per-engagement bearer token',strictTenancy:strictTenantMode(env)}}
-export async function handleEngagementApi(req,env){const url=new URL(req.url),origin=req.headers.get('Origin'),headers=cors(origin,env);if(!originAllowed(origin,env))return json({error:'origin_not_allowed'},{status:403,headers});if(req.method==='OPTIONS')return new Response(null,{status:204,headers});if(url.pathname==='/api/engagements'&&req.method==='POST')return create(req,env,headers);let m=url.pathname.match(/^\/api\/engagements\/([^/]+)\/state$/);if(m&&req.method==='PUT')return put(req,env,decodeURIComponent(m[1]),headers);m=url.pathname.match(/^\/api\/engagements\/([^/]+)\/events$/);if(m&&req.method==='GET')return events(req,env,decodeURIComponent(m[1]),headers);m=url.pathname.match(/^\/api\/engagements\/([^/]+)$/);if(m&&req.method==='GET')return get(req,env,decodeURIComponent(m[1]),headers);return null}
+export async function handleEngagementApi(req,env){const url=new URL(req.url),origin=req.headers.get('Origin'),headers=cors(origin,env);if(!originAllowed(origin,env))return json({error:'origin_not_allowed'},{status:403,headers});if(req.method==='OPTIONS')return new Response(null,{status:204,headers});if(url.pathname==='/api/engagements'&&req.method==='POST')return create(req,env,headers);
+let backupMatch=url.pathname.match(/^\/api\/engagements\/([^/]+)\/backup$/);
+if(backupMatch&&req.method==='GET')return engagementBackup(req,env,decodeURIComponent(backupMatch[1]),headers);
+backupMatch=url.pathname.match(/^\/api\/engagements\/([^/]+)\/backup\/preview$/);
+if(backupMatch&&req.method==='POST')return engagementBackup(req,env,decodeURIComponent(backupMatch[1]),headers,true);let m=url.pathname.match(/^\/api\/engagements\/([^/]+)\/state$/);if(m&&req.method==='PUT')return put(req,env,decodeURIComponent(m[1]),headers);m=url.pathname.match(/^\/api\/engagements\/([^/]+)\/events$/);if(m&&req.method==='GET')return events(req,env,decodeURIComponent(m[1]),headers);m=url.pathname.match(/^\/api\/engagements\/([^/]+)$/);if(m&&req.method==='GET')return get(req,env,decodeURIComponent(m[1]),headers);return null}
 export{MAX_STATE_BYTES,originAllowed,equal};
