@@ -2,10 +2,11 @@
 import baseWorker from './document-worker.js';
 import { handleEngagementApi, persistenceHealth } from './engagement-api.js';
 import { authorizeEngagementOperation } from './engagement-auth.js';
+import {strictTenantMode} from './tenant-guard.js';
 
 const origins=v=>String(v||'*').split(',').map(x=>x.trim()).filter(Boolean);
 function protectedOriginAllowed(origin,env){const allowed=origins(env.PERSISTENCE_ALLOWED_ORIGIN||env.ALLOWED_ORIGIN);return !origin||allowed.includes('*')||allowed.includes(origin)}
-function protectedCors(origin,env){const allowed=origins(env.PERSISTENCE_ALLOWED_ORIGIN||env.ALLOWED_ORIGIN),resolved=allowed.includes('*')?'*':(origin&&allowed.includes(origin)?origin:(allowed[0]||'null'));return{'Access-Control-Allow-Origin':resolved,'Access-Control-Allow-Methods':'POST,PUT,OPTIONS,GET','Access-Control-Allow-Headers':'Content-Type,Accept,Authorization,X-KOSIF-Engagement','Access-Control-Max-Age':'86400','Vary':'Origin'}}
+function protectedCors(origin,env){const allowed=origins(env.PERSISTENCE_ALLOWED_ORIGIN||env.ALLOWED_ORIGIN),resolved=allowed.includes('*')?'*':(origin&&allowed.includes(origin)?origin:(allowed[0]||'null'));return{'Access-Control-Allow-Origin':resolved,'Access-Control-Allow-Methods':'POST,PUT,OPTIONS,GET','Access-Control-Allow-Headers':'Content-Type,Accept,Authorization,X-KOSIF-Engagement,X-KOSIF-Identity-Token','Access-Control-Max-Age':'86400','Vary':'Origin'}}
 /* /health is read cross-origin by the canonical S-KOSIF app (https://s-kosif.pages.dev) and the audit studio: it answers
    OPTIONS itself and every GET carries CORS for an origin listed in ALLOWED_ORIGIN or PERSISTENCE_ALLOWED_ORIGIN.
    (The base response's CORS headers used to be dropped when the gateway rebuilt the health body.) */
@@ -21,13 +22,24 @@ async function handleProtectedDocument(request,env){
   if(!protectedOriginAllowed(origin,env))return protectedJson({error:'origin_not_allowed'},{status:403,headers});
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
   if(request.method!=='POST')return null;
-  if(!env.KOSIF_DB?.prepare)return null;
+  if(!env.KOSIF_DB?.prepare)return strictTenantMode(env)?protectedJson({error:'d1_not_configured'},{status:503,headers}):null;
   const engagementId=(request.headers.get('X-KOSIF-Engagement')||'').trim();
   const auth=await authorizeEngagementOperation(request,env,engagementId);
   if(!auth.authorized)return protectedJson({error:auth.error,message:auth.message||null},{status:auth.status||403,headers});
   let form;try{form=await request.clone().formData()}catch{return protectedJson({error:'invalid_multipart_form'},{status:400,headers})}
   const bodyEngagement=String(form.get('engagementId')||'').trim();
   if(bodyEngagement&&bodyEngagement!==engagementId)return protectedJson({error:'engagement_id_mismatch'},{status:409,headers});
+  // D1 document IDs are global primary keys. Never allow a caller with a valid
+  // engagement bearer to reassign another engagement's document ID. Check before
+  // R2 upload/analysis as well as enforcing the atomic D1 UPSERT below.
+  const suppliedId=String(form.get('documentId')||'').trim();
+  if(/^DOC-[A-Z0-9-]{1,60}$/i.test(suppliedId)){
+    let prior;
+    try{prior=await documentOwner(env,suppliedId)}
+    catch{return protectedJson({error:'document_id_check_unavailable'},{status:503,headers})}
+    if(prior&&prior.engagement_id!==engagementId)
+      return protectedJson({error:'document_id_not_available'},{status:409,headers});
+  }
   return null;
 }
 
@@ -46,7 +58,7 @@ async function handleProtectedDocumentRead(request,env,ctx){
   if(!protectedOriginAllowed(origin,env))return protectedJson({error:'origin_not_allowed'},{status:403,headers});
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
   if(request.method!=='GET')return protectedJson({error:'method_not_allowed'},{status:405,headers});
-  if(!env.KOSIF_DB?.prepare)return null;
+  if(!env.KOSIF_DB?.prepare)return strictTenantMode(env)?protectedJson({error:'d1_not_configured'},{status:503,headers}):null;
 
   let engagementId,documentId=null,row=null;
   if(listMatch)engagementId=decodeURIComponent(listMatch[1]);
@@ -96,7 +108,7 @@ export default {
       const bare=new Headers(request.headers);bare.delete('Origin');
       const base=await baseWorker.fetch(new Request(request.url,{method:'GET',headers:bare}),env,ctx),body=await base.json().catch(()=>({ok:base.ok}));
       const headers={...healthCors(request.headers.get('Origin'),env),'Cache-Control':'no-store'};
-      return Response.json({...body,engagementPersistence:persistenceHealth(env),documentUploadAuth:{required:Boolean(env.KOSIF_DB),mode:env.KOSIF_DB?'engagement-bearer':'compatibility'},documentReadAuth:{required:Boolean(env.KOSIF_DB),mode:env.KOSIF_DB?'engagement-bearer':'compatibility'}},{status:base.status,headers});
+      return Response.json({...body,engagementPersistence:persistenceHealth(env),documentUploadAuth:{required:Boolean(env.KOSIF_DB)||strictTenantMode(env),mode:strictTenantMode(env)?'strict-company-identity-and-engagement-bearer':env.KOSIF_DB?'engagement-bearer':'compatibility'},documentReadAuth:{required:Boolean(env.KOSIF_DB)||strictTenantMode(env),mode:strictTenantMode(env)?'strict-company-identity-and-engagement-bearer':env.KOSIF_DB?'engagement-bearer':'compatibility'}},{status:base.status,headers});
     }
     return baseWorker.fetch(request,env,ctx);
   }

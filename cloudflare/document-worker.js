@@ -142,8 +142,21 @@ async function persistDocument(env, document, buffer) {
   }
   if (env.KOSIF_DB?.prepare) {
     try {
-      await env.KOSIF_DB.prepare(`INSERT OR REPLACE INTO documents (id, engagement_id, name, mime_type, size_bytes, sha256, storage_key, document_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .bind(document.id, document.engagementId, document.name, document.mimeType, document.sizeBytes, document.sha256, result.r2.persisted ? document.storageKey : null, document.documentType, document.createdAt).run();
+      // Enforce engagement ownership atomically on globally unique document IDs.
+      // An existing ID from another engagement must never be reassigned.
+      const write = await env.KOSIF_DB.prepare(`INSERT INTO documents
+        (id, engagement_id, name, mime_type, size_bytes, sha256, storage_key, document_type, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          name=excluded.name,mime_type=excluded.mime_type,size_bytes=excluded.size_bytes,
+          sha256=excluded.sha256,storage_key=excluded.storage_key,
+          document_type=excluded.document_type,created_at=excluded.created_at
+        WHERE documents.engagement_id=excluded.engagement_id`)
+        .bind(document.id, document.engagementId, document.name, document.mimeType,
+          document.sizeBytes, document.sha256,
+          result.r2.persisted ? document.storageKey : null, document.documentType,
+          document.createdAt).run();
+      if(write?.meta?.changes===0)throw new Error('document_id_not_available');
       result.d1.persisted = true;
     } catch (error) { result.d1.error = error?.message || 'd1_document_write_failed'; }
   }
@@ -187,6 +200,14 @@ async function analyzeDocument(request, env, headers) {
   const storageKey = `${engagementId}/${id}/v1/${name}`;
   const document = { id, engagementId, requestId, name, mimeType: file.type || 'application/octet-stream', sizeBytes: file.size, sha256, documentType, version: 1, storageKey, createdAt: new Date().toISOString() };
   const storage = await persistDocument(env, document, buffer);
+  // An unsuccessful D1 write is NOT a stored document. In particular, a
+  // cross-engagement ID collision must never be reported as a successful upload
+  // or passed to downstream AI analysis, even if an R2 object was staged.
+  if (env.KOSIF_DB?.prepare && !storage.d1.persisted) {
+    const collision = storage.d1.error === 'document_id_not_available';
+    return json({error:collision?'document_id_not_available':'document_persistence_unavailable'},
+      {status:collision?409:503,headers});
+  }
   let aiResult;
   try { aiResult = await callOpenAI(env, file, buffer, { metadataType: documentType, jurisdiction, framework }); }
   catch (error) {

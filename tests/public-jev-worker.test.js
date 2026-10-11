@@ -22,7 +22,7 @@ test('the worker is valid JavaScript (node --check) with one complete entry poin
   assert.equal(r.status, 0, r.stderr.split('\n').filter((l) => /Error/.test(l)).join('\n'));
   const source = readFileSync(ROOT + FILE, 'utf8');
   assert.equal(source.match(/^export default \{async fetch\(request,env\)\{/gm)?.length, 1);
-  assert.ok(source.endsWith("return json({ok:false,error:'Not found'},404);\n}};"), 'the entry point is closed');
+  assert.ok(source.replace(/\r\n/g, '\n').trimEnd().endsWith("return json({ok:false,error:'Not found'},404);\n}};"), 'the entry point is closed');
   assert.equal(typeof (await load()).fetch, 'function');
 });
 

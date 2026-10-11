@@ -1,0 +1,36 @@
+# KOSIF Audit: isolated infrastructure provisioned 2026-10-11.
+# NOT deployable until a trusted identity issuer and server-only secrets are installed.
+# Never use this file to alter the existing kosif-audit-realtime production Worker.
+# Use only --config cloudflare/wrangler.staging.toml --env staging after approvals.
+name = "kosif-audit-tenant"
+main = "gateway-worker.js"
+compatibility_date = "2026-09-10"
+workers_dev = false
+
+[env.staging]
+name = "kosif-audit-tenant-staging-20261011"
+workers_dev = false
+
+[env.staging.vars]
+KOSIF_TENANCY_MODE = "strict"
+KOSIF_AUTH_AUDIENCE = "kosif-audit-staging"
+PERSISTENCE_ALLOWED_ORIGIN = "https://s-kosif.pages.dev"
+ALLOWED_ORIGIN = "https://s-kosif.pages.dev"
+DOCUMENT_MODEL = "gpt-5.6-terra"
+MAX_DOCUMENT_BYTES = "20971520"
+
+# Required separately, after a REAL trusted issuer exists:
+# KOSIF_AUTH_ISSUER (non-secret)
+# KOSIF_AUTH_JWT_SECRET (server-only secret, NEVER written to Git)
+# KOSIF_BACKUP_HMAC_SECRET (separate server-only secret)
+# KOSIF_BACKUP_ADMIN_SUBJECT (server-only administrator identity)
+# The current issuer is intentionally MISSING: the release gate must reject.
+
+[[env.staging.d1_databases]]
+binding = "KOSIF_DB"
+database_name = "kosif-audit-tenant-staging-20261011"
+database_id = "2bf580c6-6a80-41bb-a59c-f96a6b4d3c0f"
+
+[[env.staging.r2_buckets]]
+binding = "KOSIF_DOCUMENTS"
+bucket_name = "kosif-audit-tenant-staging-docs-20261011"
