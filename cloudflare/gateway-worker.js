@@ -29,6 +29,17 @@ async function handleProtectedDocument(request,env){
   let form;try{form=await request.clone().formData()}catch{return protectedJson({error:'invalid_multipart_form'},{status:400,headers})}
   const bodyEngagement=String(form.get('engagementId')||'').trim();
   if(bodyEngagement&&bodyEngagement!==engagementId)return protectedJson({error:'engagement_id_mismatch'},{status:409,headers});
+  // D1 document IDs are global primary keys. Never allow a caller with a valid
+  // engagement bearer to reassign another engagement's document ID. Check before
+  // R2 upload/analysis as well as enforcing the atomic D1 UPSERT below.
+  const suppliedId=String(form.get('documentId')||'').trim();
+  if(/^DOC-[A-Z0-9-]{1,60}$/i.test(suppliedId)){
+    let prior;
+    try{prior=await documentOwner(env,suppliedId)}
+    catch{return protectedJson({error:'document_id_check_unavailable'},{status:503,headers})}
+    if(prior&&prior.engagement_id!==engagementId)
+      return protectedJson({error:'document_id_not_available'},{status:409,headers});
+  }
   return null;
 }
 
