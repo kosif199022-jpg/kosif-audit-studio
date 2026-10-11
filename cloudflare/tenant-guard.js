@@ -56,3 +56,44 @@ export function requestedScope(body,identity) {
     return error('company_workspace_mismatch',403);
   return identity;
 }
+
+
+/**
+ * Validates all explicit tenant markers in a persisted engagement state before
+ * any PUT or GET may cross the strict-tenant boundary. Never assigns missing
+ * ownership: untagged legacy descendants still need provenance migration.
+ * No app/browser-supplied role or owner assertion is accepted as authority.
+ */
+export function validateEngagementTenantState(state,engagementId,identity){
+  if(!state||typeof state!=='object'||Array.isArray(state)||
+      !ID.test(String(engagementId||''))||
+      !ID.test(String(identity?.companyId||''))||
+      !ID.test(String(identity?.workspaceId||'')) ||
+      identity?.legacy || identity?.error)
+    return {error:'state_tenant_scope_invalid',status:403};
+  const embedded=state?.payload?.engagement;
+  if(!embedded||typeof embedded!=='object'||Array.isArray(embedded)||
+     embedded.id!==engagementId||embedded.companyId!==identity.companyId||
+     embedded.workspaceId!==identity.workspaceId)
+    return {error:'state_company_workspace_mismatch',status:403};
+  const queue=[[state,0]],visited=new WeakSet();let nodes=0;
+  while(queue.length){
+    const [node,depth]=queue.pop();
+    if(!node||typeof node!=='object')continue;
+    if(visited.has(node))continue;
+    visited.add(node);
+    if(++nodes>20_000||depth>64)
+      return {error:'state_tenant_graph_too_large',status:413};
+    for(const key of Object.keys(node)){
+      if(['__proto__','constructor','prototype'].includes(key))
+        return {error:'state_tenant_unsafe_key',status:400};
+      const value=node[key];
+      if(key==='companyId'&&value!==identity.companyId)
+        return {error:'state_nested_company_scope_mismatch',status:403};
+      if(key==='workspaceId'&&value!==identity.workspaceId)
+        return {error:'state_nested_workspace_scope_mismatch',status:403};
+      if(value&&typeof value==='object')queue.push([value,depth+1]);
+    }
+  }
+  return {ok:true};
+}

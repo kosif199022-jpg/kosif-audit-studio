@@ -3,6 +3,7 @@
  * NOT a complete company backup (excludes attached R2 document bytes, external
  * ledgers, and orphan localStorage), nor approval to execute restoration.
  */
+import {validateEngagementTenantState} from './tenant-guard.js';
 const SCHEMA='kosif-engagement-backup-v1';
 const encoder=new TextEncoder();
 const secureId=v=>typeof v==='string'&&/^[A-Za-z0-9._:-]{1,128}$/.test(v);
@@ -61,6 +62,8 @@ function snapshotAllowed(row,engagementId,identity){
   let state;
   try{state=JSON.parse(row.state_json)}catch{throw Error('backup_state_corrupt')}
   assertStateScope(state,engagementId,identity);
+  const deepScope=validateEngagementTenantState(state,engagementId,identity);
+  if(deepScope.error)throw Error('backup_source_'+deepScope.error);
   const version=Number(row.state_version);
   if(!Number.isSafeInteger(version)||version<0)throw Error('backup_version_invalid');
   return {state,version};
@@ -100,6 +103,8 @@ export async function previewEngagementRestore(env,engagementId,identity,row,env
      expiry<=now||expiry-created>24*60*60*1000+60_000)throw Error('backup_expired_or_invalid');
   if(!Number.isSafeInteger(archive.stateVersion)||archive.stateVersion<0)throw Error('backup_version_invalid');
   assertStateScope(archive.state,engagementId,identity);
+  const deepScope=validateEngagementTenantState(archive.state,engagementId,identity);
+  if(deepScope.error)throw Error('backup_package_'+deepScope.error);
   if(await sha(JSON.stringify(archive.state))!==archive.stateHash)throw Error('backup_state_hash_mismatch');
   const current=snapshotAllowed(row,engagementId,identity);
   return {

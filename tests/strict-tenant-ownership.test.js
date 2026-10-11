@@ -280,3 +280,109 @@ test('expired server-signed archives cannot be previewed even by an authenticate
  assert.equal((await response.json()).error,'backup_expired_or_invalid');
  assert.equal(f.db.sessions.get(f.id).state_version,1);
 });
+
+/* Prevent poisoning a valid owner's engagement with nested foreign company state.
+   This protects persistence, not just later backup export. */
+test('strict state PUT rejects explicitly foreign tenant ownership at any nested depth without saving or events',async()=>{
+ const fixture=await seededEngagement(),before=structuredClone(fixture.db.sessions.get(fixture.id)),beforeEvents=fixture.db.events.length;
+ const forgedStates=[
+  {councilRounds:[{id:'R-1',positions:[{seatId:'x',companyId:'company-B'}]}]},
+  {documents:[{id:'DOC-2',metadata:{companyId:'company-A',workspaceId:'workspace-B'}}]},
+  {PBC:[{id:'pbc',scope:{companyId:null}}]},
+  {issues:[{metadata:{tenant:{workspaceId:7}}}]}
+ ];
+ for(const patch of forgedStates){
+  const state={schemaVersion:1,payload:{engagement:{id:fixture.id,companyId:'company-A',workspaceId:'workspace-A'},...patch}};
+  const response=await handleEngagementApi(req('/api/engagements/'+fixture.id+'/state',{
+   method:'PUT',access:fixture.access,identity:fixture.identity,
+   body:{expectedVersion:1,state}}),backupEnv(fixture.db));
+  assert.equal(response.status,403);
+  const error=(await response.json()).error;
+  assert.match(error,/state_nested_.*_scope_mismatch/);
+  assert.deepEqual(fixture.db.sessions.get(fixture.id),before);
+  assert.equal(fixture.db.events.length,beforeEvents);
+ }
+});
+test('strict state PUT rejects dangerous property names, malformed nested tenant owner, and oversized state graph',async()=>{
+ const f=await seededEngagement();
+ const base={schemaVersion:1,payload:{engagement:{id:f.id,companyId:'company-A',workspaceId:'workspace-A'}}};
+ const withUnsafe=JSON.parse(JSON.stringify(base));
+ withUnsafe.payload.engagement.meta=JSON.parse('{"__proto__":{"companyId":"company-B"}}');
+ const denied=await handleEngagementApi(req('/api/engagements/'+f.id+'/state',{
+  method:'PUT',access:f.access,identity:f.identity,
+  body:{expectedVersion:1,state:withUnsafe}}),backupEnv(f.db));
+ assert.equal(denied.status,400);
+ assert.equal((await denied.json()).error,'state_tenant_unsafe_key');
+ const withDepth=structuredClone(base);let nested=withDepth.payload.engagement;
+ for(let i=0;i<80;i++){nested.nested={};nested=nested.nested}
+ const deep=await handleEngagementApi(req('/api/engagements/'+f.id+'/state',{
+  method:'PUT',access:f.access,identity:f.identity,
+  body:{expectedVersion:1,state:withDepth}}),backupEnv(f.db));
+ assert.equal(deep.status,413);
+ assert.equal((await deep.json()).error,'state_tenant_graph_too_large');
+ assert.equal(f.db.sessions.get(f.id).state_version,1);
+});
+test('strict GET fails closed for old D1 snapshot polluted with foreign company data, never returns the stored state',async()=>{
+ const f=await seededEngagement();
+ const saved=f.db.sessions.get(f.id),original=saved.state_json;
+ const polluted=JSON.parse(original);
+ polluted.payload.documents=[{id:'DOC-foreign',companyId:'company-B',title:'SECRET_COMPANY_B'}];
+ saved.state_json=JSON.stringify(polluted);
+ const response=await handleEngagementApi(req('/api/engagements/'+f.id,{
+  access:f.access,identity:f.identity}),backupEnv(f.db));
+ assert.equal(response.status,409);
+ const body=await response.json();
+ assert.equal(body.error,'stored_state_tenant_scope_invalid');
+ assert.doesNotMatch(JSON.stringify(body),/SECRET_COMPANY_B/);
+ assert.equal(saved.state_json,JSON.stringify(polluted),'GET must not modify prior records');
+ saved.state_json=original;
+ const allowed=await handleEngagementApi(req('/api/engagements/'+f.id,{
+  access:f.access,identity:f.identity}),backupEnv(f.db));
+ assert.equal(allowed.status,200);
+});
+test('strict state accepts repeated matching nested scope while maintaining cross-company issuer and bearer denials',async()=>{
+ const f=await seededEngagement(),before=f.db.sessions.get(f.id).state_version;
+ const state={schemaVersion:1,payload:{engagement:{id:f.id,companyId:'company-A',workspaceId:'workspace-A'},
+  requests:[{id:'REQ-1',companyId:'company-A',workspaceId:'workspace-A',detail:{companyId:'company-A'}}]}};
+ const good=await handleEngagementApi(req('/api/engagements/'+f.id+'/state',{
+  method:'PUT',access:f.access,identity:f.identity,body:{expectedVersion:before,state}}),backupEnv(f.db));
+ assert.equal(good.status,200);assert.equal(f.db.sessions.get(f.id).state_version,before+1);
+ const b=await signed({sub:'user-B',companyId:'company-B',workspaceId:'workspace-B'});
+ const wrong=await handleEngagementApi(req('/api/engagements/'+f.id,{
+  access:f.access,identity:b}),backupEnv(f.db));
+ assert.equal(wrong.status,403);
+ const okay=await handleEngagementApi(req('/api/engagements/'+f.id,{
+  access:f.access,identity:f.identity}),backupEnv(f.db));
+ assert.equal(okay.status,200);
+});
+
+test('server backup signing refuses pre-migration D1 rows with null-tenant nested records, despite matched root scope',async()=>{
+ const f=await seededEngagement();
+ const saved=f.db.sessions.get(f.id),unmodified=saved.state_json;
+ const forged=JSON.parse(unmodified);
+ forged.payload.documents.push({id:'DOC-foreign-null',companyId:null,workspaceId:'workspace-A'});
+ saved.state_json=JSON.stringify(forged);
+ // Even a configured administrator cannot certify an invalid pre-migration snapshot.
+ const response=await backupRequest(f);
+ assert.equal(response.status,400);
+ assert.equal((await response.json()).error,'backup_source_state_nested_company_scope_mismatch');
+ assert.equal(saved.state_json,JSON.stringify(forged));
+ saved.state_json=unmodified;
+ const allowed=await backupRequest(f);
+ assert.equal(allowed.status,200);
+});
+test('server backup GET and preview preserve security failure for unsafe nested keys in preexisting D1 state',async()=>{
+ const f=await seededEngagement(),saved=f.db.sessions.get(f.id),unchanged=structuredClone(saved);
+ const foreign=JSON.parse(saved.state_json);
+ foreign.payload.engagement.extra=JSON.parse('{"constructor":{"companyId":"company-A"}}');
+ saved.state_json=JSON.stringify(foreign);
+ let response=await backupRequest(f);
+ assert.equal(response.status,400);
+ assert.equal((await response.json()).error,'backup_source_state_tenant_unsafe_key');
+ response=await handleEngagementApi(req('/api/engagements/'+f.id,{
+  access:f.access,identity:f.identity}),backupEnv(f.db));
+ assert.equal(response.status,409);
+ Object.assign(saved,unchanged);
+ response=await backupRequest(f);
+ assert.equal(response.status,200);
+});
