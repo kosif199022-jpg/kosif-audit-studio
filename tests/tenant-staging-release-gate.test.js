@@ -63,3 +63,20 @@ test('invalid and oversize configuration fail without opening a deployment path'
  assert.equal(assessTenantStagingConfig(null).readyForOfflineReview,false);
  assert.equal(assessTenantStagingConfig('x'.repeat(200001)).readyForOfflineReview,false);
 });
+
+test('provisioned isolated D1/R2 staging config remains fail-closed until a real trusted issuer is configured',()=>{
+ const cfg=readFileSync(new URL('../cloudflare/wrangler.staging.toml',import.meta.url),'utf8');
+ const decision=assessTenantStagingConfig(cfg);
+ assert.equal(decision.liveDeploymentAuthorized,false);
+ assert.equal(decision.readyForOfflineReview,false);
+ assert.deepEqual(decision.blockers,['kosif_auth_issuer_unconfigured']);
+ assert.match(cfg,/name = "kosif-audit-tenant-staging-20261011"/);
+ assert.match(cfg,/database_id = "2bf580c6-6a80-41bb-a59c-f96a6b4d3c0f"/);
+ assert.match(cfg,/bucket_name = "kosif-audit-tenant-staging-docs-20261011"/);
+ assert.match(cfg,/KOSIF_TENANCY_MODE = "strict"/);
+ assert.match(cfg,/workers_dev = false/);
+ assert.doesNotMatch(cfg,/^\s*(KOSIF_AUTH_JWT_SECRET|KOSIF_BACKUP_HMAC_SECRET|KOSIF_BACKUP_ADMIN_SUBJECT)\s*=/m);
+ const production=readFileSync(new URL('../cloudflare/wrangler.toml',import.meta.url),'utf8');
+ assert.doesNotMatch(production,/2bf580c6-6a80-41bb-a59c-f96a6b4d3c0f/);
+ assert.doesNotMatch(production,/kosif-audit-tenant-staging-docs-20261011/);
+});
