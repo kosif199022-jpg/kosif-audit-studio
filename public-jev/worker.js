@@ -53,6 +53,15 @@ function normalize(body) {
   return { tool: "jev_" + type, args };
 }
 
+/* Error text returned to callers never carries the bridge credential: the bridge URL embeds the token, so any
+   message that could echo it is scrubbed before it leaves the worker. */
+export function safeError(env, e) {
+  let m = String(e?.message || e || "تعذر تنفيذ القرار.");
+  const t = env && env.JEV_BRIDGE_TOKEN;
+  if (t) m = m.split(t).join("[redacted]");
+  return m.replace(/\/mcp\/[^\s"'<>]+/g, "/mcp/[redacted]").slice(0, 300);
+}
+
 async function callJev(env, body) {
   if (!env.JEV_BRIDGE || !env.JEV_BRIDGE_TOKEN) throw new Error("Jev غير مهيأ حالياً.");
   const { tool, args } = normalize(body);
@@ -279,7 +288,7 @@ export default {
       const result = await callJev(env, body);
       return json({ ok: true, result });
     } catch (e) {
-      return json({ ok: false, error: e?.message || String(e) }, 400);
+      return json({ ok: false, error: safeError(env, e) }, 400);
     }
   }
 };
