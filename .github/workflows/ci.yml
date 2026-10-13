@@ -14,3 +14,21 @@ jobs:
           node-version: 22
       - run: npm test
       - run: npm run check
+
+
+  container-v2:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: whatsapp-container-v2
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: node --check server.mjs
+      - name: Verify Baileys receipt API
+        run: |
+          node --input-type=module -e "import('@whiskeysockets/baileys').then(m => { if (!m.proto?.WebMessageInfo?.Status) process.exit(2); console.log('proto-ok') })"
+          node -e "const p=require('./node_modules/@whiskeysockets/baileys/package.json'); console.log('BAILEYS_VERSION='+p.version)"
